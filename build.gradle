@@ -1,0 +1,31 @@
+plugins {
+    id 'java'
+}
+
+group = 'io.zmeu'
+version = 'unspecified'
+
+repositories {
+    mavenCentral()
+}
+def lombok = '1.18.36'
+dependencies {
+    implementation project(':core')
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation 'org.apache.logging.log4j:log4j-api:2.24.2'
+    implementation 'org.apache.logging.log4j:log4j-core:2.24.2'
+    testImplementation 'org.slf4j:slf4j-jdk14:2.0.16'
+    compileOnly "org.projectlombok:lombok:${lombok}"
+    annotationProcessor "org.projectlombok:lombok:${lombok}"
+    implementation 'info.picocli:picocli:4.7.6'
+    annotationProcessor 'info.picocli:picocli-codegen:4.7.6'
+    testCompileOnly "org.projectlombok:lombok:${lombok}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombok}"
+
+}
+
+test {
+    useJUnitPlatform()
+}
