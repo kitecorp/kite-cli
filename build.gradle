@@ -27,7 +27,11 @@ dependencies {
     testAnnotationProcessor "org.projectlombok:lombok:${lombok}"
 
 }
-
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
 test {
     useJUnitPlatform()
 }
