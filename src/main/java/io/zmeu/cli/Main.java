@@ -1,6 +1,6 @@
 package io.zmeu.cli;
 
-import io.zmeu.Zmeu;
+import io.zmeu.engine.Zmeu;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import picocli.CommandLine;

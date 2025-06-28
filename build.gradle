@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    id('org.gradlex.extra-java-module-info') version "1.12"
+
 }
 
 group = 'io.zmeu'
@@ -10,7 +12,7 @@ repositories {
 }
 def lombok = '1.18.36'
 dependencies {
-    implementation project(':core')
+    implementation project(':engine')
 
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -28,4 +30,9 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+extraJavaModuleInfo {
+    automaticModule('picocli-codegen-4.7.6.jar', 'info.picocli')
+    failOnMissingModuleInfo.set(false)
 }
