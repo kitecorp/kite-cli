@@ -4,7 +4,7 @@ plugins {
 
 }
 
-group = 'io.zmeu'
+group = 'io.kite'
 version = 'unspecified'
 
 repositories {

@@ -1,6 +1,6 @@
-package io.zmeu.cli;
+package io.kite.cli;
 
-import io.zmeu.engine.Zmeu;
+import io.kite.engine.kite;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import picocli.CommandLine;
@@ -18,18 +18,18 @@ class Main implements Runnable {
     @Parameters(paramLabel = "SourceFiles", description = "The source file")
     private File[] sourceFiles;
 
-    private final Zmeu zmeu;
+    private final kite kite;
 
 
     @SneakyThrows
     public Main() {
-        zmeu = new Zmeu();
+        kite = new kite();
     }
 
     @SneakyThrows
     @Override
     public void run() { // your business logic goes here...
-        zmeu.run();
+        kite.run();
     }
 
     public static void main(String... args) {
