@@ -1,6 +1,6 @@
 package io.kite.cli;
 
-import io.kite.engine.kite;
+import io.kite.engine.Kite;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import picocli.CommandLine;
@@ -18,12 +18,12 @@ class Main implements Runnable {
     @Parameters(paramLabel = "SourceFiles", description = "The source file")
     private File[] sourceFiles;
 
-    private final kite kite;
+    private final Kite kite;
 
 
     @SneakyThrows
     public Main() {
-        kite = new kite();
+        kite = new Kite();
     }
 
     @SneakyThrows
