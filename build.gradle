@@ -10,7 +10,7 @@ version = 'unspecified'
 repositories {
     mavenCentral()
 }
-def lombok = '1.18.36'
+def lombok = '1.18.42'
 dependencies {
     implementation project(':engine')
 
