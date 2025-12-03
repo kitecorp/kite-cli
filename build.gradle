@@ -1,11 +1,6 @@
 plugins {
     id 'java'
     id 'application'
-    id('org.gradlex.extra-java-module-info') version "1.12"
-}
-
-application {
-    mainClass = 'cloud.kitelang.cli.KiteCLI'
 }
 
 group = 'io.kite'
@@ -14,13 +9,15 @@ version = '0.1.0'
 repositories {
     mavenCentral()
 }
+
 def lombok = '1.18.42'
+
 dependencies {
     // TODO: Re-enable once engine compilation issues are resolved
     // implementation project(':engine')
 
-    implementation 'org.apache.logging.log4j:log4j-api:2.24.2'
-    implementation 'org.apache.logging.log4j:log4j-core:2.24.2'
+    implementation 'org.apache.logging.log4j:log4j-api:2.25.2'
+    implementation 'org.apache.logging.log4j:log4j-core:2.25.2'
     implementation 'info.picocli:picocli:4.7.7'
 
     testImplementation 'org.slf4j:slf4j-jdk14:2.0.16'
@@ -29,28 +26,24 @@ dependencies {
     annotationProcessor 'info.picocli:picocli-codegen:4.7.7'
     testCompileOnly "org.projectlombok:lombok:${lombok}"
     testAnnotationProcessor "org.projectlombok:lombok:${lombok}"
-
 }
+
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
-jar {
-    archiveBaseName = "kite-cli"
-}
+
 application {
     mainClass = 'cloud.kitelang.cli.KiteCLI'
-    applicationName = 'kite-cli'
+    applicationName = 'kite'
+}
+
+jar {
+    archiveBaseName = "kite-cli"
 }
 
 test {
     useJUnitPlatform()
 }
 
-extraJavaModuleInfo {
-    module('picocli-codegen-4.7.7.jar', 'info.picocli.codegen') {
-        preserveExisting()
-    }
-    failOnMissingModuleInfo.set(false)
-}
