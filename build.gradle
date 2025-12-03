@@ -36,6 +36,14 @@ java {
         languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
+jar {
+    archiveBaseName = "kite-cli"
+}
+application {
+    mainClass = 'cloud.kitelang.cli.KiteCLI'
+    applicationName = 'kite-cli'
+}
+
 test {
     useJUnitPlatform()
 }
