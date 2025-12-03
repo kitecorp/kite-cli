@@ -59,6 +59,9 @@ public class ProjectStructureGenerator {
         // Create cloud-specific resources
         generateCloudSpecificResources(projectDir, providers);
 
+        // Create mixin files (global, component, and environment level)
+        generateMixins(projectDir, providers, environments);
+
         log.info("Project structure created successfully");
     }
 
@@ -97,6 +100,9 @@ public class ProjectStructureGenerator {
                 directories.add(projectDir.resolve("cloud/" + provider + "/serverless-api"));
             }
         }
+
+        // Mixins directory (global provider-specific defaults)
+        directories.add(projectDir.resolve("mixins"));
 
         for (var dir : directories) {
             Files.createDirectories(dir);
@@ -197,6 +203,15 @@ public class ProjectStructureGenerator {
                 aws: AWS::EC2::SecurityGroup
                 gcp: google.compute.Firewall
                 azure: azure.network.NetworkSecurityGroup
+
+            # Mixin auto-loading configuration
+            # Mixins are applied in order (later overrides earlier)
+            mixins:
+              auto_load:
+                - "mixins/common.kite"           # Global defaults (all providers)
+                - "mixins/${provider}.kite"      # Provider-specific defaults
+                - "components/**/mixins/${provider}.kite"  # Component-level
+                - "environments/${env}/mixins.kite"        # Environment overrides
 
             # Environment variable prefix
             # All Kite environment variables should start with KITE_
@@ -301,6 +316,13 @@ public class ProjectStructureGenerator {
             │   │       └── README.md
             │   ├── gcp/
             │   └── azure/
+            │
+            ├── mixins/                # Provider-specific defaults
+            │   ├── README.md          # Mixin documentation
+            │   ├── common.kite        # Global defaults (all providers)
+            │   ├── aws.kite           # AWS-specific defaults
+            │   ├── gcp.kite           # GCP-specific defaults
+            │   └── azure.kite         # Azure-specific defaults
             │
             └── resources/             # Simple standalone resources
                 └── main.kite
@@ -407,8 +429,50 @@ public class ProjectStructureGenerator {
             }
             ```
 
-            #### 4. Mixins (Future Feature)
-            Inject cloud-specific properties into generic resources (planned).
+            #### 4. Mixins (Strategy Pattern for Resources)
+            Inject cloud-specific properties into generic resources:
+
+            ```kite
+            // In components/api-backend/component.kite (portable)
+            import Bucket from "cloud.storage"
+
+            resource Bucket photos {
+                name = "my-photos"
+            }
+            ```
+
+            ```kite
+            // In mixins/aws.kite - Applied when deploying to AWS
+            mixin aws on Bucket {
+                versioning = true
+                encryption = { type = "AES256" }
+            }
+            ```
+
+            ```kite
+            // In mixins/gcp.kite - Applied when deploying to GCP
+            mixin gcp on Bucket {
+                location = "US"
+                storage_class = "STANDARD"
+            }
+            ```
+
+            ```kite
+            // In environments/prod/mixins.kite - Production overrides
+            mixin aws on Bucket {
+                lifecycle_rules = [{
+                    id = "archive"
+                    noncurrent_version_transition = { days = 30, storage_class = "GLACIER" }
+                }]
+            }
+            ```
+
+            Mixin scopes:
+            - `mixin Bucket { }` - All Bucket instances, any provider
+            - `mixin aws on Bucket { }` - All Buckets when deploying to AWS
+            - `mixin aws on photos { }` - Specific resource instance on AWS
+
+            See `mixins/README.md` for full documentation.
 
             ### Modules: Application-Level Compositions
 
@@ -1732,6 +1796,466 @@ public class ProjectStructureGenerator {
         Files.writeString(projectDir.resolve("modules/frontend-app/README.md"), frontendAppReadme);
 
         log.debug("Generated application modules");
+    }
+
+    private void generateMixins(Path projectDir, String[] providers, String[] environments) throws IOException {
+        // Generate mixins README
+        var mixinsReadme = """
+            # Mixins Directory
+
+            Mixins provide **provider-specific defaults** that are automatically applied to generic resources.
+            This enables "write once, deploy anywhere" by injecting cloud-specific properties at deployment time.
+
+            ## How Mixins Work
+
+            Mixins follow a cascade pattern (like CSS):
+
+            ```
+            mixins/common.kite      →  Most generic (all resources, all providers)
+            mixins/aws.kite         →  Provider-specific (all AWS resources)
+            components/*/mixins/    →  Component-scoped (this component only)
+            environments/*/mixins.kite → Environment-specific (prod overrides)
+            inline mixin            →  Most specific (single resource)
+            ```
+
+            Later mixins override earlier ones.
+
+            ## Mixin Syntax
+
+            ```kite
+            // Apply to all instances of a resource type (any provider)
+            mixin Bucket {
+                tags = { managed_by = "kite" }
+            }
+
+            // Apply to all instances of a resource type on a specific provider
+            mixin aws on Bucket {
+                versioning = true
+                encryption = { type = "AES256" }
+            }
+
+            // Apply to a specific resource instance
+            mixin aws on photos {
+                lifecycle_rules = [{ expiration_days = 90 }]
+            }
+            ```
+
+            ## File Organization
+
+            | File | Scope | Example Use |
+            |------|-------|-------------|
+            | `mixins/common.kite` | All resources, all providers | Standard tags, naming conventions |
+            | `mixins/aws.kite` | All AWS resources | Encryption defaults, IAM settings |
+            | `mixins/gcp.kite` | All GCP resources | Location defaults, labels |
+            | `mixins/azure.kite` | All Azure resources | Resource group, tags |
+            | `components/*/mixins/*.kite` | Component-scoped | Component-specific tuning |
+            | `environments/*/mixins.kite` | Environment-scoped | Prod sizing, HA settings |
+
+            ## Resolution Order
+
+            When deploying a `Bucket` resource to AWS in prod:
+
+            1. `mixins/common.kite` → `mixin Bucket { ... }`
+            2. `mixins/aws.kite` → `mixin aws on Bucket { ... }`
+            3. `components/api-backend/mixins/aws.kite` → component overrides
+            4. `environments/prod/mixins.kite` → environment overrides
+            5. Inline mixin in the resource file → most specific
+
+            ## Auto-Loading
+
+            Mixins are automatically loaded based on `kite.yaml` configuration:
+
+            ```yaml
+            mixins:
+              auto_load:
+                - "mixins/common.kite"
+                - "mixins/${provider}.kite"
+                - "components/**/mixins/${provider}.kite"
+                - "environments/${env}/mixins.kite"
+            ```
+            """;
+        Files.writeString(projectDir.resolve("mixins/README.md"), mixinsReadme);
+
+        // Generate common.kite (applies to all resources, all providers)
+        var commonMixin = """
+            // Global Mixins - Applied to all resources regardless of provider
+            // These establish organization-wide standards and conventions
+
+            // Standard tags for all Bucket resources
+            mixin Bucket {
+                tags = {
+                    managed_by = "kite"
+                    project = var.project_name
+                    team = var.team
+                }
+            }
+
+            // Standard tags for all Function resources
+            mixin Function {
+                tags = {
+                    managed_by = "kite"
+                    project = var.project_name
+                }
+                timeout = 30  // Default timeout in seconds
+            }
+
+            // Standard tags for all Database resources
+            mixin Database {
+                tags = {
+                    managed_by = "kite"
+                    project = var.project_name
+                }
+                backup_enabled = true
+            }
+
+            // Standard tags for all Compute resources
+            mixin Compute {
+                tags = {
+                    managed_by = "kite"
+                    project = var.project_name
+                }
+            }
+            """;
+        Files.writeString(projectDir.resolve("mixins/common.kite"), commonMixin);
+
+        // Generate provider-specific mixins
+        for (var provider : providers) {
+            switch (provider) {
+                case "aws" -> {
+                    var awsMixin = """
+                        // AWS-Specific Mixins
+                        // Applied to all resources when deploying to AWS
+
+                        // S3 Bucket defaults
+                        mixin aws on Bucket {
+                            versioning = true
+                            encryption = {
+                                type = "AES256"
+                            }
+                            public_access_block = {
+                                block_public_acls = true
+                                block_public_policy = true
+                                ignore_public_acls = true
+                                restrict_public_buckets = true
+                            }
+                        }
+
+                        // Lambda Function defaults
+                        mixin aws on Function {
+                            runtime = "nodejs20.x"
+                            architecture = "arm64"  // Graviton for cost savings
+                            memory_size = 512
+                            tracing = {
+                                mode = "Active"  // X-Ray tracing
+                            }
+                        }
+
+                        // RDS Database defaults
+                        mixin aws on Database {
+                            engine = "postgres"
+                            engine_version = "15"
+                            storage_encrypted = true
+                            deletion_protection = false  // Override in prod
+                            performance_insights = true
+                        }
+
+                        // EC2 Compute defaults
+                        mixin aws on Compute {
+                            instance_type = "t3.medium"
+                            ebs_optimized = true
+                            monitoring = true
+                        }
+
+                        // VPC defaults
+                        mixin aws on VPC {
+                            enable_dns_hostnames = true
+                            enable_dns_support = true
+                        }
+
+                        // Security Group defaults
+                        mixin aws on SecurityGroup {
+                            // Default: no ingress, allow all egress
+                            egress_rules = [{
+                                protocol = "-1"
+                                from_port = 0
+                                to_port = 0
+                                cidr_blocks = ["0.0.0.0/0"]
+                            }]
+                        }
+                        """;
+                    Files.writeString(projectDir.resolve("mixins/aws.kite"), awsMixin);
+                }
+                case "gcp" -> {
+                    var gcpMixin = """
+                        // GCP-Specific Mixins
+                        // Applied to all resources when deploying to GCP
+
+                        // Cloud Storage Bucket defaults
+                        mixin gcp on Bucket {
+                            location = "US"
+                            storage_class = "STANDARD"
+                            uniform_bucket_level_access = true
+                            versioning = true
+                            labels = {
+                                managed_by = "kite"
+                            }
+                        }
+
+                        // Cloud Functions defaults
+                        mixin gcp on Function {
+                            runtime = "nodejs20"
+                            available_memory = "512Mi"
+                            available_cpu = "0.5"
+                            max_instance_count = 100
+                            min_instance_count = 0
+                        }
+
+                        // Cloud SQL Database defaults
+                        mixin gcp on Database {
+                            database_version = "POSTGRES_15"
+                            tier = "db-f1-micro"  // Override in prod
+                            availability_type = "ZONAL"  // Override to REGIONAL in prod
+                            backup_configuration = {
+                                enabled = true
+                                point_in_time_recovery = true
+                            }
+                        }
+
+                        // Compute Engine defaults
+                        mixin gcp on Compute {
+                            machine_type = "e2-medium"
+                            boot_disk = {
+                                type = "pd-balanced"
+                                size_gb = 50
+                            }
+                        }
+
+                        // VPC Network defaults
+                        mixin gcp on VPC {
+                            auto_create_subnetworks = false
+                            routing_mode = "REGIONAL"
+                        }
+                        """;
+                    Files.writeString(projectDir.resolve("mixins/gcp.kite"), gcpMixin);
+                }
+                case "azure" -> {
+                    var azureMixin = """
+                        // Azure-Specific Mixins
+                        // Applied to all resources when deploying to Azure
+
+                        // Storage Account defaults (maps from Bucket)
+                        mixin azure on Bucket {
+                            account_tier = "Standard"
+                            account_replication_type = "LRS"  // Override to GRS in prod
+                            min_tls_version = "TLS1_2"
+                            enable_https_traffic_only = true
+                            blob_properties = {
+                                versioning_enabled = true
+                                delete_retention_policy = {
+                                    days = 7
+                                }
+                            }
+                        }
+
+                        // Azure Functions defaults
+                        mixin azure on Function {
+                            os_type = "Linux"
+                            runtime_stack = "node"
+                            runtime_version = "20"
+                            app_settings = {
+                                FUNCTIONS_WORKER_RUNTIME = "node"
+                            }
+                        }
+
+                        // Azure SQL Database defaults
+                        mixin azure on Database {
+                            sku_name = "Basic"  // Override in prod
+                            zone_redundant = false  // Override in prod
+                            geo_backup_enabled = true
+                            min_capacity = 0.5
+                        }
+
+                        // Virtual Machine defaults
+                        mixin azure on Compute {
+                            size = "Standard_B2s"
+                            os_disk = {
+                                caching = "ReadWrite"
+                                storage_account_type = "Standard_LRS"
+                            }
+                        }
+
+                        // Virtual Network defaults
+                        mixin azure on VPC {
+                            address_space = ["10.0.0.0/16"]
+                        }
+
+                        // Network Security Group defaults
+                        mixin azure on SecurityGroup {
+                            // Default deny all inbound
+                        }
+                        """;
+                    Files.writeString(projectDir.resolve("mixins/azure.kite"), azureMixin);
+                }
+            }
+        }
+
+        // Generate environment-level mixins
+        for (var env : environments) {
+            var envMixinContent = switch (env) {
+                case "prod" -> """
+                    // Production Environment Mixins
+                    // Override defaults for production workloads
+
+                    // All Buckets in prod get additional protection
+                    mixin Bucket {
+                        tags.env = "prod"
+                    }
+
+                    // AWS production overrides
+                    mixin aws on Bucket {
+                        versioning = true
+                        lifecycle_rules = [{
+                            id = "archive-old-versions"
+                            enabled = true
+                            noncurrent_version_transition = {
+                                days = 30
+                                storage_class = "GLACIER"
+                            }
+                        }]
+                    }
+
+                    mixin aws on Database {
+                        deletion_protection = true
+                        multi_az = true
+                        backup_retention_period = 14
+                        performance_insights = true
+                    }
+
+                    mixin aws on Function {
+                        reserved_concurrent_executions = 100
+                    }
+
+                    // GCP production overrides
+                    mixin gcp on Database {
+                        availability_type = "REGIONAL"
+                        tier = "db-custom-2-4096"
+                    }
+
+                    // Azure production overrides
+                    mixin azure on Bucket {
+                        account_replication_type = "GRS"
+                    }
+
+                    mixin azure on Database {
+                        sku_name = "S1"
+                        zone_redundant = true
+                    }
+                    """;
+                case "staging" -> """
+                    // Staging Environment Mixins
+                    // Similar to prod but with reduced resources
+
+                    mixin Bucket {
+                        tags.env = "staging"
+                    }
+
+                    mixin aws on Database {
+                        deletion_protection = false
+                        multi_az = false
+                        backup_retention_period = 7
+                    }
+
+                    mixin gcp on Database {
+                        availability_type = "ZONAL"
+                    }
+                    """;
+                default -> """
+                    // %s Environment Mixins
+                    // Development/test environment with minimal resources
+
+                    mixin Bucket {
+                        tags.env = "%s"
+                    }
+
+                    mixin aws on Database {
+                        deletion_protection = false
+                        multi_az = false
+                        backup_retention_period = 1
+                        instance_class = "db.t3.micro"
+                    }
+
+                    mixin aws on Function {
+                        reserved_concurrent_executions = 10
+                    }
+
+                    mixin gcp on Database {
+                        tier = "db-f1-micro"
+                    }
+
+                    mixin azure on Database {
+                        sku_name = "Basic"
+                    }
+                    """.formatted(env, env);
+            };
+            Files.writeString(projectDir.resolve("environments/" + env + "/mixins.kite"), envMixinContent);
+        }
+
+        // Generate component-level mixin example (for api-backend)
+        Files.createDirectories(projectDir.resolve("components/api-backend/mixins"));
+        var componentAwsMixin = """
+            // API Backend - AWS-specific mixins
+            // These apply only to resources in the api-backend component when deployed to AWS
+
+            // Custom lifecycle rules for the API data bucket
+            mixin aws on data {
+                lifecycle_rules = [{
+                    id = "cleanup-temp-files"
+                    enabled = true
+                    prefix = "temp/"
+                    expiration = {
+                        days = 7
+                    }
+                }]
+
+                // Enable access logging
+                logging = {
+                    target_bucket = "logs-bucket"
+                    target_prefix = "api-backend/"
+                }
+            }
+
+            // API handler Lambda configuration
+            mixin aws on handler {
+                reserved_concurrent_executions = 50
+                layers = [
+                    "arn:aws:lambda:us-east-1:123456789:layer:common-utils:1"
+                ]
+            }
+            """;
+        Files.writeString(projectDir.resolve("components/api-backend/mixins/aws.kite"), componentAwsMixin);
+
+        var componentGcpMixin = """
+            // API Backend - GCP-specific mixins
+            // These apply only to resources in the api-backend component when deployed to GCP
+
+            mixin gcp on data {
+                lifecycle_rules = [{
+                    action = { type = "Delete" }
+                    condition = {
+                        age = 7
+                        matches_prefix = ["temp/"]
+                    }
+                }]
+            }
+
+            mixin gcp on handler {
+                max_instance_count = 50
+                vpc_connector = "projects/my-project/locations/us-central1/connectors/vpc-connector"
+            }
+            """;
+        Files.writeString(projectDir.resolve("components/api-backend/mixins/gcp.kite"), componentGcpMixin);
+
+        log.debug("Generated mixin files");
     }
 
     private void generateEnvExample(Path projectDir) throws IOException {
