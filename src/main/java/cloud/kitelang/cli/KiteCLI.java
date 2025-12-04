@@ -1,6 +1,7 @@
 package cloud.kitelang.cli;
 
 import cloud.kitelang.cli.commands.ApplyCommand;
+import cloud.kitelang.cli.commands.CompletionCommand;
 import cloud.kitelang.cli.commands.DestroyCommand;
 import cloud.kitelang.cli.commands.FmtCommand;
 import cloud.kitelang.cli.commands.InitCommand;
@@ -28,6 +29,7 @@ import picocli.CommandLine.Option;
                 DestroyCommand.class,
                 OutputCommand.class,
                 FmtCommand.class,
+                CompletionCommand.class,
                 CommandLine.HelpCommand.class
         }
 )
