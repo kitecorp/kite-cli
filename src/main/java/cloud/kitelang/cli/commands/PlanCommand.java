@@ -5,7 +5,12 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.stream.Stream;
 
 /**
  * Shows a preview of infrastructure changes without applying them.
@@ -46,17 +51,16 @@ public class PlanCommand implements Callable<Integer> {
     private String provider;
 
     @Option(
-        names = {"-f", "--file"},
-        description = "Path to main .kite file or stack file",
-        defaultValue = "resources/main.kite"
-    )
-    private File sourceFile;
-
-    @Option(
         names = {"-s", "--stack"},
-        description = "Stack name to plan (e.g., Backend, Frontend)"
+        description = "Specific stack to plan (e.g., Backend, Frontend). If omitted, plans all stacks in the environment."
     )
     private String stack;
+
+    @Option(
+        names = {"-f", "--file"},
+        description = "Override: plan a specific .kite file instead of environment stacks"
+    )
+    private File overrideFile;
 
     @Option(
         names = {"-o", "--out"},
@@ -137,12 +141,52 @@ public class PlanCommand implements Callable<Integer> {
 
     /**
      * Determines the target for planning based on options.
+     * Priority: --file override > --stack > all stacks in environment
      */
-    private String determinePlanTarget() {
-        if (stack != null) {
-            return "environments/" + environment + "/" + stack + ".kite";
+    private String determinePlanTarget() throws IOException {
+        // If explicit file override, use that
+        if (overrideFile != null) {
+            if (!overrideFile.exists()) {
+                throw new IOException("File not found: " + overrideFile);
+            }
+            return overrideFile.getPath();
         }
-        return sourceFile.getPath();
+
+        // If specific stack requested
+        if (stack != null) {
+            var stackFile = Path.of("environments", environment, stack + ".kite");
+            if (!Files.exists(stackFile)) {
+                throw new IOException("Stack not found: " + stackFile);
+            }
+            return stackFile.toString();
+        }
+
+        // Default: all stacks in the environment
+        var envDir = Path.of("environments", environment);
+        if (!Files.exists(envDir)) {
+            throw new IOException("Environment not found: " + envDir);
+        }
+
+        var stacks = findStackFiles(envDir);
+        if (stacks.isEmpty()) {
+            throw new IOException("No .kite files found in: " + envDir);
+        }
+
+        // Return description of what we're planning
+        return envDir + "/ (" + stacks.size() + " stack" + (stacks.size() > 1 ? "s" : "") + ")";
+    }
+
+    /**
+     * Finds all .kite stack files in an environment directory.
+     */
+    private List<Path> findStackFiles(Path envDir) throws IOException {
+        try (Stream<Path> files = Files.list(envDir)) {
+            return files
+                .filter(Files::isRegularFile)
+                .filter(p -> p.toString().endsWith(".kite"))
+                .sorted()
+                .toList();
+        }
     }
 
     /**
