@@ -1,7 +1,12 @@
 package cloud.kitelang.cli;
 
 import cloud.kitelang.cli.commands.ApplyCommand;
+import cloud.kitelang.cli.commands.DestroyCommand;
+import cloud.kitelang.cli.commands.FmtCommand;
 import cloud.kitelang.cli.commands.InitCommand;
+import cloud.kitelang.cli.commands.OutputCommand;
+import cloud.kitelang.cli.commands.PlanCommand;
+import cloud.kitelang.cli.commands.ValidateCommand;
 import lombok.extern.log4j.Log4j2;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -17,7 +22,12 @@ import picocli.CommandLine.Option;
         description = "Kite - Write once, provision anywhere. Multi-cloud IaC tool.",
         subcommands = {
                 InitCommand.class,
+                ValidateCommand.class,
+                PlanCommand.class,
                 ApplyCommand.class,
+                DestroyCommand.class,
+                OutputCommand.class,
+                FmtCommand.class,
                 CommandLine.HelpCommand.class
         }
 )

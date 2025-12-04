@@ -34,7 +34,12 @@ cloud.kitelang.cli/
 ├── KiteCLI.java              # Main entry point (picocli @Command)
 ├── commands/                  # CLI subcommands
 │   ├── InitCommand.java      # Initialize new Kite project
-│   └── ApplyCommand.java     # Apply infrastructure changes
+│   ├── ValidateCommand.java  # Validate .kite files
+│   ├── PlanCommand.java      # Preview infrastructure changes
+│   ├── ApplyCommand.java     # Apply infrastructure changes
+│   ├── DestroyCommand.java   # Tear down infrastructure
+│   ├── OutputCommand.java    # Display stack outputs
+│   └── FmtCommand.java       # Format .kite files
 └── generator/
     └── ProjectStructureGenerator.java  # Generates project scaffolding
 ```
