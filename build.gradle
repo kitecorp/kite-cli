@@ -14,8 +14,7 @@ repositories {
 def lombok = '1.18.42'
 
 dependencies {
-    // TODO: Re-enable once engine compilation issues are resolved
-    // implementation project(':engine')
+    implementation project(':engine')
 
     implementation 'org.apache.logging.log4j:log4j-api:2.25.2'
     implementation 'org.apache.logging.log4j:log4j-core:2.25.2'
@@ -60,10 +59,32 @@ graalvmNative {
             buildArgs.addAll(
                 '--no-fallback',
                 '-H:+ReportExceptionStackTraces',
+                // Log4j initialization
                 '--initialize-at-build-time=org.apache.logging.log4j',
-                '--initialize-at-run-time=org.apache.logging.log4j.core.pattern.JAnsiTextRenderer'
+                '--initialize-at-run-time=org.apache.logging.log4j.core.pattern.JAnsiTextRenderer',
+                // Allow reflection for Hibernate entities
+                '--enable-url-protocols=http,https',
+                // Include resources
+                '-H:IncludeResources=.*\\.properties',
+                '-H:IncludeResources=.*\\.xml',
+                '-H:IncludeResources=db/migration/.*'
             )
+            // Use tracing agent to generate config: ./gradlew -Pagent run
+            // Then copy from build/native/agent-output to src/main/resources/META-INF/native-image
         }
     }
     toolchainDetection = true
+}
+
+// Task to create a fat/uber JAR for distribution without GraalVM
+tasks.register('shadowJar', Jar) {
+    archiveClassifier.set('all')
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': 'cloud.kitelang.cli.KiteCLI'
+    }
 }

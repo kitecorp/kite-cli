@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.engine.Engine;
 import lombok.extern.log4j.Log4j2;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -145,8 +146,7 @@ public class ValidateCommand implements Callable<Integer> {
     }
 
     /**
-     * Validates a single .kite file.
-     * TODO: Integrate with Kite parser once available.
+     * Validates a single .kite file using the Engine parser.
      */
     private void validateFile(Path file, List<ValidationError> errors, List<ValidationError> warnings) {
         log.debug("Validating: {}", file);
@@ -154,19 +154,21 @@ public class ValidateCommand implements Callable<Integer> {
         try {
             var content = Files.readString(file);
 
-            // TODO: Replace with actual parser validation
-            // For now, perform basic structural checks
-
             // Check for empty file
             if (content.isBlank()) {
                 warnings.add(new ValidationError(file, 1, "File is empty"));
                 return;
             }
 
-            // Check for basic syntax patterns
-            validateBasicSyntax(file, content, errors, warnings);
+            // Use Engine for full syntax, type, and semantic validation
+            try (var engine = Engine.builder()
+                    .forTesting()  // Skip provider loading for validation
+                    .skipDatabaseInit()
+                    .build()) {
+                engine.parse(content);
+            }
 
-            // Check imports
+            // Check imports (additional portability check)
             validateImports(file, content, errors, warnings);
 
             if (!quiet) {
@@ -175,7 +177,29 @@ public class ValidateCommand implements Callable<Integer> {
 
         } catch (IOException e) {
             errors.add(new ValidationError(file, 0, "Cannot read file: " + e.getMessage()));
+        } catch (Exception e) {
+            // Parse or type check error - extract line number if possible
+            var message = e.getMessage();
+            var lineNum = extractLineNumber(message);
+            errors.add(new ValidationError(file, lineNum, message));
         }
+    }
+
+    /**
+     * Extracts line number from error message if present.
+     */
+    private int extractLineNumber(String message) {
+        if (message == null) return 0;
+        // Try to find "line X" or ":X:" pattern
+        var linePattern = java.util.regex.Pattern.compile("line (\\d+)|:(\\d+):");
+        var matcher = linePattern.matcher(message);
+        if (matcher.find()) {
+            var group = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+            try {
+                return Integer.parseInt(group);
+            } catch (NumberFormatException ignored) {}
+        }
+        return 0;
     }
 
     /**

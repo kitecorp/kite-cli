@@ -1,5 +1,7 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.engine.Engine;
+import cloud.kitelang.engine.diff.Plan;
 import lombok.extern.log4j.Log4j2;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -103,8 +105,8 @@ public class PlanCommand implements Callable<Integer> {
             log.info("Provider: {}", provider);
 
             // Determine which file(s) to plan
-            var planTarget = determinePlanTarget();
-            System.out.println("Planning: " + planTarget);
+            var kiteFiles = determineKiteFiles();
+            System.out.println("Planning: " + kiteFiles.size() + " file(s)");
             System.out.println();
 
             if (refresh) {
@@ -112,20 +114,31 @@ public class PlanCommand implements Callable<Integer> {
                 refreshState();
             }
 
-            // TODO: Integrate with Kite engine
-            // 1. Load kite.yaml configuration
-            // 2. Parse .kite files to build resource graph
-            // 3. Load current state from PostgreSQL backend
-            // 4. Compare desired vs current state
-            // 5. Generate execution plan
-            // 6. Display diff to user
+            // Load all .kite file contents
+            var source = new StringBuilder();
+            for (var file : kiteFiles) {
+                source.append(Files.readString(file));
+                source.append("\n");
+            }
 
-            // Placeholder output showing expected format
-            printPlaceholderPlan();
+            // Use Engine to parse and plan
+            try (var engine = Engine.builder()
+                    .withProvidersDir(Path.of("providers"))
+                    .build()) {
 
-            if (outputFile != null) {
-                System.out.println("\nPlan saved to: " + outputFile);
-                // TODO: Serialize plan to file
+                var resources = engine.parse(source.toString());
+                var plan = engine.plan(resources);
+
+                if (jsonOutput) {
+                    printJsonPlan(engine, plan);
+                } else {
+                    printPlan(engine, plan);
+                }
+
+                if (outputFile != null) {
+                    // TODO: Serialize plan to file
+                    System.out.println("\nPlan saved to: " + outputFile);
+                }
             }
 
             System.out.println("\nTo apply this plan, run: kite apply --env " + environment);
@@ -140,16 +153,16 @@ public class PlanCommand implements Callable<Integer> {
     }
 
     /**
-     * Determines the target for planning based on options.
+     * Determines the .kite files to plan based on options.
      * Priority: --file override > --stack > all stacks in environment
      */
-    private String determinePlanTarget() throws IOException {
+    private List<Path> determineKiteFiles() throws IOException {
         // If explicit file override, use that
         if (overrideFile != null) {
             if (!overrideFile.exists()) {
                 throw new IOException("File not found: " + overrideFile);
             }
-            return overrideFile.getPath();
+            return List.of(overrideFile.toPath());
         }
 
         // If specific stack requested
@@ -158,7 +171,7 @@ public class PlanCommand implements Callable<Integer> {
             if (!Files.exists(stackFile)) {
                 throw new IOException("Stack not found: " + stackFile);
             }
-            return stackFile.toString();
+            return List.of(stackFile);
         }
 
         // Default: all stacks in the environment
@@ -172,8 +185,7 @@ public class PlanCommand implements Callable<Integer> {
             throw new IOException("No .kite files found in: " + envDir);
         }
 
-        // Return description of what we're planning
-        return envDir + "/ (" + stacks.size() + " stack" + (stacks.size() > 1 ? "s" : "") + ")";
+        return stacks;
     }
 
     /**
@@ -201,14 +213,9 @@ public class PlanCommand implements Callable<Integer> {
     }
 
     /**
-     * Prints a placeholder plan to show expected output format.
+     * Prints the execution plan.
      */
-    private void printPlaceholderPlan() {
-        if (jsonOutput) {
-            printJsonPlan();
-            return;
-        }
-
+    private void printPlan(Engine engine, Plan plan) {
         System.out.println("Kite will perform the following actions:");
         System.out.println();
 
@@ -217,41 +224,20 @@ public class PlanCommand implements Callable<Integer> {
             System.out.println();
         }
 
-        // Example plan output
-        System.out.println("  # module.backend.aws_s3_bucket.data");
-        System.out.println("  + resource \"Bucket\" \"data\" {");
-        System.out.println("      + name       = \"" + environment + "-api-data\"");
-        System.out.println("      + versioning = true");
-        System.out.println("      + encryption = true");
-        System.out.println("    }");
-        System.out.println();
-
-        System.out.println("  # module.backend.aws_lambda_function.handler");
-        System.out.println("  + resource \"Function\" \"handler\" {");
-        System.out.println("      + runtime = \"nodejs20\"");
-        System.out.println("      + memory  = 512");
-        System.out.println("    }");
-        System.out.println();
-
-        if (!compact) {
-            System.out.println("  # module.backend.aws_rds_instance.db");
-            System.out.println("  ~ resource \"Database\" \"db\" {");
-            System.out.println("      ~ instance_class = \"db.t3.small\" -> \"db.t3.medium\"");
-            System.out.println("        # (1 unchanged attribute hidden)");
-            System.out.println("    }");
-            System.out.println();
-        }
+        // TODO: Add detailed resource printing when needed
+        // For now, just show summary
 
         System.out.println("─────────────────────────────────────────────────────────────");
         System.out.println();
-        System.out.println("Plan: 2 to add, 1 to change, 0 to destroy.");
+        engine.printPlanSummary(plan);
     }
 
     /**
      * Prints plan as JSON.
      */
-    private void printJsonPlan() {
-        // TODO: Generate proper JSON plan
+    private void printJsonPlan(Engine engine, Plan plan) {
+        var summary = engine.getPlanSummary(plan);
+
         var json = """
             {
               "format_version": "1.0",
@@ -259,33 +245,12 @@ public class PlanCommand implements Callable<Integer> {
               "environment": "%s",
               "provider": "%s",
               "changes": {
-                "create": 2,
-                "update": 1,
-                "destroy": 0,
-                "replace": 0
-              },
-              "resources": [
-                {
-                  "action": "create",
-                  "type": "Bucket",
-                  "name": "data",
-                  "provider": "aws"
-                },
-                {
-                  "action": "create",
-                  "type": "Function",
-                  "name": "handler",
-                  "provider": "aws"
-                },
-                {
-                  "action": "update",
-                  "type": "Database",
-                  "name": "db",
-                  "provider": "aws"
-                }
-              ]
+                "create": %d,
+                "update": %d,
+                "destroy": %d
+              }
             }
-            """.formatted(environment, provider);
+            """.formatted(environment, provider, summary.creates(), summary.updates(), summary.deletes());
 
         System.out.println(json);
     }

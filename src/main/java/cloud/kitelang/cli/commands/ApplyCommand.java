@@ -1,9 +1,11 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.engine.Engine;
 import lombok.extern.log4j.Log4j2;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -74,9 +76,9 @@ public class ApplyCommand implements Callable<Integer> {
             log.info("Environment: {}", environment);
             log.info("Provider: {}", provider);
 
-            // Determine what to apply
-            var applyTarget = determineApplyTarget();
-            System.out.println("Applying: " + applyTarget);
+            // Determine what files to apply
+            var kiteFiles = determineKiteFiles();
+            System.out.println("Applying: " + kiteFiles.size() + " file(s)");
 
             if (dryRun) {
                 System.out.println("\nDRY RUN: No changes will be made");
@@ -84,14 +86,48 @@ public class ApplyCommand implements Callable<Integer> {
                 return 0;
             }
 
-            // TODO: Integrate with Kite engine once compilation issues are resolved
-            // 1. Load kite.yaml and environment config
-            // 2. Parse .kite files using Kite engine
-            // 3. Generate plan
-            // 4. Show plan to user
-            // 5. If not auto-approve, ask for confirmation
-            // 6. Execute plan via cloud providers
-            // 7. Update state
+            // Load all .kite file contents
+            var source = new StringBuilder();
+            for (var file : kiteFiles) {
+                source.append(Files.readString(file));
+                source.append("\n");
+            }
+
+            // Use Engine to parse, plan, and apply
+            try (var engine = Engine.builder()
+                    .withProvidersDir(Path.of("providers"))
+                    .build()) {
+
+                var resources = engine.parse(source.toString());
+                var plan = engine.plan(resources);
+
+                // Show plan summary
+                var summary = engine.getPlanSummary(plan);
+                System.out.println();
+                engine.printPlanSummary(plan);
+
+                // Request confirmation unless auto-approve
+                if (!autoApprove && summary.hasChanges()) {
+                    System.out.print("\nDo you want to perform these actions? (yes/no): ");
+                    var console = System.console();
+                    if (console != null) {
+                        var answer = console.readLine();
+                        if (!"yes".equalsIgnoreCase(answer)) {
+                            System.out.println("Apply cancelled.");
+                            return 0;
+                        }
+                    } else {
+                        log.warn("No console available, proceeding without confirmation");
+                    }
+                }
+
+                // Apply the plan
+                System.out.println("\nApplying changes...");
+                engine.apply(plan);
+
+                // Print outputs
+                engine.printOutputs();
+            }
 
             System.out.println("\n✓ Apply completed successfully");
             return 0;
@@ -104,16 +140,16 @@ public class ApplyCommand implements Callable<Integer> {
     }
 
     /**
-     * Determines the target for applying based on options.
+     * Determines the .kite files to apply based on options.
      * Priority: --file override > --stack > all stacks in environment
      */
-    private String determineApplyTarget() throws IOException {
+    private List<Path> determineKiteFiles() throws IOException {
         // If explicit file override, use that
         if (overrideFile != null) {
             if (!overrideFile.exists()) {
                 throw new IOException("File not found: " + overrideFile);
             }
-            return overrideFile.getPath();
+            return List.of(overrideFile.toPath());
         }
 
         // If specific stack requested
@@ -122,7 +158,7 @@ public class ApplyCommand implements Callable<Integer> {
             if (!Files.exists(stackFile)) {
                 throw new IOException("Stack not found: " + stackFile);
             }
-            return stackFile.toString();
+            return List.of(stackFile);
         }
 
         // Default: all stacks in the environment
@@ -136,7 +172,7 @@ public class ApplyCommand implements Callable<Integer> {
             throw new IOException("No .kite files found in: " + envDir);
         }
 
-        return envDir + "/ (" + stacks.size() + " stack" + (stacks.size() > 1 ? "s" : "") + ")";
+        return stacks;
     }
 
     /**
