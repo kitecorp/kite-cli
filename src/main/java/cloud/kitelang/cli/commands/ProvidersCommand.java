@@ -19,6 +19,7 @@ import java.util.concurrent.Callable;
 @Command(
         name = "providers",
         description = "Manage Kite providers",
+        mixinStandardHelpOptions = true,
         subcommands = {
                 ProvidersCommand.InstallCommand.class,
                 ProvidersCommand.ListCommand.class
@@ -32,8 +33,15 @@ public class ProvidersCommand implements Callable<Integer> {
         System.out.println("Usage: kite providers <command>");
         System.out.println();
         System.out.println("Commands:");
-        System.out.println("  install    Install providers from kitefile.yml");
+        System.out.println("  install    Install providers");
         System.out.println("  list       List installed providers");
+        System.out.println();
+        System.out.println("Examples:");
+        System.out.println("  kite providers install                              # Install from kitefile.yml");
+        System.out.println("  kite providers install aws                          # Install latest version");
+        System.out.println("  kite providers install aws@1.0.0                    # Install specific version");
+        System.out.println("  kite providers install myp --git github.com/org/p   # Install from git");
+        System.out.println("  kite providers list --global                        # List global providers");
         return 0;
     }
 
@@ -42,25 +50,19 @@ public class ProvidersCommand implements Callable<Integer> {
      */
     @Command(
             name = "install",
-            description = "Install providers"
+            description = "Install providers from registry or git",
+            mixinStandardHelpOptions = true
     )
     @Log4j2
     public static class InstallCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "PROVIDER",
-                description = "Provider name (optional, installs all from kitefile.yml if not specified)",
+                paramLabel = "PROVIDER[@VERSION]",
+                description = "Provider name with optional version (e.g., aws@1.0.0). Installs all from kitefile.yml if not specified.",
                 arity = "0..1"
         )
         private String providerName;
-
-        @Option(
-                names = {"-v", "--version"},
-                paramLabel = "VERSION",
-                description = "Provider version (default: latest)"
-        )
-        private String version;
 
         @Option(
                 names = {"--git"},
@@ -105,8 +107,20 @@ public class ProvidersCommand implements Callable<Integer> {
             }
         }
 
-        private Integer installProvider(ProviderInstaller installer, String name) {
-            System.out.println("Installing provider: " + name);
+        private Integer installProvider(ProviderInstaller installer, String nameWithVersion) {
+            // Parse name@version format
+            String name;
+            String version = "latest";
+
+            if (nameWithVersion.contains("@")) {
+                var parts = nameWithVersion.split("@", 2);
+                name = parts[0];
+                version = parts[1];
+            } else {
+                name = nameWithVersion;
+            }
+
+            System.out.println("Installing provider: " + name + "@" + version);
 
             var specBuilder = ProviderSpec.builder().name(name);
 
@@ -116,7 +130,7 @@ public class ProvidersCommand implements Callable<Integer> {
                     specBuilder.ref(gitRef);
                 }
             } else {
-                specBuilder.version(version != null ? version : "latest");
+                specBuilder.version(version);
             }
 
             var spec = specBuilder.build();
@@ -193,7 +207,8 @@ public class ProvidersCommand implements Callable<Integer> {
      */
     @Command(
             name = "list",
-            description = "List installed providers"
+            description = "List installed providers",
+            mixinStandardHelpOptions = true
     )
     @Log4j2
     public static class ListCommand implements Callable<Integer> {

@@ -2,5 +2,15 @@
 # Project: {{projectName}}
 
 providers:
+  # Registry provider (downloaded from registry.kite.cloud)
   - name: files
     version: "0.1.0"
+
+  # Git provider examples (uncomment to use):
+  # - name: aws
+  #   git: github.com/kitecorp/kite-providers
+  #   ref: main
+  #
+  # - name: custom
+  #   git: github.com/myorg/my-provider
+  #   ref: v1.0.0
