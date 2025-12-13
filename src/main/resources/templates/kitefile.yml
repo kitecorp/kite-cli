@@ -1,6 +1,6 @@
-# Kite Dependencies Configuration
+# Kite Configuration
 # Project: {{projectName}}
 
-dependencies:
+providers:
   - name: files
     version: "0.1.0"
