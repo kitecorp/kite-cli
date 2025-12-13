@@ -1,0 +1,10 @@
+// Production environment for {{projectName}}
+// Run: kite plan --env prod
+
+// Example: Create a config file
+resource File config {
+    path = "/tmp/{{projectName}}-prod.conf"
+    content = "environment=prod"
+}
+
+// Add your production resources below

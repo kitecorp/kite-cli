@@ -1,0 +1,10 @@
+// Staging environment for {{projectName}}
+// Run: kite plan --env staging
+
+// Example: Create a config file
+resource File config {
+    path = "/tmp/{{projectName}}-staging.conf"
+    content = "environment=staging"
+}
+
+// Add your staging resources below

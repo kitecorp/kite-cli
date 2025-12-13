@@ -1,0 +1,7 @@
+// GCP Provider Mixins
+// Maps generic resource types to GCP-specific implementations
+
+// Example: Map generic Bucket to GCS
+// mixin Bucket -> Storage.Bucket {
+//     // GCP-specific defaults
+// }

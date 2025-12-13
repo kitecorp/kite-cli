@@ -1,0 +1,22 @@
+# Kite
+.kite/
+*.tfstate
+*.tfstate.*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Secrets (never commit these)
+*.pem
+*.key
+secrets/
+.env

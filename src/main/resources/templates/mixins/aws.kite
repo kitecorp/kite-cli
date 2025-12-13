@@ -1,0 +1,7 @@
+// AWS Provider Mixins
+// Maps generic resource types to AWS-specific implementations
+
+// Example: Map generic Bucket to S3
+// mixin Bucket -> S3.Bucket {
+//     // AWS-specific defaults
+// }

@@ -1,0 +1,10 @@
+// Development environment for {{projectName}}
+// Run: kite plan --env dev
+
+// Example: Create a config file
+resource File config {
+    path = "/tmp/{{projectName}}-dev.conf"
+    content = "environment=dev"
+}
+
+// Add your development resources below

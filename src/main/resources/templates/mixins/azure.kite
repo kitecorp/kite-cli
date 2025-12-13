@@ -1,0 +1,7 @@
+// Azure Provider Mixins
+// Maps generic resource types to Azure-specific implementations
+
+// Example: Map generic Bucket to Blob Storage
+// mixin Bucket -> Storage.BlobContainer {
+//     // Azure-specific defaults
+// }
