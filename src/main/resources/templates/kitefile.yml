@@ -1,0 +1,6 @@
+# Kite Dependencies Configuration
+# Project: {{projectName}}
+
+dependencies:
+  - name: example
+    version: "0.1.0"
