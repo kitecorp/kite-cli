@@ -3,12 +3,10 @@ package cloud.kitelang.cli.generator;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * Generates a new Kite project by copying templates from resources.
@@ -29,9 +27,9 @@ public class ProjectStructureGenerator {
 
         Files.createDirectories(projectDir);
 
-        var variables = Map.of(
-                "projectName", projectName
-        );
+        var variables = new HashMap<String, String>();
+        variables.put("projectName", projectName);
+        variables.put("providers", generateProvidersYaml(providers));
 
         // Copy base templates
         copyTemplates(projectDir, variables, providers, environments);
@@ -150,5 +148,19 @@ public class ProjectStructureGenerator {
         try (var stream = Files.list(directory)) {
             return stream.findAny().isEmpty();
         }
+    }
+
+    /**
+     * Generates YAML for the providers section based on selected providers.
+     * Uses git URL to kitecorp/kite-providers repository.
+     */
+    private String generateProvidersYaml(String[] providers) {
+        var sb = new StringBuilder();
+        for (String provider : providers) {
+            sb.append("  - name: ").append(provider).append("\n");
+            sb.append("    git: github.com/kitecorp/kite-providers/").append(provider).append("\n");
+            sb.append("    ref: main\n");
+        }
+        return sb.toString().stripTrailing();
     }
 }

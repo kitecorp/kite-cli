@@ -7,6 +7,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -18,20 +19,22 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
- * Initialize a new Kite project with the standard multi-cloud structure.
+ * Create a new Kite project with the standard multi-cloud structure.
+ * Interactive mode is the default - use -y to skip prompts.
  */
 @Command(
-        name = "init",
-        description = "Initialize a new Kite project with multi-cloud structure",
+        name = "new",
+        aliases = {"create", "init"},
+        description = "Create a new Kite project",
         mixinStandardHelpOptions = true
 )
 @Log4j2
-public class InitCommand implements Callable<Integer> {
+public class NewCommand implements Callable<Integer> {
 
     @Parameters(
             index = "0",
             paramLabel = "NAME",
-            description = "Project name (defaults to current directory name)",
+            description = "Project name",
             arity = "0..1"
     )
     private String projectName;
@@ -45,11 +48,10 @@ public class InitCommand implements Callable<Integer> {
 
     @Option(
             names = {"-p", "--providers"},
-            paramLabel = "CLOUDS",
+            paramLabel = "PROVIDERS",
             arity = "1",
-            description = "Providers: aws,gcp,azure (default: aws)",
-            split = ",",
-            defaultValue = "aws"
+            description = "Providers: aws, gcp, azure, files",
+            split = ","
     )
     private String[] providers;
 
@@ -57,7 +59,7 @@ public class InitCommand implements Callable<Integer> {
             names = {"-e", "--env"},
             paramLabel = "ENVS",
             arity = "1",
-            description = "Environments: dev,staging,prod (default: all)",
+            description = "Environments (default: dev,staging,prod)",
             split = ",",
             defaultValue = "dev,staging,prod"
     )
@@ -65,45 +67,52 @@ public class InitCommand implements Callable<Integer> {
 
     @Option(
             names = {"-f", "--force"},
-            description = "Force init even if directory is not empty"
+            description = "Overwrite existing files"
     )
     private boolean force;
 
     @Option(
-            names = {"-i", "--interactive"},
-            description = "Interactive mode - prompts for project configuration"
+            names = {"-y", "--yes"},
+            description = "Skip interactive prompts, use defaults"
     )
-    private boolean interactive;
+    private boolean skipInteractive;
 
     @Override
     public Integer call() {
         try {
-            if (interactive) {
+            // Interactive mode is the default unless -y is specified
+            if (!skipInteractive) {
                 runInteractiveMode();
+            } else if (providers == null) {
+                // Default providers when skipping interactive
+                providers = new String[]{"files"};
             }
 
             var projectDir = determineProjectDirectory();
             var name = determineProjectName(projectDir);
 
+            System.out.println();
             System.out.println("Creating project: " + name);
-            System.out.println("         Location: " + projectDir.toAbsolutePath());
+            System.out.println("       Providers: " + String.join(", ", providers));
+            System.out.println("        Location: " + projectDir.toAbsolutePath());
             System.out.println();
 
             var generator = new ProjectStructureGenerator();
             generator.generate(projectDir, name, providers, environments, force);
 
-            System.out.println("✓ Project initialized successfully");
+            System.out.println("✓ Project created successfully");
             System.out.println();
             System.out.println("Next steps:");
             System.out.println("  cd " + projectDir.getFileName());
-            System.out.println("  kite validate    # Check configuration");
-            System.out.println("  kite plan        # Preview changes");
-            System.out.println("  kite apply       # Provision resources");
+            System.out.println("  kite providers install   # Install providers");
+            System.out.println("  kite validate            # Check configuration");
+            System.out.println("  kite plan                # Preview changes");
+            System.out.println("  kite apply               # Provision resources");
 
             return 0;
         } catch (Exception e) {
             System.err.println("✗ Error: " + e.getMessage());
-            log.debug("Failed to initialize project", e);
+            log.debug("Failed to create project", e);
             return 1;
         }
     }

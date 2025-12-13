@@ -107,9 +107,8 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
     private void suggestAlternatives(String arg, PrintWriter err, CommandLine cmd) {
         // Common typos and their corrections
         var suggestions = java.util.Map.ofEntries(
-            java.util.Map.entry("create", "init"),
-            java.util.Map.entry("new", "init"),
-            java.util.Map.entry("start", "init"),
+            java.util.Map.entry("init", "new"),
+            java.util.Map.entry("start", "new"),
             java.util.Map.entry("run", "apply"),
             java.util.Map.entry("deploy", "apply"),
             java.util.Map.entry("remove", "destroy"),

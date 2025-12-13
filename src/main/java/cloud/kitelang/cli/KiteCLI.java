@@ -4,7 +4,7 @@ import cloud.kitelang.cli.commands.ApplyCommand;
 import cloud.kitelang.cli.commands.CompletionCommand;
 import cloud.kitelang.cli.commands.DestroyCommand;
 import cloud.kitelang.cli.commands.FmtCommand;
-import cloud.kitelang.cli.commands.InitCommand;
+import cloud.kitelang.cli.commands.NewCommand;
 import cloud.kitelang.cli.commands.OutputCommand;
 import cloud.kitelang.cli.commands.PlanCommand;
 import cloud.kitelang.cli.commands.ProvidersCommand;
@@ -23,7 +23,7 @@ import picocli.CommandLine.Option;
         version = "kite 0.1.0",
         description = "Kite - Write once, provision anywhere. Multi-cloud IaC tool.",
         subcommands = {
-                InitCommand.class,
+                NewCommand.class,
                 ValidateCommand.class,
                 PlanCommand.class,
                 ApplyCommand.class,
