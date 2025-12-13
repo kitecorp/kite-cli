@@ -52,6 +52,7 @@ kite init                           # Initialize in current directory
 kite init my-app                    # Create new directory 'my-app'
 kite init -p aws,gcp                # Configure for AWS and GCP
 kite init -e dev,prod               # Only dev and prod environments
+kite init -i                        # Interactive mode with prompts
 ```
 
 **Options:**
@@ -61,6 +62,7 @@ kite init -e dev,prod               # Only dev and prod environments
 | `-p, --providers` | Cloud providers (comma-separated: aws,gcp,azure) |
 | `-e, --environments` | Environments to create (comma-separated: dev,staging,prod) |
 | `-f, --force` | Initialize even if directory is not empty |
+| `-i, --interactive` | Interactive mode - prompts for project configuration |
 
 ### `kite validate [path]`
 
@@ -233,6 +235,46 @@ kite apply --<TAB>   # Shows: --env, --stack, --provider, --yes, --dry-run
 kite plan --env <TAB>  # Shows: dev, staging, prod
 ```
 
+### `kite providers`
+
+Manage Kite providers (cloud integrations).
+
+```bash
+kite providers                           # Show usage and examples
+kite providers install                   # Install providers from kitefile.yml
+kite providers install aws               # Install latest version
+kite providers install aws@1.0.0         # Install specific version
+kite providers install myp --git github.com/org/provider  # Install from git
+kite providers list                      # List local providers
+kite providers list --global             # List global providers
+```
+
+**Subcommands:**
+| Command | Description |
+|---------|-------------|
+| `install [PROVIDER[@VERSION]]` | Install providers from registry or git |
+| `list` | List installed providers |
+
+**Install Options:**
+| Flag | Description |
+|------|-------------|
+| `--git=URL` | Install from git repository |
+| `--ref=REF` | Git ref (branch, tag, or commit) |
+| `--global` | Install to global directory (~/.kite/providers) |
+
+Providers can be configured in `kitefile.yml`:
+```yaml
+providers:
+  # Registry provider
+  - name: files
+    version: "0.1.0"
+
+  # Git provider
+  - name: custom
+    git: github.com/myorg/kite-provider-custom
+    ref: v1.0.0
+```
+
 ## Project Structure
 
 After running `kite init`, your project will have:
@@ -295,6 +337,46 @@ export KITE_DB_PASSWORD=secret
 
 See `.env.example` in generated projects for full list.
 
+## CLI Features
+
+### Smart Error Messages
+
+Kite provides helpful suggestions when you make typos or use incorrect commands:
+
+```bash
+$ kite deploy
+Error: Unmatched argument at index 0: 'deploy'
+
+Did you mean: kite apply?
+
+Run 'kite --help' for usage information.
+```
+
+Common aliases are suggested:
+- `deploy`, `run` → `apply`
+- `create`, `new` → `init`
+- `delete`, `remove` → `destroy`
+- `check`, `lint` → `validate`
+- `diff`, `preview` → `plan`
+
+### Debug Mode
+
+Set `KITE_DEBUG=1` for detailed error information:
+```bash
+KITE_DEBUG=1 kite apply --env dev
+```
+
+### Man Pages
+
+Generate man pages for Unix systems:
+```bash
+./gradlew generateManPages
+# Output: build/docs/man/*.adoc
+
+# Convert to man format (requires asciidoctor)
+asciidoctor -b manpage build/docs/man/kite.adoc
+```
+
 ## Development
 
 ```bash
@@ -309,6 +391,10 @@ See `.env.example` in generated projects for full list.
 
 # Run CLI during development
 ./gradlew run --args="validate"
+
+# Generate documentation
+./gradlew generateManPages      # Man pages (AsciiDoc)
+./gradlew generateHtmlDocs      # HTML documentation
 ```
 
 ## License

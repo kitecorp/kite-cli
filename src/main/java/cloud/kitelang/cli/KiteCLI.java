@@ -58,9 +58,14 @@ public class KiteCLI implements Runnable {
                 .optionParams(CommandLine.Help.Ansi.Style.italic, CommandLine.Help.Ansi.Style.fg_yellow)
                 .build();
 
+        var exceptionHandler = new KiteExceptionHandler();
+
         var cmd = new CommandLine(new KiteCLI())
                 .setCommandName("kite")
                 .setColorScheme(colorScheme)
+                // Custom error handling with suggestions
+                .setParameterExceptionHandler(exceptionHandler)
+                .setExecutionExceptionHandler(exceptionHandler)
                 // Help formatting
                 .setUsageHelpAutoWidth(true)
                 // Typo suggestions: "Did you mean 'init'?"

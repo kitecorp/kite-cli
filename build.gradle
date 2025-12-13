@@ -88,3 +88,40 @@ tasks.register('shadowJar', Jar) {
         attributes 'Main-Class': 'cloud.kitelang.cli.KiteCLI'
     }
 }
+
+// Generate man pages using picocli-codegen
+tasks.register('generateManPages', JavaExec) {
+    dependsOn classes
+    group = 'documentation'
+    description = 'Generate man pages for the CLI'
+
+    mainClass = 'picocli.codegen.docgen.manpage.ManPageGenerator'
+    classpath = configurations.runtimeClasspath + sourceSets.main.output + configurations.annotationProcessor
+
+    def outputDir = layout.buildDirectory.dir('docs/man')
+    outputs.dir(outputDir)
+
+    args = [
+        'cloud.kitelang.cli.KiteCLI',
+        '--outdir=' + outputDir.get().asFile.absolutePath
+    ]
+}
+
+// Generate HTML documentation
+tasks.register('generateHtmlDocs', JavaExec) {
+    dependsOn classes
+    group = 'documentation'
+    description = 'Generate HTML documentation for the CLI'
+
+    mainClass = 'picocli.codegen.docgen.manpage.ManPageGenerator'
+    classpath = configurations.runtimeClasspath + sourceSets.main.output + configurations.annotationProcessor
+
+    def outputDir = layout.buildDirectory.dir('docs/html')
+    outputs.dir(outputDir)
+
+    args = [
+        'cloud.kitelang.cli.KiteCLI',
+        '--outdir=' + outputDir.get().asFile.absolutePath,
+        '--format=html'
+    ]
+}
