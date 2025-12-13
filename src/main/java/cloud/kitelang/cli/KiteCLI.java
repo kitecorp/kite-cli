@@ -7,6 +7,7 @@ import cloud.kitelang.cli.commands.FmtCommand;
 import cloud.kitelang.cli.commands.InitCommand;
 import cloud.kitelang.cli.commands.OutputCommand;
 import cloud.kitelang.cli.commands.PlanCommand;
+import cloud.kitelang.cli.commands.ProvidersCommand;
 import cloud.kitelang.cli.commands.ValidateCommand;
 import lombok.extern.log4j.Log4j2;
 import picocli.CommandLine;
@@ -29,6 +30,7 @@ import picocli.CommandLine.Option;
                 DestroyCommand.class,
                 OutputCommand.class,
                 FmtCommand.class,
+                ProvidersCommand.class,
                 CompletionCommand.class,
                 CommandLine.HelpCommand.class
         }
