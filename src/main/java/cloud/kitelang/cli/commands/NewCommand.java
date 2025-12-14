@@ -84,9 +84,15 @@ public class NewCommand implements Callable<Integer> {
 
     @Option(
             names = {"-y", "--yes"},
-            description = "Skip interactive prompts, use defaults"
+            description = "Skip interactive prompts and credential checks, use defaults"
     )
     private boolean skipInteractive;
+
+    @Option(
+            names = {"--skip-checks"},
+            description = "Skip credential and CLI tool checks"
+    )
+    private boolean skipChecks;
 
     @Override
     public Integer call() {
@@ -106,6 +112,9 @@ public class NewCommand implements Callable<Integer> {
 
             var projectDir = determineProjectDirectory();
             var name = determineProjectName(projectDir);
+
+            // Validate project name (also validates CLI argument)
+            validateProjectName(name);
 
             System.out.println();
             System.out.println("Creating project: " + name);
@@ -142,9 +151,11 @@ public class NewCommand implements Callable<Integer> {
 
         var reader = new BufferedReader(new InputStreamReader(System.in));
 
-        // Skip prompts if all values are provided, but still check credentials
+        // Skip prompts if all values are provided
         if (projectName != null && providers != null) {
-            checkProviderCredentials(reader);
+            if (!skipInteractive && !skipChecks) {
+                checkProviderCredentials(reader);
+            }
             return;
         }
 
@@ -155,6 +166,9 @@ public class NewCommand implements Callable<Integer> {
             String inputName = reader.readLine().trim();
             projectName = inputName.isEmpty() ? defaultName : inputName;
         }
+
+        // Validate project name
+        validateProjectName(projectName);
 
         // Providers selection - only ask if not already provided
         if (providers == null) {
@@ -168,26 +182,31 @@ public class NewCommand implements Callable<Integer> {
             providers = inputProviders.isEmpty() ? new String[]{"aws"} : parseProviders(inputProviders);
         }
 
-        // Check credentials for selected providers
-        checkProviderCredentials(reader);
+        // Check credentials for selected providers (unless skipped)
+        if (!skipChecks) {
+            checkProviderCredentials(reader);
+        }
 
         // Environments use default (dev/staging/prod) unless specified via -e flag
     }
 
     /**
-     * Checks credentials for selected providers and prompts if missing.
+     * Checks credentials and CLI tools for selected providers.
      */
     private void checkProviderCredentials(BufferedReader reader) throws IOException {
         System.out.println();
-        System.out.println("Checking credentials...");
+        System.out.println("Checking setup...");
+
+        // Check CLI tools first
+        checkCliTools();
 
         for (String provider : providers) {
             var creds = detectCredentials(provider);
             if (creds != null) {
                 System.out.println("  ✓ " + provider.toUpperCase() + ": " + creds);
-                // Check if region is missing
+                // Check if region is missing (non-blocking warning)
                 if (!creds.contains("region=") && !creds.contains("location=")) {
-                    promptForRegion(provider, reader);
+                    warnMissingRegion(provider);
                 }
             } else {
                 System.out.println("  ✗ " + provider.toUpperCase() + ": No credentials found");
@@ -435,31 +454,71 @@ public class NewCommand implements Callable<Integer> {
     }
 
     /**
-     * Prompts user to configure a default region for a provider.
+     * Shows warning when region is not configured (non-blocking).
      */
-    private void promptForRegion(String provider, BufferedReader reader) throws IOException {
-        System.out.println("    ⚠ No default region configured");
+    private void warnMissingRegion(String provider) {
+        System.out.println("    ⚠ No default region configured. To set one:");
 
         switch (provider.toLowerCase()) {
-            case "aws" -> {
-                System.out.println("      To set a default region:");
-                System.out.println("        aws configure set region us-west-2");
-                System.out.println("      Or: export AWS_REGION=us-west-2");
-            }
-            case "gcp" -> {
-                System.out.println("      To set a default region:");
-                System.out.println("        gcloud config set compute/region us-central1");
-                System.out.println("      Or: export CLOUDSDK_COMPUTE_REGION=us-central1");
-            }
-            case "azure" -> {
-                System.out.println("      To set a default location:");
-                System.out.println("        az configure --defaults location=eastus");
-                System.out.println("      Or: export AZURE_DEFAULTS_LOCATION=eastus");
-            }
+            case "aws" -> System.out.println("      aws configure set region <region>  OR  export AWS_REGION=<region>");
+            case "gcp" -> System.out.println("      gcloud config set compute/region <region>  OR  export CLOUDSDK_COMPUTE_REGION=<region>");
+            case "azure" -> System.out.println("      az configure --defaults location=<location>  OR  export AZURE_DEFAULTS_LOCATION=<location>");
+        }
+    }
+
+    /**
+     * Validates project name for invalid characters.
+     */
+    private void validateProjectName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Project name cannot be empty");
         }
 
-        System.out.print("    Press Enter to continue...");
-        reader.readLine();
+        // Allow alphanumeric, dash, underscore, dot
+        if (!name.matches("^[a-zA-Z][a-zA-Z0-9._-]*$")) {
+            throw new IllegalArgumentException(
+                "Invalid project name '" + name + "'. " +
+                "Must start with a letter and contain only letters, numbers, dashes, underscores, or dots."
+            );
+        }
+
+        // Check for reserved names
+        var reserved = List.of(".", "..", "con", "prn", "aux", "nul");
+        if (reserved.contains(name.toLowerCase())) {
+            throw new IllegalArgumentException("'" + name + "' is a reserved name");
+        }
+    }
+
+    /**
+     * Checks if required CLI tools are installed for selected providers.
+     */
+    private void checkCliTools() {
+        for (String provider : providers) {
+            var tool = switch (provider.toLowerCase()) {
+                case "aws" -> "aws";
+                case "gcp" -> "gcloud";
+                case "azure" -> "az";
+                default -> null;
+            };
+
+            if (tool != null && !isCommandAvailable(tool)) {
+                System.out.println("  ⚠ " + provider.toUpperCase() + ": '" + tool + "' CLI not found in PATH");
+            }
+        }
+    }
+
+    /**
+     * Checks if a command is available in PATH.
+     */
+    private boolean isCommandAvailable(String command) {
+        try {
+            var process = new ProcessBuilder("which", command)
+                    .redirectErrorStream(true)
+                    .start();
+            return process.waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
