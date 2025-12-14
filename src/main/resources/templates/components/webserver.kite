@@ -1,0 +1,14 @@
+// Example portable component - works with any cloud provider
+// Components should NOT import from cloud/ directories
+
+component WebServer server {
+    input number port = 8080
+    input string size = "small"
+
+    // Generic resource types get mapped to cloud-specific resources by mixins
+    resource Compute instance {
+        size = size
+    }
+
+    output string endpoint = instance.publicIp + ":" + port
+}
