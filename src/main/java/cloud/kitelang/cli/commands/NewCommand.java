@@ -215,9 +215,26 @@ public class NewCommand implements Callable<Integer> {
             return "access key from environment";
         }
 
+        // Check for AWS credentials file with profiles
         var credentialsFile = Path.of(System.getProperty("user.home"), ".aws", "credentials");
         if (Files.exists(credentialsFile)) {
-            return "~/.aws/credentials";
+            try {
+                var content = Files.readString(credentialsFile);
+                // Count profiles
+                var profiles = content.lines()
+                        .filter(line -> line.matches("^\\[.+\\]$"))
+                        .map(line -> line.substring(1, line.length() - 1))
+                        .toList();
+                if (profiles.isEmpty()) {
+                    return null;
+                }
+                if (profiles.contains("default")) {
+                    return "profile=default" + (profiles.size() > 1 ? " (+" + (profiles.size() - 1) + " more)" : "");
+                }
+                return "profile=" + profiles.get(0) + (profiles.size() > 1 ? " (+" + (profiles.size() - 1) + " more)" : "");
+            } catch (IOException e) {
+                return "~/.aws/credentials";
+            }
         }
 
         return null;
@@ -234,9 +251,36 @@ public class NewCommand implements Callable<Integer> {
             return "service account from GOOGLE_APPLICATION_CREDENTIALS";
         }
 
+        // Check for gcloud CLI configuration
         var gcloudConfig = Path.of(System.getProperty("user.home"), ".config", "gcloud");
         if (Files.isDirectory(gcloudConfig)) {
-            return "gcloud CLI configured";
+            try {
+                // Read active configuration name
+                var activeConfigFile = gcloudConfig.resolve("active_config");
+                var configName = Files.exists(activeConfigFile)
+                        ? Files.readString(activeConfigFile).trim()
+                        : "default";
+
+                // Read the configuration file
+                var configFile = gcloudConfig.resolve("configurations/config_" + configName);
+                if (Files.exists(configFile)) {
+                    var content = Files.readString(configFile);
+                    // Extract project
+                    for (var line : content.lines().toList()) {
+                        if (line.startsWith("project = ")) {
+                            return "project=" + line.substring(10).trim();
+                        }
+                    }
+                }
+
+                // Check for application default credentials
+                var adcFile = gcloudConfig.resolve("application_default_credentials.json");
+                if (Files.exists(adcFile)) {
+                    return "application default credentials";
+                }
+            } catch (IOException e) {
+                return "gcloud CLI configured";
+            }
         }
 
         return null;
