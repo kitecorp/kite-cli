@@ -11,6 +11,7 @@ import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -139,12 +140,13 @@ public class NewCommand implements Callable<Integer> {
         System.out.println("Kite Project Setup");
         System.out.println("==================");
 
-        // Skip prompts if all values are provided
+        var reader = new BufferedReader(new InputStreamReader(System.in));
+
+        // Skip prompts if all values are provided, but still check credentials
         if (projectName != null && providers != null) {
+            checkProviderCredentials(reader);
             return;
         }
-
-        var reader = new BufferedReader(new InputStreamReader(System.in));
 
         // Project name - only ask if not already provided
         if (projectName == null) {
@@ -166,7 +168,120 @@ public class NewCommand implements Callable<Integer> {
             providers = inputProviders.isEmpty() ? new String[]{"aws"} : parseProviders(inputProviders);
         }
 
+        // Check credentials for selected providers
+        checkProviderCredentials(reader);
+
         // Environments use default (dev/staging/prod) unless specified via -e flag
+    }
+
+    /**
+     * Checks credentials for selected providers and prompts if missing.
+     */
+    private void checkProviderCredentials(BufferedReader reader) throws IOException {
+        System.out.println();
+        System.out.println("Checking credentials...");
+
+        for (String provider : providers) {
+            var creds = detectCredentials(provider);
+            if (creds != null) {
+                System.out.println("  ✓ " + provider.toUpperCase() + ": " + creds);
+            } else {
+                System.out.println("  ✗ " + provider.toUpperCase() + ": No credentials found");
+                promptForCredentials(provider, reader);
+            }
+        }
+    }
+
+    /**
+     * Detects credentials for a provider, returns description if found or null if not.
+     */
+    private String detectCredentials(String provider) {
+        return switch (provider.toLowerCase()) {
+            case "aws" -> detectAwsCredentials();
+            case "gcp" -> detectGcpCredentials();
+            case "azure" -> detectAzureCredentials();
+            default -> null;
+        };
+    }
+
+    private String detectAwsCredentials() {
+        var profile = System.getenv("AWS_PROFILE");
+        if (profile != null) {
+            return "profile=" + profile;
+        }
+
+        var accessKey = System.getenv("AWS_ACCESS_KEY_ID");
+        if (accessKey != null) {
+            return "access key from environment";
+        }
+
+        var credentialsFile = Path.of(System.getProperty("user.home"), ".aws", "credentials");
+        if (Files.exists(credentialsFile)) {
+            return "~/.aws/credentials";
+        }
+
+        return null;
+    }
+
+    private String detectGcpCredentials() {
+        var project = System.getenv("GOOGLE_CLOUD_PROJECT");
+        if (project != null) {
+            return "project=" + project;
+        }
+
+        var credsFile = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+        if (credsFile != null) {
+            return "service account from GOOGLE_APPLICATION_CREDENTIALS";
+        }
+
+        var gcloudConfig = Path.of(System.getProperty("user.home"), ".config", "gcloud");
+        if (Files.isDirectory(gcloudConfig)) {
+            return "gcloud CLI configured";
+        }
+
+        return null;
+    }
+
+    private String detectAzureCredentials() {
+        var subscription = System.getenv("AZURE_SUBSCRIPTION_ID");
+        if (subscription != null) {
+            return "subscription from environment";
+        }
+
+        var azureDir = Path.of(System.getProperty("user.home"), ".azure");
+        if (Files.isDirectory(azureDir)) {
+            return "Azure CLI configured";
+        }
+
+        return null;
+    }
+
+    /**
+     * Prompts user to configure credentials for a provider.
+     */
+    private void promptForCredentials(String provider, BufferedReader reader) throws IOException {
+        System.out.println();
+        System.out.println("    To configure " + provider.toUpperCase() + " credentials:");
+
+        switch (provider.toLowerCase()) {
+            case "aws" -> {
+                System.out.println("      Option 1: aws configure");
+                System.out.println("      Option 2: export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...");
+                System.out.println("      Option 3: export AWS_PROFILE=your-profile");
+            }
+            case "gcp" -> {
+                System.out.println("      Option 1: gcloud auth application-default login");
+                System.out.println("      Option 2: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json");
+                System.out.println("      Option 3: export GOOGLE_CLOUD_PROJECT=your-project");
+            }
+            case "azure" -> {
+                System.out.println("      Option 1: az login");
+                System.out.println("      Option 2: export AZURE_SUBSCRIPTION_ID=...");
+            }
+        }
+
+        System.out.print("    Press Enter to continue...");
+        reader.readLine();
     }
 
     /**
