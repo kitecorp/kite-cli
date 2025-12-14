@@ -61,7 +61,7 @@ public class NewCommand implements Callable<Integer> {
             names = {"-p", "--providers"},
             paramLabel = "PROVIDERS",
             arity = "1",
-            description = "Providers: aws, gcp, azure",
+            description = "Cloud providers: aws, gcp, azure",
             split = ","
     )
     private String[] providers;
@@ -71,8 +71,7 @@ public class NewCommand implements Callable<Integer> {
             paramLabel = "ENVS",
             arity = "1",
             description = "Environments (default: dev,staging,prod)",
-            split = ",",
-            defaultValue = "dev,staging,prod"
+            split = ","
     )
     private String[] environments;
 
@@ -94,9 +93,14 @@ public class NewCommand implements Callable<Integer> {
             // Interactive mode is the default unless -y is specified
             if (!skipInteractive) {
                 runInteractiveMode();
-            } else if (providers == null) {
-                // Default providers when skipping interactive
-                providers = new String[]{"files"};
+            }
+
+            // Apply defaults for any unset values
+            if (providers == null) {
+                providers = new String[]{"aws"};
+            }
+            if (environments == null) {
+                environments = new String[]{"dev", "staging", "prod"};
             }
 
             var projectDir = determineProjectDirectory();
@@ -138,39 +142,38 @@ public class NewCommand implements Callable<Integer> {
         System.out.println("==================");
         System.out.println();
 
-        // Project name
-        String defaultName = projectName != null ? projectName : Paths.get(".").toAbsolutePath().getFileName().toString();
-        System.out.print("Project name [" + defaultName + "]: ");
-        String inputName = reader.readLine().trim();
-        if (!inputName.isEmpty()) {
-            projectName = inputName;
-        } else if (projectName == null) {
-            projectName = defaultName;
+        // Project name - only ask if not already provided
+        if (projectName == null) {
+            String defaultName = Paths.get(".").toAbsolutePath().getFileName().toString();
+            System.out.print("Project name [" + defaultName + "]: ");
+            String inputName = reader.readLine().trim();
+            projectName = inputName.isEmpty() ? defaultName : inputName;
         }
 
-        // Providers selection
-        System.out.println();
-        System.out.println("Select cloud providers (comma-separated):");
-        System.out.println("  1. aws (Amazon Web Services)");
-        System.out.println("  2. gcp (Google Cloud Platform)");
-        System.out.println("  3. azure (Microsoft Azure)");
-        System.out.println("  4. files (Local filesystem - for testing)");
-        System.out.print("Providers [aws]: ");
-        String inputProviders = reader.readLine().trim();
-        if (!inputProviders.isEmpty()) {
-            providers = parseProviders(inputProviders);
+        // Providers selection - only ask if not already provided
+        if (providers == null) {
+            System.out.println();
+            System.out.println("Select cloud providers (comma-separated):");
+            System.out.println("  1. aws (Amazon Web Services)");
+            System.out.println("  2. gcp (Google Cloud Platform)");
+            System.out.println("  3. azure (Microsoft Azure)");
+            System.out.print("Providers [aws]: ");
+            String inputProviders = reader.readLine().trim();
+            providers = inputProviders.isEmpty() ? new String[]{"aws"} : parseProviders(inputProviders);
         }
 
-        // Environments selection
-        System.out.println();
-        System.out.println("Select environments (comma-separated):");
-        System.out.println("  Common: dev, staging, prod");
-        System.out.print("Environments [dev,staging,prod]: ");
-        String inputEnvs = reader.readLine().trim();
-        if (!inputEnvs.isEmpty()) {
-            environments = inputEnvs.split(",");
-            for (int i = 0; i < environments.length; i++) {
-                environments[i] = environments[i].trim();
+        // Environments selection - only ask if not already provided
+        if (environments == null) {
+            System.out.println();
+            System.out.println("Select environments (comma-separated):");
+            System.out.println("  Common: dev, staging, prod");
+            System.out.print("Environments [dev,staging,prod]: ");
+            String inputEnvs = reader.readLine().trim();
+            if (!inputEnvs.isEmpty()) {
+                environments = inputEnvs.split(",");
+                for (int i = 0; i < environments.length; i++) {
+                    environments[i] = environments[i].trim();
+                }
             }
         }
 
@@ -184,8 +187,7 @@ public class NewCommand implements Callable<Integer> {
         var providerMap = java.util.Map.of(
             "1", "aws",
             "2", "gcp",
-            "3", "azure",
-            "4", "files"
+            "3", "azure"
         );
 
         List<String> result = new ArrayList<>();
@@ -193,7 +195,7 @@ public class NewCommand implements Callable<Integer> {
             String trimmed = part.trim().toLowerCase();
             if (providerMap.containsKey(trimmed)) {
                 result.add(providerMap.get(trimmed));
-            } else if (Arrays.asList("aws", "gcp", "azure", "files").contains(trimmed)) {
+            } else if (Arrays.asList("aws", "gcp", "azure").contains(trimmed)) {
                 result.add(trimmed);
             }
         }
