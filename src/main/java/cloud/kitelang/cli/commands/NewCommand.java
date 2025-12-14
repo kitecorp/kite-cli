@@ -185,6 +185,10 @@ public class NewCommand implements Callable<Integer> {
             var creds = detectCredentials(provider);
             if (creds != null) {
                 System.out.println("  ✓ " + provider.toUpperCase() + ": " + creds);
+                // Check if region is missing
+                if (!creds.contains("region=") && !creds.contains("location=")) {
+                    promptForRegion(provider, reader);
+                }
             } else {
                 System.out.println("  ✗ " + provider.toUpperCase() + ": No credentials found");
                 promptForCredentials(provider, reader);
@@ -423,6 +427,34 @@ public class NewCommand implements Callable<Integer> {
             case "azure" -> {
                 System.out.println("      Option 1: az login");
                 System.out.println("      Option 2: export AZURE_SUBSCRIPTION_ID=...");
+            }
+        }
+
+        System.out.print("    Press Enter to continue...");
+        reader.readLine();
+    }
+
+    /**
+     * Prompts user to configure a default region for a provider.
+     */
+    private void promptForRegion(String provider, BufferedReader reader) throws IOException {
+        System.out.println("    ⚠ No default region configured");
+
+        switch (provider.toLowerCase()) {
+            case "aws" -> {
+                System.out.println("      To set a default region:");
+                System.out.println("        aws configure set region us-west-2");
+                System.out.println("      Or: export AWS_REGION=us-west-2");
+            }
+            case "gcp" -> {
+                System.out.println("      To set a default region:");
+                System.out.println("        gcloud config set compute/region us-central1");
+                System.out.println("      Or: export CLOUDSDK_COMPUTE_REGION=us-central1");
+            }
+            case "azure" -> {
+                System.out.println("      To set a default location:");
+                System.out.println("        az configure --defaults location=eastus");
+                System.out.println("      Or: export AZURE_DEFAULTS_LOCATION=eastus");
             }
         }
 
