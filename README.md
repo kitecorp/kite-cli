@@ -196,10 +196,29 @@ kite output --env prod --sensitive  # Show sensitive values
 Format `.kite` files to canonical style.
 
 ```bash
-kite fmt                            # Format all files
-kite fmt components/                # Format specific directory
-kite fmt --check                    # Check formatting (CI mode)
-kite fmt --diff                     # Show what would change
+# Format all .kite files in current directory (recursive)
+kite fmt
+
+# Format a specific file
+kite fmt resources/database.kite
+
+# Format a specific directory
+kite fmt components/
+
+# Check if files are formatted (for CI pipelines)
+kite fmt --check
+
+# Preview changes without writing
+kite fmt --diff
+
+# Format with 2-space indentation
+kite fmt --indent 2
+
+# Format single directory (non-recursive)
+kite fmt modules/ -r=false
+
+# CI pipeline example: check and fail if not formatted
+kite fmt --check || echo "Run 'kite fmt' to fix formatting"
 ```
 
 **Options:**
