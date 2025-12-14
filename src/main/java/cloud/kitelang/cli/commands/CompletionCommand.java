@@ -21,12 +21,24 @@ import java.util.concurrent.Callable;
         "Generates auto-completion scripts for your shell. Supported shells:",
         "  bash   - Bourne Again Shell",
         "  zsh    - Z Shell",
-        "  fish   - Friendly Interactive Shell",
+        "  fish   - Friendly Interactive Shell"
+    },
+    footer = {
         "",
-        "Installation:",
-        "  bash:  kite completion bash > ~/.local/share/bash-completion/completions/kite",
-        "  zsh:   kite completion zsh > ~/.zfunc/_kite",
-        "  fish:  kite completion fish > ~/.config/fish/completions/kite.fish"
+        "Examples:",
+        "  # Bash (user installation)",
+        "  kite completion bash > ~/.local/share/bash-completion/completions/kite",
+        "",
+        "  # Bash (system-wide)",
+        "  kite completion bash | sudo tee /etc/bash-completion.d/kite",
+        "",
+        "  # Zsh (add ~/.zfunc to fpath in .zshrc)",
+        "  kite completion zsh > ~/.zfunc/_kite",
+        "",
+        "  # Fish",
+        "  kite completion fish > ~/.config/fish/completions/kite.fish",
+        "",
+        "After installation, restart your shell or run: source ~/.bashrc"
     },
     mixinStandardHelpOptions = true
 )

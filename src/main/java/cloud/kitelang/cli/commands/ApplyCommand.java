@@ -21,7 +21,19 @@ import java.util.stream.Stream;
 @Command(
         name = "apply",
         aliases = {"provision"},
-        description = "Apply infrastructure changes to provision resources"
+        description = "Apply infrastructure changes to provision resources",
+        footer = {
+                "",
+                "Examples:",
+                "  kite apply -e dev                     Apply changes to dev environment",
+                "  kite apply -e prod                    Apply changes to production",
+                "  kite apply -e dev -s Backend          Apply only the Backend stack",
+                "  kite apply -e dev -p aws              Apply only AWS resources",
+                "  kite apply -e dev -y                  Skip confirmation prompt",
+                "  kite apply -e dev --dry-run           Preview without applying",
+                "  kite apply -e prod --parallelism 5    Limit concurrent operations"
+        },
+        mixinStandardHelpOptions = true
 )
 @Log4j2
 public class ApplyCommand implements Callable<Integer> {

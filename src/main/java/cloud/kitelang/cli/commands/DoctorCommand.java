@@ -19,6 +19,13 @@ import java.util.concurrent.Callable;
 @Command(
         name = "doctor",
         description = "Check your Kite installation and project setup",
+        footer = {
+                "",
+                "Examples:",
+                "  kite doctor                           Run all diagnostic checks",
+                "  kite doctor --verbose                 Show detailed output for all checks",
+                "  kite doctor --fix                     Attempt to fix issues automatically"
+        },
         mixinStandardHelpOptions = true
 )
 @Log4j2

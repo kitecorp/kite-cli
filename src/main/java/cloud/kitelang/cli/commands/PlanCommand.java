@@ -33,6 +33,17 @@ import java.util.stream.Stream;
         "  - destroy   Existing resource to be removed",
         "  ~ replace   Resource must be destroyed and recreated"
     },
+    footer = {
+        "",
+        "Examples:",
+        "  kite plan                             Plan changes for dev environment",
+        "  kite plan -e prod                     Plan changes for production",
+        "  kite plan -e dev -s Backend           Plan only the Backend stack",
+        "  kite plan -e dev -p aws               Plan only AWS resources",
+        "  kite plan -e dev --json               Output plan as JSON",
+        "  kite plan -e dev -o plan.json         Save plan to file for later apply",
+        "  kite plan -e dev --compact            Show compact diff output"
+    },
     mixinStandardHelpOptions = true
 )
 @Log4j2

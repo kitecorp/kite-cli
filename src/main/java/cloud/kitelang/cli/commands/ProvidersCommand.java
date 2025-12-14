@@ -19,6 +19,16 @@ import java.util.concurrent.Callable;
 @Command(
         name = "providers",
         description = "Manage Kite providers",
+        footer = {
+                "",
+                "Examples:",
+                "  kite providers install                Install all from kitefile.yml",
+                "  kite providers install aws            Install latest AWS provider",
+                "  kite providers install aws@1.0.0      Install specific version",
+                "  kite providers install myp --git github.com/org/provider",
+                "  kite providers list                   List local providers",
+                "  kite providers list --global          List global providers"
+        },
         mixinStandardHelpOptions = true,
         subcommands = {
                 ProvidersCommand.InstallCommand.class,
@@ -51,6 +61,16 @@ public class ProvidersCommand implements Callable<Integer> {
     @Command(
             name = "install",
             description = "Install providers from registry or git",
+            footer = {
+                    "",
+                    "Examples:",
+                    "  kite providers install                Install all from kitefile.yml",
+                    "  kite providers install aws            Install latest version",
+                    "  kite providers install aws@1.0.0      Install specific version",
+                    "  kite providers install myp --git github.com/org/provider",
+                    "  kite providers install myp --git github.com/org/provider --ref v1.0",
+                    "  kite providers install aws --global   Install to ~/.kite/providers"
+            },
             mixinStandardHelpOptions = true
     )
     @Log4j2
@@ -208,6 +228,12 @@ public class ProvidersCommand implements Callable<Integer> {
     @Command(
             name = "list",
             description = "List installed providers",
+            footer = {
+                    "",
+                    "Examples:",
+                    "  kite providers list                   List local providers",
+                    "  kite providers list --global          List global providers"
+            },
             mixinStandardHelpOptions = true
     )
     @Log4j2

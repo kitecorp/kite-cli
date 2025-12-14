@@ -14,6 +14,16 @@ import java.util.concurrent.Callable;
 @Command(
         name = "config",
         description = "Manage Kite CLI configuration",
+        footer = {
+                "",
+                "Examples:",
+                "  kite config get defaults.environment  Get default environment",
+                "  kite config set defaults.environment prod",
+                "  kite config set aws.profile production",
+                "  kite config set aws.region us-west-2",
+                "  kite config list                      Show all settings",
+                "  kite config path                      Show config file location"
+        },
         mixinStandardHelpOptions = true,
         subcommands = {
                 ConfigCommand.GetCommand.class,

@@ -23,6 +23,16 @@ import java.util.concurrent.Callable;
         "WARNING: This action is destructive and cannot be undone.",
         "Always run 'kite plan --destroy' first to preview changes."
     },
+    footer = {
+        "",
+        "Examples:",
+        "  kite destroy -e dev                   Destroy all resources in dev",
+        "  kite destroy -e dev -s Backend        Destroy only the Backend stack",
+        "  kite destroy -e dev --dry-run         Preview what would be destroyed",
+        "  kite destroy -e prod --force          Required for production (safety check)",
+        "  kite destroy -e dev --auto-approve    Skip confirmation prompt",
+        "  kite destroy -e dev --target db       Destroy only specific resource"
+    },
     mixinStandardHelpOptions = true
 )
 @Log4j2

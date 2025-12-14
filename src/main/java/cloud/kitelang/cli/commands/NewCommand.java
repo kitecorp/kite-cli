@@ -26,6 +26,17 @@ import java.util.concurrent.Callable;
         name = "new",
         aliases = {"create"},
         description = "Create a new Kite project",
+        footer = {
+                "",
+                "Examples:",
+                "  kite new                              Interactive mode (prompts for name/providers)",
+                "  kite new my-app                       Create 'my-app' with interactive provider selection",
+                "  kite new my-app -y                    Create with defaults (no prompts)",
+                "  kite new my-app -p aws,gcp            Create with specific providers",
+                "  kite new my-app -e dev,prod           Create with only dev and prod environments",
+                "  kite new my-app -d ~/projects         Create in specific directory",
+                "  kite new my-app -f                    Overwrite existing files"
+        },
         mixinStandardHelpOptions = true
 )
 @Log4j2

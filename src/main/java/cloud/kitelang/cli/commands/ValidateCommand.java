@@ -34,6 +34,16 @@ import java.util.stream.Stream;
         "  0 - All files valid",
         "  1 - Validation errors found"
     },
+    footer = {
+        "",
+        "Examples:",
+        "  kite validate                         Validate all .kite files in current directory",
+        "  kite validate components/             Validate specific directory",
+        "  kite validate main.kite               Validate a specific file",
+        "  kite validate --strict                Treat warnings as errors",
+        "  kite validate -q                      Quiet mode (errors only)",
+        "  kite validate --format json           Output as JSON (for CI integration)"
+    },
     mixinStandardHelpOptions = true
 )
 @Log4j2

@@ -25,6 +25,16 @@ import java.util.concurrent.Callable;
         "  - Connection strings",
         "  - IP addresses"
     },
+    footer = {
+        "",
+        "Examples:",
+        "  kite output -e dev                    Show all outputs for dev",
+        "  kite output api_url -e dev            Show specific output value",
+        "  kite output -e prod --json            Output as JSON",
+        "  kite output db_url -e dev --raw       Raw value only (for scripting)",
+        "  kite output -e dev -s Backend         Show outputs from Backend stack",
+        "  kite output -e dev --sensitive        Include sensitive values"
+    },
     mixinStandardHelpOptions = true
 )
 @Log4j2
