@@ -205,14 +205,17 @@ public class NewCommand implements Callable<Integer> {
     }
 
     private String detectAwsCredentials() {
+        var region = detectAwsRegion();
+        var regionSuffix = region != null ? ", region=" + region : "";
+
         var profile = System.getenv("AWS_PROFILE");
         if (profile != null) {
-            return "profile=" + profile;
+            return "profile=" + profile + regionSuffix;
         }
 
         var accessKey = System.getenv("AWS_ACCESS_KEY_ID");
         if (accessKey != null) {
-            return "access key from environment";
+            return "access key from environment" + regionSuffix;
         }
 
         // Check for AWS credentials file with profiles
@@ -229,26 +232,54 @@ public class NewCommand implements Callable<Integer> {
                     return null;
                 }
                 if (profiles.contains("default")) {
-                    return "profile=default" + (profiles.size() > 1 ? " (+" + (profiles.size() - 1) + " more)" : "");
+                    return "profile=default" + (profiles.size() > 1 ? " (+" + (profiles.size() - 1) + " more)" : "") + regionSuffix;
                 }
-                return "profile=" + profiles.get(0) + (profiles.size() > 1 ? " (+" + (profiles.size() - 1) + " more)" : "");
+                return "profile=" + profiles.get(0) + (profiles.size() > 1 ? " (+" + (profiles.size() - 1) + " more)" : "") + regionSuffix;
             } catch (IOException e) {
-                return "~/.aws/credentials";
+                return "~/.aws/credentials" + regionSuffix;
             }
         }
 
         return null;
     }
 
+    private String detectAwsRegion() {
+        // Check environment variables first
+        var region = System.getenv("AWS_REGION");
+        if (region != null) return region;
+
+        region = System.getenv("AWS_DEFAULT_REGION");
+        if (region != null) return region;
+
+        // Check ~/.aws/config
+        var configFile = Path.of(System.getProperty("user.home"), ".aws", "config");
+        if (Files.exists(configFile)) {
+            try {
+                var content = Files.readString(configFile);
+                for (var line : content.lines().toList()) {
+                    if (line.trim().startsWith("region = ")) {
+                        return line.trim().substring(9);
+                    }
+                }
+            } catch (IOException e) {
+                // ignore
+            }
+        }
+        return null;
+    }
+
     private String detectGcpCredentials() {
+        var region = detectGcpRegion();
+        var regionSuffix = region != null ? ", region=" + region : "";
+
         var project = System.getenv("GOOGLE_CLOUD_PROJECT");
         if (project != null) {
-            return "project=" + project;
+            return "project=" + project + regionSuffix;
         }
 
         var credsFile = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
         if (credsFile != null) {
-            return "service account from GOOGLE_APPLICATION_CREDENTIALS";
+            return "service account from GOOGLE_APPLICATION_CREDENTIALS" + regionSuffix;
         }
 
         // Check for gcloud CLI configuration
@@ -268,7 +299,7 @@ public class NewCommand implements Callable<Integer> {
                     // Extract project
                     for (var line : content.lines().toList()) {
                         if (line.startsWith("project = ")) {
-                            return "project=" + line.substring(10).trim();
+                            return "project=" + line.substring(10).trim() + regionSuffix;
                         }
                     }
                 }
@@ -276,20 +307,51 @@ public class NewCommand implements Callable<Integer> {
                 // Check for application default credentials
                 var adcFile = gcloudConfig.resolve("application_default_credentials.json");
                 if (Files.exists(adcFile)) {
-                    return "application default credentials";
+                    return "application default credentials" + regionSuffix;
                 }
             } catch (IOException e) {
-                return "gcloud CLI configured";
+                return "gcloud CLI configured" + regionSuffix;
             }
         }
 
         return null;
     }
 
+    private String detectGcpRegion() {
+        // Check environment variable
+        var region = System.getenv("CLOUDSDK_COMPUTE_REGION");
+        if (region != null) return region;
+
+        // Check gcloud config
+        var gcloudConfig = Path.of(System.getProperty("user.home"), ".config", "gcloud");
+        try {
+            var activeConfigFile = gcloudConfig.resolve("active_config");
+            var configName = Files.exists(activeConfigFile)
+                    ? Files.readString(activeConfigFile).trim()
+                    : "default";
+
+            var configFile = gcloudConfig.resolve("configurations/config_" + configName);
+            if (Files.exists(configFile)) {
+                var content = Files.readString(configFile);
+                for (var line : content.lines().toList()) {
+                    if (line.trim().startsWith("region = ")) {
+                        return line.trim().substring(9);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            // ignore
+        }
+        return null;
+    }
+
     private String detectAzureCredentials() {
+        var location = detectAzureLocation();
+        var locationSuffix = location != null ? ", location=" + location : "";
+
         var subscription = System.getenv("AZURE_SUBSCRIPTION_ID");
         if (subscription != null) {
-            return "subscription=" + subscription;
+            return "subscription=" + subscription + locationSuffix;
         }
 
         // Check for Azure CLI profile with subscriptions
@@ -306,15 +368,37 @@ public class NewCommand implements Callable<Integer> {
                     var start = nameMatch + 9;
                     var end = content.indexOf("\"", start);
                     if (end > start) {
-                        return "subscription=" + content.substring(start, end);
+                        return "subscription=" + content.substring(start, end) + locationSuffix;
                     }
                 }
-                return "Azure CLI logged in";
+                return "Azure CLI logged in" + locationSuffix;
             } catch (IOException e) {
                 return null;
             }
         }
 
+        return null;
+    }
+
+    private String detectAzureLocation() {
+        // Check environment variable
+        var location = System.getenv("AZURE_DEFAULTS_LOCATION");
+        if (location != null) return location;
+
+        // Check Azure CLI config
+        var azureConfig = Path.of(System.getProperty("user.home"), ".azure", "config");
+        if (Files.exists(azureConfig)) {
+            try {
+                var content = Files.readString(azureConfig);
+                for (var line : content.lines().toList()) {
+                    if (line.trim().startsWith("location = ")) {
+                        return line.trim().substring(11);
+                    }
+                }
+            } catch (IOException e) {
+                // ignore
+            }
+        }
         return null;
     }
 
