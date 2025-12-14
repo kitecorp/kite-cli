@@ -162,20 +162,7 @@ public class NewCommand implements Callable<Integer> {
             providers = inputProviders.isEmpty() ? new String[]{"aws"} : parseProviders(inputProviders);
         }
 
-        // Environments selection - only ask if not already provided
-        if (environments == null) {
-            System.out.println();
-            System.out.println("Select environments (comma-separated):");
-            System.out.println("  Common: dev, staging, prod");
-            System.out.print("Environments [dev,staging,prod]: ");
-            String inputEnvs = reader.readLine().trim();
-            if (!inputEnvs.isEmpty()) {
-                environments = inputEnvs.split(",");
-                for (int i = 0; i < environments.length; i++) {
-                    environments[i] = environments[i].trim();
-                }
-            }
-        }
+        // Environments use default (dev/staging/prod) unless specified via -e flag
 
         System.out.println();
     }
