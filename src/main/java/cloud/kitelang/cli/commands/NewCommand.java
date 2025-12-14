@@ -136,15 +136,15 @@ public class NewCommand implements Callable<Integer> {
      * Runs interactive mode to gather project configuration from user input.
      */
     private void runInteractiveMode() throws IOException {
-        // Skip interactive mode entirely if all values are provided
+        System.out.println("Kite Project Setup");
+        System.out.println("==================");
+
+        // Skip prompts if all values are provided
         if (projectName != null && providers != null) {
             return;
         }
 
         var reader = new BufferedReader(new InputStreamReader(System.in));
-
-        System.out.println("Kite Project Setup");
-        System.out.println("==================");
 
         // Project name - only ask if not already provided
         if (projectName == null) {
