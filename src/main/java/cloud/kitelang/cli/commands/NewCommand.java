@@ -150,7 +150,7 @@ public class NewCommand implements Callable<Integer> {
 
         // Project name - only ask if not already provided
         if (projectName == null) {
-            String defaultName = Paths.get(".").toAbsolutePath().getFileName().toString();
+            String defaultName = "infra";
             System.out.print("Project name [" + defaultName + "]: ");
             String inputName = reader.readLine().trim();
             projectName = inputName.isEmpty() ? defaultName : inputName;
