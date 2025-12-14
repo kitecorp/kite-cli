@@ -240,6 +240,63 @@ kite apply --<TAB>   # Shows: --env, --stack, --provider, --yes, --dry-run
 kite plan --env <TAB>  # Shows: dev, staging, prod
 ```
 
+### `kite config`
+
+Manage global Kite CLI configuration stored in `~/.kite/config.yml`.
+
+```bash
+kite config                           # Show usage and examples
+kite config set defaults.environment prod   # Set default environment
+kite config set aws.profile production      # Set AWS profile
+kite config get defaults.environment        # Get a value
+kite config list                            # List all settings
+kite config path                            # Show config file path
+```
+
+**Subcommands:**
+| Command | Description |
+|---------|-------------|
+| `get <key>` | Get a configuration value |
+| `set <key> <value>` | Set a configuration value |
+| `list` | List all configuration values |
+| `path` | Show configuration file path |
+
+**Config Keys:**
+| Key | Description |
+|-----|-------------|
+| `defaults.environment` | Default environment (dev, staging, prod) |
+| `defaults.provider` | Default cloud provider |
+| `defaults.output` | Output format (table, json, yaml) |
+| `verbosity` | Log level (0=quiet, 1=normal, 2=verbose) |
+| `aws.profile` | AWS profile name |
+| `aws.region` | AWS region |
+| `gcp.project` | GCP project ID |
+| `azure.subscription` | Azure subscription ID |
+
+### `kite doctor`
+
+Diagnose and troubleshoot your Kite installation and project configuration.
+
+```bash
+kite doctor                           # Run all checks
+kite doctor --verbose                 # Show all checks including passed ones
+kite doctor --fix                     # Attempt to fix issues automatically
+```
+
+**Checks performed:**
+- Java version (21+ required)
+- Global configuration (~/.kite/config.yml)
+- Project files (kitefile.yml, environments/)
+- Installed providers
+- Cloud credentials (AWS, GCP, Azure)
+- State backend configuration
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--verbose` | Show all checks, including passed ones |
+| `--fix` | Attempt to fix issues automatically |
+
 ### `kite providers`
 
 Manage Kite providers (cloud integrations).

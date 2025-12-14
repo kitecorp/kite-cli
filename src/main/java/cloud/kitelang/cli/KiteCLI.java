@@ -2,7 +2,9 @@ package cloud.kitelang.cli;
 
 import cloud.kitelang.cli.commands.ApplyCommand;
 import cloud.kitelang.cli.commands.CompletionCommand;
+import cloud.kitelang.cli.commands.ConfigCommand;
 import cloud.kitelang.cli.commands.DestroyCommand;
+import cloud.kitelang.cli.commands.DoctorCommand;
 import cloud.kitelang.cli.commands.FmtCommand;
 import cloud.kitelang.cli.commands.NewCommand;
 import cloud.kitelang.cli.commands.OutputCommand;
@@ -31,6 +33,8 @@ import picocli.CommandLine.Option;
                 OutputCommand.class,
                 FmtCommand.class,
                 ProvidersCommand.class,
+                ConfigCommand.class,
+                DoctorCommand.class,
                 CompletionCommand.class,
                 CommandLine.HelpCommand.class
         }
