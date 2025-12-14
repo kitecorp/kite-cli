@@ -245,12 +245,30 @@ public class NewCommand implements Callable<Integer> {
     private String detectAzureCredentials() {
         var subscription = System.getenv("AZURE_SUBSCRIPTION_ID");
         if (subscription != null) {
-            return "subscription from environment";
+            return "subscription=" + subscription;
         }
 
-        var azureDir = Path.of(System.getProperty("user.home"), ".azure");
-        if (Files.isDirectory(azureDir)) {
-            return "Azure CLI configured";
+        // Check for Azure CLI profile with subscriptions
+        var azureProfile = Path.of(System.getProperty("user.home"), ".azure", "azureProfile.json");
+        if (Files.exists(azureProfile)) {
+            try {
+                var content = Files.readString(azureProfile);
+                if (content.contains("\"subscriptions\": []") || !content.contains("\"id\":")) {
+                    return null; // Empty subscriptions = not logged in
+                }
+                // Extract subscription name if possible
+                var nameMatch = content.indexOf("\"name\": \"");
+                if (nameMatch > 0) {
+                    var start = nameMatch + 9;
+                    var end = content.indexOf("\"", start);
+                    if (end > start) {
+                        return "subscription=" + content.substring(start, end);
+                    }
+                }
+                return "Azure CLI logged in";
+            } catch (IOException e) {
+                return null;
+            }
         }
 
         return null;
