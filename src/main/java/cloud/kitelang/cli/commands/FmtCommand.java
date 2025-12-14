@@ -33,6 +33,17 @@ import java.util.stream.Stream;
         "",
         "Alias: format"
     },
+    footer = {
+        "",
+        "Examples:",
+        "  kite fmt                              Format all .kite files (recursive)",
+        "  kite fmt resources/database.kite     Format a specific file",
+        "  kite fmt components/                 Format a specific directory",
+        "  kite fmt --check                     Check formatting (CI mode)",
+        "  kite fmt --diff                      Preview changes without writing",
+        "  kite fmt --indent 2                  Use 2-space indentation",
+        "  kite fmt -r=false modules/           Format single directory only"
+    },
     mixinStandardHelpOptions = true
 )
 @Log4j2
