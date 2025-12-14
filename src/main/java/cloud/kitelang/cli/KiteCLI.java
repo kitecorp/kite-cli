@@ -11,10 +11,17 @@ import cloud.kitelang.cli.commands.OutputCommand;
 import cloud.kitelang.cli.commands.PlanCommand;
 import cloud.kitelang.cli.commands.ProvidersCommand;
 import cloud.kitelang.cli.commands.ValidateCommand;
+import cloud.kitelang.engine.kitefile.KiteInjector;
 import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.config.Configurator;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Main entry point for the Kite CLI.
@@ -55,6 +62,9 @@ public class KiteCLI implements Runnable {
     }
 
     static void main(String... args) {
+        // Configure logging from kitefile.yml if present
+        configureLogging();
+
         var colorScheme = new CommandLine.Help.ColorScheme.Builder()
                 .commands(CommandLine.Help.Ansi.Style.bold, CommandLine.Help.Ansi.Style.fg_cyan)
                 .options(CommandLine.Help.Ansi.Style.fg_cyan)
@@ -86,5 +96,40 @@ public class KiteCLI implements Runnable {
 
         var exitCode = cmd.execute(args);
         System.exit(exitCode);
+    }
+
+    /**
+     * Configures logging based on kitefile.yml logs.verbosity setting.
+     * Supported values: error, warn, info, debug, trace
+     */
+    private static void configureLogging() {
+        var kitefilePath = Path.of("kitefile.yml");
+        if (!Files.exists(kitefilePath)) {
+            kitefilePath = Path.of("kitefile.yaml");
+        }
+
+        if (!Files.exists(kitefilePath)) {
+            return; // No kitefile, use defaults
+        }
+
+        try {
+            var kitefile = KiteInjector.createkitefile();
+            var verbosity = kitefile.config().logs().verbosity();
+
+            var level = switch (verbosity) {
+                case "error" -> Level.ERROR;
+                case "warn" -> Level.WARN;
+                case "debug" -> Level.DEBUG;
+                case "trace" -> Level.TRACE;
+                default -> Level.INFO;
+            };
+
+            // Enable verbose logging for all loggers when debug/trace
+            if (level == Level.DEBUG || level == Level.TRACE) {
+                Configurator.setAllLevels(LogManager.getRootLogger().getName(), level);
+            }
+        } catch (Exception e) {
+            // Silently ignore - kitefile parsing errors will be reported by commands
+        }
     }
 }
