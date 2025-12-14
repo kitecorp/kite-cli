@@ -54,7 +54,7 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
 
         if (message.contains("kitefile") || message.contains("kite.yaml")) {
             err.println();
-            err.println("Suggestion: Run 'kite init' to create a new project configuration.");
+            err.println("Suggestion: Run 'kite new' to create a new project.");
         } else if (message.contains("provider") && message.contains("not found")) {
             err.println();
             err.println("Suggestion: Run 'kite providers install' to install required providers.");

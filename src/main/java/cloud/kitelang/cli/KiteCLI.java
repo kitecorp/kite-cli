@@ -72,12 +72,12 @@ public class KiteCLI implements Runnable {
                 .setExecutionExceptionHandler(exceptionHandler)
                 // Help formatting
                 .setUsageHelpAutoWidth(true)
-                // Typo suggestions: "Did you mean 'init'?"
+                // Typo suggestions: "Did you mean 'new'?"
                 .setSubcommandsCaseInsensitive(true)
                 .setOptionsCaseInsensitive(true)
                 // Allow abbreviated options: --ver for --version
                 .setAbbreviatedOptionsAllowed(true)
-                // Allow abbreviated subcommands: ini for init
+                // Allow abbreviated subcommands: ne for new
                 .setAbbreviatedSubcommandsAllowed(true)
                 // Strict parsing - fail on unknown options
                 .setUnmatchedArgumentsAllowed(false)

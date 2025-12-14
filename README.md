@@ -58,7 +58,7 @@ kite new my-app -p aws,gcp          # Specify providers
 kite new my-app -e dev,prod         # Only dev and prod environments
 ```
 
-Aliases: `kite create`, `kite init`
+Aliases: `kite create`
 
 **Options:**
 | Flag | Description |
@@ -235,7 +235,7 @@ source ~/.bashrc   # or ~/.zshrc
 
 Then use tab completion:
 ```bash
-kite <TAB>           # Shows: init, validate, plan, apply, destroy, output, fmt
+kite <TAB>           # Shows: new, validate, plan, apply, destroy, output, fmt
 kite apply --<TAB>   # Shows: --env, --stack, --provider, --yes, --dry-run
 kite plan --env <TAB>  # Shows: dev, staging, prod
 ```
@@ -420,7 +420,7 @@ Run 'kite --help' for usage information.
 
 Common aliases are suggested:
 - `deploy`, `run` → `apply`
-- `create`, `new` → `init`
+- `init` → `new`
 - `delete`, `remove` → `destroy`
 - `check`, `lint` → `validate`
 - `diff`, `preview` → `plan`

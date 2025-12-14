@@ -24,7 +24,7 @@ import java.util.concurrent.Callable;
  */
 @Command(
         name = "new",
-        aliases = {"create", "init"},
+        aliases = {"create"},
         description = "Create a new Kite project",
         mixinStandardHelpOptions = true
 )
@@ -50,7 +50,7 @@ public class NewCommand implements Callable<Integer> {
             names = {"-p", "--providers"},
             paramLabel = "PROVIDERS",
             arity = "1",
-            description = "Providers: aws, gcp, azure, files",
+            description = "Providers: aws, gcp, azure",
             split = ","
     )
     private String[] providers;

@@ -150,7 +150,7 @@ public class ProvidersCommand implements Callable<Integer> {
 
             if (!Files.exists(kitefilePath)) {
                 System.err.println("✗ No kitefile.yml found in current directory");
-                System.err.println("  Run 'kite init' to create a project, or specify a provider name");
+                System.err.println("  Run 'kite new' to create a project, or specify a provider name");
                 return 1;
             }
 
