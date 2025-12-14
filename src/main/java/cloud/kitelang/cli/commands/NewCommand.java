@@ -191,14 +191,11 @@ public class NewCommand implements Callable<Integer> {
     }
 
     /**
-     * Checks credentials and CLI tools for selected providers.
+     * Checks credentials for selected providers.
      */
     private void checkProviderCredentials(BufferedReader reader) throws IOException {
         System.out.println();
-        System.out.println("Checking setup...");
-
-        // Check CLI tools first
-        checkCliTools();
+        System.out.println("Checking credentials...");
 
         for (String provider : providers) {
             var creds = detectCredentials(provider);
@@ -486,38 +483,6 @@ public class NewCommand implements Callable<Integer> {
         var reserved = List.of(".", "..", "con", "prn", "aux", "nul");
         if (reserved.contains(name.toLowerCase())) {
             throw new IllegalArgumentException("'" + name + "' is a reserved name");
-        }
-    }
-
-    /**
-     * Checks if required CLI tools are installed for selected providers.
-     */
-    private void checkCliTools() {
-        for (String provider : providers) {
-            var tool = switch (provider.toLowerCase()) {
-                case "aws" -> "aws";
-                case "gcp" -> "gcloud";
-                case "azure" -> "az";
-                default -> null;
-            };
-
-            if (tool != null && !isCommandAvailable(tool)) {
-                System.out.println("  ⚠ " + provider.toUpperCase() + ": '" + tool + "' CLI not found in PATH");
-            }
-        }
-    }
-
-    /**
-     * Checks if a command is available in PATH.
-     */
-    private boolean isCommandAvailable(String command) {
-        try {
-            var process = new ProcessBuilder("which", command)
-                    .redirectErrorStream(true)
-                    .start();
-            return process.waitFor() == 0;
-        } catch (Exception e) {
-            return false;
         }
     }
 
