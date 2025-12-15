@@ -235,9 +235,10 @@ public class PlanCommand implements Callable<Integer> {
             System.out.println();
         }
 
-        // TODO: Add detailed resource printing when needed
-        // For now, just show summary
+        // Print each resource change
+        engine.printPlanDetails(plan);
 
+        System.out.println();
         System.out.println("─────────────────────────────────────────────────────────────");
         System.out.println();
         engine.printPlanSummary(plan);

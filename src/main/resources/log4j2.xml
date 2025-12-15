@@ -12,6 +12,7 @@
         <Logger name="org.hibernate.orm" level="warn"/>
         <Logger name="org.hibernate.engine" level="warn"/>
         <Logger name="org.hibernate.engine.jdbc.connections.internal" level="error"/> <!-- Suppress connection pool warnings -->
+        <Logger name="org.hibernate.orm.connections.pooling" level="error"/> <!-- Suppress HHH10001002 built-in pool warning -->
         <Logger name="com.zaxxer.hikari" level="warn"/>
         <Logger name="org.springframework" level="warn"/>
         <Logger name="io.grpc" level="warn"/>
