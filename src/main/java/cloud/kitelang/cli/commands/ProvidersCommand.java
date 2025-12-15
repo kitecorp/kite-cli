@@ -217,8 +217,8 @@ public class ProvidersCommand implements Callable<Integer> {
                         .version(dep.version())
                         .git(dep.git());
 
-                // Parse GitHub /tree/branch/path URLs automatically
-                if (dep.git() != null && dep.git().contains("/tree/")) {
+                // Parse GitHub URLs automatically to extract ref and path
+                if (dep.git() != null) {
                     var parsed = ProviderSpec.parseGitHubUrl(dep.name(), dep.git());
                     // Use parsed values unless explicitly overridden in kitefile
                     specBuilder.ref(dep.ref() != null && !dep.ref().equals("main") ? dep.ref() : parsed.getRef());
