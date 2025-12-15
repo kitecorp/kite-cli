@@ -192,7 +192,8 @@ public class ProvidersCommand implements Callable<Integer> {
                 var spec = ProviderSpec.builder()
                         .name(dep.name())
                         .version(dep.version())
-                        .git(dep.uri())
+                        .git(dep.git())
+                        .ref(dep.ref())
                         .build();
 
                 if (installer.isInstalled(spec)) {
