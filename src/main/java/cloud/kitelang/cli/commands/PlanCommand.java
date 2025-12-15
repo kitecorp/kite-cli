@@ -132,12 +132,17 @@ public class PlanCommand implements Callable<Integer> {
                 source.append("\n");
             }
 
+            // Use first file path for tracking (when single file) or environment path (when multiple)
+            var filePath = kiteFiles.size() == 1
+                    ? kiteFiles.get(0).toString()
+                    : "environments/" + environment;
+
             // Use Engine to parse and plan
             try (var engine = Engine.builder()
                     .withProvidersDir(Path.of("providers"))
                     .build()) {
 
-                var resources = engine.parse(source.toString());
+                var resources = engine.parse(source.toString(), filePath);
                 var plan = engine.plan(resources);
 
                 if (jsonOutput) {
