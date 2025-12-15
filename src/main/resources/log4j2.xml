@@ -15,8 +15,11 @@
         <Logger name="org.springframework" level="warn"/>
         <Logger name="io.grpc" level="warn"/>
 
-        <!-- Kite logs at info by default -->
-        <Logger name="cloud.kitelang" level="info"/>
+        <!-- Suppress distribution/engine logs during CLI usage -->
+        <Logger name="cloud.kitelang.engine" level="warn"/>
+
+        <!-- Kite CLI logs at info by default -->
+        <Logger name="cloud.kitelang.cli" level="info"/>
 
         <Root level="warn">
             <AppenderRef ref="Console"/>

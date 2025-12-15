@@ -161,16 +161,26 @@ public class ProvidersCommand implements Callable<Integer> {
 
             var specBuilder = ProviderSpec.builder().name(name);
 
-            if (gitUrl != null) {
+            // Determine git URL - explicit, official provider, or none
+            String effectiveGitUrl = gitUrl;
+            if (effectiveGitUrl == null) {
+                // Check if it's an official provider
+                effectiveGitUrl = getOfficialProviderUrl(name);
+            }
+
+            if (effectiveGitUrl != null) {
                 // Parse GitHub /tree/branch/path URLs automatically
-                var parsed = ProviderSpec.parseGitHubUrl(name, gitUrl);
-                specBuilder.git(gitUrl);
+                var parsed = ProviderSpec.parseGitHubUrl(name, effectiveGitUrl);
+                specBuilder.git(effectiveGitUrl);
 
                 // CLI options override parsed values
                 if (gitRef != null) {
                     specBuilder.ref(gitRef);
                 } else if (parsed.getRef() != null) {
                     specBuilder.ref(parsed.getRef());
+                } else if (!"latest".equals(version)) {
+                    // Use version as tag (e.g., aws@0.1.0 -> aws-v0.1.0)
+                    specBuilder.ref(name + "-v" + version);
                 }
 
                 if (gitPath != null) {
@@ -192,6 +202,17 @@ public class ProvidersCommand implements Callable<Integer> {
                 System.err.println("✗ Failed to install " + name + ": " + e.getMessage());
                 return 1;
             }
+        }
+
+        /**
+         * Get the official provider URL for well-known providers.
+         * Returns null for unknown providers.
+         */
+        private String getOfficialProviderUrl(String name) {
+            return switch (name.toLowerCase()) {
+                case "aws", "azure", "gcp", "files" -> "github.com/kitecorp/kite-providers/" + name;
+                default -> null;
+            };
         }
 
         private Integer installFromKitefile(ProviderInstaller installer) throws Exception {
