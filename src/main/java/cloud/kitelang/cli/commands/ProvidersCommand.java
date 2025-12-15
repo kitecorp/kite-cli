@@ -194,6 +194,9 @@ public class ProvidersCommand implements Callable<Integer> {
 
             var spec = specBuilder.build();
 
+            // Show progress
+            System.out.println("⏳ Downloading " + name + "...");
+
             try {
                 var path = installer.install(spec);
                 System.out.println("✓ Installed " + name + " to " + path);
@@ -239,6 +242,10 @@ public class ProvidersCommand implements Callable<Integer> {
             int failed = 0;
 
             for (var dep : config.providers()) {
+                // Determine display version (version, ref, or "latest")
+                String displayVersion = dep.version() != null ? dep.version()
+                        : dep.ref() != null ? dep.ref() : "latest";
+
                 var specBuilder = ProviderSpec.builder()
                         .name(dep.name())
                         .version(dep.version())
@@ -258,17 +265,20 @@ public class ProvidersCommand implements Callable<Integer> {
                 var spec = specBuilder.build();
 
                 if (installer.isInstalled(spec)) {
-                    System.out.println("  ✓ " + dep.name() + " (already installed)");
+                    System.out.println("  ✓ " + dep.name() + "@" + displayVersion + " (already installed)");
                     installed++;
                     continue;
                 }
 
+                // Show progress
+                System.out.println("  ⏳ " + dep.name() + "@" + displayVersion + " downloading...");
+
                 try {
                     installer.install(spec);
-                    System.out.println("  ✓ " + dep.name() + "@" + dep.version());
+                    System.out.println("  ✓ " + dep.name() + "@" + displayVersion);
                     installed++;
                 } catch (Exception e) {
-                    System.out.println("  ✗ " + dep.name() + " - " + e.getMessage());
+                    System.out.println("  ✗ " + dep.name() + "@" + displayVersion + " - " + e.getMessage());
                     failed++;
                 }
             }
