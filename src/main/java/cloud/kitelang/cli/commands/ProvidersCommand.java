@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.util.ProgressBar;
 import cloud.kitelang.engine.distribution.ProviderInstaller;
 import cloud.kitelang.engine.distribution.ProviderSpec;
 import cloud.kitelang.engine.kitefile.KiteInjector;
@@ -194,14 +195,16 @@ public class ProvidersCommand implements Callable<Integer> {
 
             var spec = specBuilder.build();
 
-            // Show progress
-            System.out.println("⏳ Downloading " + name + "...");
+            // Setup progress bar
+            var progress = new ProgressBar("  " + name);
+            installer.withProgress(progress);
 
             try {
                 var path = installer.install(spec);
-                System.out.println("✓ Installed " + name + " to " + path);
+                progress.complete("✓ Installed " + name + " to " + path);
                 return 0;
             } catch (Exception e) {
+                progress.clear();
                 System.err.println("✗ Failed to install " + name + ": " + e.getMessage());
                 return 1;
             }
@@ -270,14 +273,16 @@ public class ProvidersCommand implements Callable<Integer> {
                     continue;
                 }
 
-                // Show progress
-                System.out.println("  ⏳ " + dep.name() + "@" + displayVersion + " downloading...");
+                // Setup progress bar
+                var progress = new ProgressBar("  " + dep.name());
+                installer.withProgress(progress);
 
                 try {
                     installer.install(spec);
-                    System.out.println("  ✓ " + dep.name() + "@" + displayVersion);
+                    progress.complete("  ✓ " + dep.name() + "@" + displayVersion);
                     installed++;
                 } catch (Exception e) {
+                    progress.clear();
                     System.out.println("  ✗ " + dep.name() + "@" + displayVersion + " - " + e.getMessage());
                     failed++;
                 }
