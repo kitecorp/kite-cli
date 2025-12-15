@@ -113,8 +113,10 @@ public class ApplyCommand implements Callable<Integer> {
                 var resources = engine.parse(source.toString());
                 var plan = engine.plan(resources);
 
-                // Show plan summary
+                // Show plan details and summary
                 var summary = engine.getPlanSummary(plan);
+                System.out.println();
+                engine.printPlanDetails(plan);
                 System.out.println();
                 engine.printPlanSummary(plan);
 
