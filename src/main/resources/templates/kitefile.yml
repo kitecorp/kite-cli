@@ -4,6 +4,10 @@
 providers:
 {{providers}}
 
+# Logging configuration
+# logs:
+#   verbosity: info  # error, warn, info, debug, trace
+
 # Custom provider example:
 #  - name: custom
 #    git: github.com/myorg/my-provider
