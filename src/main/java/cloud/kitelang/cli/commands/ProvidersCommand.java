@@ -26,8 +26,9 @@ import java.util.concurrent.Callable;
                 "  kite providers install aws            Install latest AWS provider",
                 "  kite providers install aws@1.0.0      Install specific version",
                 "  kite providers install myp --git github.com/org/provider",
-                "  kite providers list                   List local providers",
-                "  kite providers list --global          List global providers"
+                "  kite providers install myp --git github.com/org/repo/tree/dev/aws",
+                "  kite providers list                   List global providers",
+                "  kite providers list --local           List project providers"
         },
         mixinStandardHelpOptions = true,
         subcommands = {
@@ -51,7 +52,9 @@ public class ProvidersCommand implements Callable<Integer> {
         System.out.println("  kite providers install aws                          # Install latest version");
         System.out.println("  kite providers install aws@1.0.0                    # Install specific version");
         System.out.println("  kite providers install myp --git github.com/org/p   # Install from git");
-        System.out.println("  kite providers list --global                        # List global providers");
+        System.out.println("  kite providers install myp --git .../tree/dev/aws   # Install from monorepo path");
+        System.out.println("  kite providers list                                 # List global providers");
+        System.out.println("  kite providers list --local                         # List project providers");
         return 0;
     }
 
@@ -68,8 +71,9 @@ public class ProvidersCommand implements Callable<Integer> {
                     "  kite providers install aws            Install latest version",
                     "  kite providers install aws@1.0.0      Install specific version",
                     "  kite providers install myp --git github.com/org/provider",
+                    "  kite providers install myp --git github.com/org/repo/tree/dev/aws",
                     "  kite providers install myp --git github.com/org/provider --ref v1.0",
-                    "  kite providers install aws --global   Install to ~/.kite/providers"
+                    "  kite providers install aws --local    Install to .kite/providers"
             },
             mixinStandardHelpOptions = true
     )
@@ -99,17 +103,24 @@ public class ProvidersCommand implements Callable<Integer> {
         private String gitRef;
 
         @Option(
-                names = {"--global"},
-                description = "Install to global providers directory (~/.kite/providers)"
+                names = {"--path"},
+                paramLabel = "PATH",
+                description = "Subdirectory within the git repository (for monorepos)"
         )
-        private boolean global;
+        private String gitPath;
+
+        @Option(
+                names = {"--local"},
+                description = "Install to project directory (.kite/providers) instead of global"
+        )
+        private boolean local;
 
         @Override
         public Integer call() {
             try {
-                Path providersPath = global
-                        ? Kitefile.globalProvidersPath()
-                        : Kitefile.localProvidersPath();
+                Path providersPath = local
+                        ? Kitefile.localProvidersPath()
+                        : Kitefile.globalProvidersPath();
 
                 var installer = new ProviderInstaller(providersPath);
 
@@ -145,9 +156,21 @@ public class ProvidersCommand implements Callable<Integer> {
             var specBuilder = ProviderSpec.builder().name(name);
 
             if (gitUrl != null) {
+                // Parse GitHub /tree/branch/path URLs automatically
+                var parsed = ProviderSpec.parseGitHubUrl(name, gitUrl);
                 specBuilder.git(gitUrl);
+
+                // CLI options override parsed values
                 if (gitRef != null) {
                     specBuilder.ref(gitRef);
+                } else if (parsed.getRef() != null) {
+                    specBuilder.ref(parsed.getRef());
+                }
+
+                if (gitPath != null) {
+                    specBuilder.path(gitPath);
+                } else if (parsed.getPath() != null) {
+                    specBuilder.path(parsed.getPath());
                 }
             } else {
                 specBuilder.version(version);
@@ -189,12 +212,23 @@ public class ProvidersCommand implements Callable<Integer> {
             int failed = 0;
 
             for (var dep : config.providers()) {
-                var spec = ProviderSpec.builder()
+                var specBuilder = ProviderSpec.builder()
                         .name(dep.name())
                         .version(dep.version())
-                        .git(dep.git())
-                        .ref(dep.ref())
-                        .build();
+                        .git(dep.git());
+
+                // Parse GitHub /tree/branch/path URLs automatically
+                if (dep.git() != null && dep.git().contains("/tree/")) {
+                    var parsed = ProviderSpec.parseGitHubUrl(dep.name(), dep.git());
+                    // Use parsed values unless explicitly overridden in kitefile
+                    specBuilder.ref(dep.ref() != null && !dep.ref().equals("main") ? dep.ref() : parsed.getRef());
+                    specBuilder.path(dep.path() != null ? dep.path() : parsed.getPath());
+                } else {
+                    specBuilder.ref(dep.ref());
+                    specBuilder.path(dep.path());
+                }
+
+                var spec = specBuilder.build();
 
                 if (installer.isInstalled(spec)) {
                     System.out.println("  ✓ " + dep.name() + " (already installed)");
@@ -232,8 +266,8 @@ public class ProvidersCommand implements Callable<Integer> {
             footer = {
                     "",
                     "Examples:",
-                    "  kite providers list                   List local providers",
-                    "  kite providers list --global          List global providers"
+                    "  kite providers list                   List global providers",
+                    "  kite providers list --local           List project providers"
             },
             mixinStandardHelpOptions = true
     )
@@ -241,16 +275,16 @@ public class ProvidersCommand implements Callable<Integer> {
     public static class ListCommand implements Callable<Integer> {
 
         @Option(
-                names = {"--global"},
-                description = "List global providers (~/.kite/providers)"
+                names = {"--local"},
+                description = "List project providers (.kite/providers)"
         )
-        private boolean global;
+        private boolean local;
 
         @Override
         public Integer call() {
-            Path providersPath = global
-                    ? Kitefile.globalProvidersPath()
-                    : Kitefile.localProvidersPath();
+            Path providersPath = local
+                    ? Kitefile.localProvidersPath()
+                    : Kitefile.globalProvidersPath();
 
             System.out.println("Providers directory: " + providersPath);
             System.out.println();
