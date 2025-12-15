@@ -8,7 +8,10 @@ providers:
 # logs:
 #   verbosity: info  # error, warn, info, debug, trace
 
-# Custom provider example:
+# Provider examples:
+#  - name: aws
+#    version: 0.1.0           # Specific version from GitHub Releases
+#
 #  - name: custom
 #    git: github.com/myorg/my-provider
-#    ref: v1.0.0
+#    ref: v1.0.0              # Build from source

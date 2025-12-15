@@ -152,14 +152,13 @@ public class ProjectStructureGenerator {
 
     /**
      * Generates YAML for the providers section based on selected providers.
-     * Uses git URL to kitecorp/kite-providers repository.
+     * Official providers use version: latest to download from GitHub Releases.
      */
     private String generateProvidersYaml(String[] providers) {
         var sb = new StringBuilder();
         for (String provider : providers) {
             sb.append("  - name: ").append(provider).append("\n");
-            sb.append("    git: github.com/kitecorp/kite-providers/").append(provider).append("\n");
-            sb.append("    ref: main\n");
+            sb.append("    version: latest\n");
         }
         return sb.toString().stripTrailing();
     }

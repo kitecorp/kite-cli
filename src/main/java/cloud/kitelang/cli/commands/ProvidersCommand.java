@@ -249,14 +249,20 @@ public class ProvidersCommand implements Callable<Integer> {
                 String displayVersion = dep.version() != null ? dep.version()
                         : dep.ref() != null ? dep.ref() : "latest";
 
+                // Resolve official provider URLs if no git specified
+                String gitUrl = dep.git();
+                if (gitUrl == null) {
+                    gitUrl = getOfficialProviderUrl(dep.name());
+                }
+
                 var specBuilder = ProviderSpec.builder()
                         .name(dep.name())
                         .version(dep.version())
-                        .git(dep.git());
+                        .git(gitUrl);
 
                 // Parse GitHub URLs automatically to extract ref and path
-                if (dep.git() != null) {
-                    var parsed = ProviderSpec.parseGitHubUrl(dep.name(), dep.git());
+                if (gitUrl != null) {
+                    var parsed = ProviderSpec.parseGitHubUrl(dep.name(), gitUrl);
                     // Use parsed values unless explicitly overridden in kitefile
                     specBuilder.ref(dep.ref() != null && !dep.ref().equals("main") ? dep.ref() : parsed.getRef());
                     specBuilder.path(dep.path() != null ? dep.path() : parsed.getPath());
