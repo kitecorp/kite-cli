@@ -49,10 +49,10 @@ public class ProvidersCommand implements Callable<Integer> {
         System.out.println();
         System.out.println("Examples:");
         System.out.println("  kite providers install                              # Install from kitefile.yml");
-        System.out.println("  kite providers install aws                          # Install latest version");
+        System.out.println("  kite providers install aws                          # Download from GitHub Releases");
+        System.out.println("  kite providers install aws --from-source            # Clone and build from source");
         System.out.println("  kite providers install aws@1.0.0                    # Install specific version");
-        System.out.println("  kite providers install myp --git github.com/org/p   # Install from git");
-        System.out.println("  kite providers install myp --git .../tree/dev/aws   # Install from monorepo path");
+        System.out.println("  kite providers install myp --git github.com/org/p   # Install from git repo");
         System.out.println("  kite providers list                                 # List global providers");
         System.out.println("  kite providers list --local                         # List project providers");
         return 0;
@@ -68,11 +68,11 @@ public class ProvidersCommand implements Callable<Integer> {
                     "",
                     "Examples:",
                     "  kite providers install                Install all from kitefile.yml",
-                    "  kite providers install aws            Install latest version",
+                    "  kite providers install aws            Install latest (from GitHub Releases)",
                     "  kite providers install aws@1.0.0      Install specific version",
                     "  kite providers install myp --git github.com/org/provider",
-                    "  kite providers install myp --git github.com/org/repo/tree/dev/aws",
-                    "  kite providers install myp --git github.com/org/provider --ref v1.0",
+                    "  kite providers install myp --git github.com/org/repo/aws",
+                    "  kite providers install aws --from-source   Clone and build from source",
                     "  kite providers install aws --local    Install to .kite/providers"
             },
             mixinStandardHelpOptions = true
@@ -115,6 +115,12 @@ public class ProvidersCommand implements Callable<Integer> {
         )
         private boolean local;
 
+        @Option(
+                names = {"--from-source"},
+                description = "Build from source instead of downloading pre-built releases"
+        )
+        private boolean fromSource;
+
         @Override
         public Integer call() {
             try {
@@ -122,7 +128,7 @@ public class ProvidersCommand implements Callable<Integer> {
                         ? Kitefile.localProvidersPath()
                         : Kitefile.globalProvidersPath();
 
-                var installer = new ProviderInstaller(providersPath);
+                var installer = new ProviderInstaller(providersPath, fromSource);
 
                 if (providerName != null) {
                     // Install specific provider
