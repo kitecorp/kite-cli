@@ -6,8 +6,16 @@ Kite lets you define cloud infrastructure using a simple, portable language (`.k
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
 ```bash
-# Build from source
+brew install kitecorp/tap/kite
+```
+
+### From Source
+
+```bash
+# Build
 ./gradlew build
 
 # Run directly
