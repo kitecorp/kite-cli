@@ -1,0 +1,57 @@
+# JReleaser configuration for Kite CLI
+# Used by GitHub Actions to create releases and publish to Homebrew
+
+project:
+  name: kite
+  version: '{{projectVersion}}'
+  description: Multi-cloud Infrastructure as Code CLI
+  longDescription: |
+    Kite is a multi-cloud Infrastructure as Code (IaC) tool that provides
+    a "write once, provision anywhere" approach using a custom .kite language
+    for defining cloud resources that can be deployed to AWS, GCP, or Azure.
+  website: https://github.com/kitecorp/kite
+  license: Apache-2.0
+  authors:
+    - Kite Team
+  tags:
+    - iac
+    - infrastructure
+    - cloud
+    - aws
+    - azure
+    - gcp
+    - cli
+
+release:
+  github:
+    owner: kitecorp
+    name: kite
+    tagName: '{{projectVersion}}'
+    releaseName: '{{projectVersion}}'
+    overwrite: true
+    changelog:
+      formatted: ALWAYS
+      preset: conventional-commits
+
+distributions:
+  kite:
+    type: NATIVE_IMAGE
+    stereotype: CLI
+    executable:
+      name: kite
+    artifacts:
+      - path: build/distributions/kite-{{projectVersion}}-osx-aarch64.zip
+        platform: osx-aarch_64
+      - path: build/distributions/kite-{{projectVersion}}-osx-x86_64.zip
+        platform: osx-x86_64
+      - path: build/distributions/kite-{{projectVersion}}-linux-x86_64.zip
+        platform: linux-x86_64
+
+packagers:
+  brew:
+    active: ALWAYS
+    formulaName: kite
+    multiPlatform: true
+    repository:
+      owner: kitecorp
+      name: homebrew-tap
