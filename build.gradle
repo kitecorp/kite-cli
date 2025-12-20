@@ -67,7 +67,7 @@ graalvmNative {
                 '-H:+ReportExceptionStackTraces',
                 // Log4j/SLF4J initialization (required for gRPC netty)
                 '--initialize-at-build-time=org.apache.logging.log4j',
-                '--initialize-at-build-time=org.apache.logging.slf4j.Log4jLogger',
+                '--initialize-at-build-time=org.apache.logging.slf4j',
                 '--initialize-at-run-time=org.apache.logging.log4j.core.pattern.JAnsiTextRenderer',
                 // Allow reflection for Hibernate entities
                 '--enable-url-protocols=http,https',
