@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'application'
+    id 'org.graalvm.buildtools.native' version '0.11.1'
 }
 
 group = 'io.kite'
@@ -54,6 +55,30 @@ test {
 
 compileJava {
     options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
+}
+
+// GraalVM native image configuration (for future use)
+// Build with: ./gradlew :kite-cli:nativeCompile
+graalvmNative {
+    binaries {
+        main {
+            imageName.set('kite')
+            mainClass.set('cloud.kitelang.cli.KiteCLI')
+            buildArgs.addAll(
+                '--no-fallback',
+                '-H:+ReportExceptionStackTraces',
+                // SLF4J-Log4j bridge must be build-time (used by Netty/gRPC at build time)
+                '--initialize-at-build-time=org.apache.logging.slf4j',
+                // Delay Log4j core initialization to run time to avoid JAR stream capture
+                '--initialize-at-run-time=org.apache.logging.log4j.core',
+                '--enable-url-protocols=http,https',
+                '-H:IncludeResources=.*\\.properties',
+                '-H:IncludeResources=.*\\.xml',
+                '-H:IncludeResources=db/migration/.*'
+            )
+        }
+    }
+    toolchainDetection = true
 }
 
 // Task to create a fat/uber JAR for distribution
