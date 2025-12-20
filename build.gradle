@@ -65,11 +65,21 @@ graalvmNative {
             buildArgs.addAll(
                 '--no-fallback',
                 '-H:+ReportExceptionStackTraces',
-                // Log4j/SLF4J initialization (required for gRPC netty)
-                '--initialize-at-build-time=org.apache.logging.log4j',
-                '--initialize-at-build-time=org.apache.logging.slf4j',
+                // Log4j/SLF4J initialization
+                // Initialize SLF4J API at build time but keep Log4j core at run time
                 '--initialize-at-build-time=org.slf4j',
-                '--initialize-at-run-time=org.apache.logging.log4j.core.pattern.JAnsiTextRenderer',
+                '--initialize-at-build-time=org.apache.logging.slf4j',
+                '--initialize-at-build-time=org.apache.logging.log4j.spi',
+                '--initialize-at-build-time=org.apache.logging.log4j.util',
+                '--initialize-at-build-time=org.apache.logging.log4j.status',
+                '--initialize-at-build-time=org.apache.logging.log4j.simple',
+                '--initialize-at-build-time=org.apache.logging.log4j.message',
+                '--initialize-at-build-time=org.apache.logging.log4j.LogManager',
+                '--initialize-at-build-time=org.apache.logging.log4j.Logger',
+                '--initialize-at-build-time=org.apache.logging.log4j.Level',
+                '--initialize-at-build-time=org.apache.logging.log4j.Marker',
+                // gRPC netty logging
+                '--initialize-at-build-time=io.grpc.netty.shaded.io.netty.util.internal.logging',
                 // Allow reflection for Hibernate entities
                 '--enable-url-protocols=http,https',
                 // Include resources
