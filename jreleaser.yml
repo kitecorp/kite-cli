@@ -25,7 +25,7 @@ project:
 release:
   github:
     owner: kitecorp
-    name: kite
+    name: kite-cli
     tagName: '{{projectVersion}}'
     releaseName: '{{projectVersion}}'
     overwrite: true
