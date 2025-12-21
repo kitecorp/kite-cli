@@ -51,19 +51,6 @@ application {
     applicationName = 'kite'
 }
 
-distributions {
-    main {
-        distributionBaseName = "kite-${version}"
-    }
-}
-
-distZip {
-    archiveVersion = ''
-}
-
-distTar {
-    archiveVersion = ''
-}
 
 jar {
     archiveBaseName = "kite-cli"
