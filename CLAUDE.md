@@ -48,7 +48,7 @@ cloud.kitelang.cli/
 
 - **Java 25** with preview features enabled
 - **Picocli** for CLI command parsing and help generation
-- **Lombok** for boilerplate reduction (@Log4j2, etc.)
+- **Lombok** for boilerplate reduction (@Slf4j, etc.)
 - **Log4j2** for logging
 - **JUnit 5** (JUnitPlatform) for testing
 

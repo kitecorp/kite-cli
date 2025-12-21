@@ -1,6 +1,6 @@
 package cloud.kitelang.cli.commands;
 
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import picocli.AutoComplete;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -42,7 +42,7 @@ import java.util.concurrent.Callable;
     },
     mixinStandardHelpOptions = true
 )
-@Log4j2
+@Slf4j
 public class CompletionCommand implements Callable<Integer> {
 
     @Parameters(

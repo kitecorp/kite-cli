@@ -1,6 +1,6 @@
 package cloud.kitelang.cli.commands;
 
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -37,7 +37,7 @@ import java.util.concurrent.Callable;
     },
     mixinStandardHelpOptions = true
 )
-@Log4j2
+@Slf4j
 public class OutputCommand implements Callable<Integer> {
 
     @Parameters(

@@ -1,21 +1,9 @@
 package cloud.kitelang.cli;
 
-import cloud.kitelang.cli.commands.ApplyCommand;
-import cloud.kitelang.cli.commands.CompletionCommand;
-import cloud.kitelang.cli.commands.ConfigCommand;
-import cloud.kitelang.cli.commands.DestroyCommand;
-import cloud.kitelang.cli.commands.DoctorCommand;
-import cloud.kitelang.cli.commands.FmtCommand;
-import cloud.kitelang.cli.commands.NewCommand;
-import cloud.kitelang.cli.commands.OutputCommand;
-import cloud.kitelang.cli.commands.PlanCommand;
-import cloud.kitelang.cli.commands.ProvidersCommand;
-import cloud.kitelang.cli.commands.ValidateCommand;
+import cloud.kitelang.cli.commands.*;
 import cloud.kitelang.engine.kitefile.KiteInjector;
-import lombok.extern.log4j.Log4j2;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.config.Configurator;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.event.Level;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -46,7 +34,7 @@ import java.nio.file.Path;
                 CommandLine.HelpCommand.class
         }
 )
-@Log4j2
+@Slf4j
 public class KiteCLI implements Runnable {
 
     @Option(names = {"-h", "--help"}, usageHelp = true, description = "Show this help message and exit")
@@ -124,10 +112,6 @@ public class KiteCLI implements Runnable {
                 default -> Level.INFO;
             };
 
-            // Enable verbose logging for all loggers when debug/trace
-            if (level == Level.DEBUG || level == Level.TRACE) {
-                Configurator.setAllLevels(LogManager.getRootLogger().getName(), level);
-            }
         } catch (Exception e) {
             // Silently ignore - kitefile parsing errors will be reported by commands
         }

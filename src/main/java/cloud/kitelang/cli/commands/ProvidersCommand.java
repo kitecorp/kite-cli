@@ -5,7 +5,7 @@ import cloud.kitelang.engine.distribution.ProviderInstaller;
 import cloud.kitelang.engine.distribution.ProviderSpec;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -37,7 +37,7 @@ import java.util.concurrent.Callable;
                 ProvidersCommand.ListCommand.class
         }
 )
-@Log4j2
+@Slf4j
 public class ProvidersCommand implements Callable<Integer> {
 
     @Override
@@ -78,7 +78,7 @@ public class ProvidersCommand implements Callable<Integer> {
             },
             mixinStandardHelpOptions = true
     )
-    @Log4j2
+    @Slf4j
     public static class InstallCommand implements Callable<Integer> {
 
         @Parameters(
@@ -319,7 +319,7 @@ public class ProvidersCommand implements Callable<Integer> {
             },
             mixinStandardHelpOptions = true
     )
-    @Log4j2
+    @Slf4j
     public static class ListCommand implements Callable<Integer> {
 
         @Option(

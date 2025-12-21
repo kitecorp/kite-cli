@@ -1,7 +1,7 @@
 package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.config.ConfigLoader;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
@@ -32,7 +32,7 @@ import java.util.concurrent.Callable;
                 ConfigCommand.PathCommand.class
         }
 )
-@Log4j2
+@Slf4j
 public class ConfigCommand implements Callable<Integer> {
 
     @Override

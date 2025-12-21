@@ -3,7 +3,7 @@ package cloud.kitelang.cli.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Loads and saves Kite CLI configuration from ~/.kite/config.yml
  */
-@Log4j2
+@Slf4j
 public class ConfigLoader {
 
     private static final ObjectMapper YAML_MAPPER = new ObjectMapper(

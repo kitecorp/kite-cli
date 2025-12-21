@@ -2,7 +2,7 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.engine.Engine;
 import cloud.kitelang.engine.diff.Plan;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -46,7 +46,7 @@ import java.util.stream.Stream;
     },
     mixinStandardHelpOptions = true
 )
-@Log4j2
+@Slf4j
 public class PlanCommand implements Callable<Integer> {
 
     @Option(

@@ -18,15 +18,16 @@ def jackson = '2.20.0'
 dependencies {
     implementation project(':engine')
 
-    implementation 'org.apache.logging.log4j:log4j-api:2.25.2'
-    implementation 'org.apache.logging.log4j:log4j-core:2.25.2'
+    // SLF4J with JDK logging (GraalVM compatible)
+    implementation 'org.slf4j:slf4j-api:2.0.17'
+    implementation 'org.slf4j:slf4j-jdk14:2.0.17'
+
     implementation 'info.picocli:picocli:4.7.7'
 
     // For config file loading
     implementation "com.fasterxml.jackson.core:jackson-databind:$jackson"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jackson"
 
-    testImplementation 'org.slf4j:slf4j-jdk14:2.0.16'
     compileOnly "org.projectlombok:lombok:${lombok}"
     annotationProcessor "org.projectlombok:lombok:${lombok}"
     annotationProcessor 'info.picocli:picocli-codegen:4.7.7'
@@ -68,13 +69,16 @@ graalvmNative {
                 '--no-fallback',
                 '-H:+UnlockExperimentalVMOptions',
                 '-H:+ReportExceptionStackTraces',
-                // SLF4J-Log4j bridge must be build-time (used by Netty/gRPC at build time)
-                '--initialize-at-build-time=org.apache.logging.slf4j',
-                // Delay Log4j core initialization to run time to avoid JAR stream capture
-                '--initialize-at-run-time=org.apache.logging.log4j.core',
+                // SLF4J with JDK logging - much simpler than Log4j for native images
+                '--initialize-at-build-time=org.slf4j',
+                // Netty SSL - initialize at run-time (references optional BouncyCastle)
+                '--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl',
+                '--initialize-at-run-time=io.netty.handler.ssl',
+                // Allow missing BouncyCastle (optional Netty SSL provider)
+                '--allow-incomplete-classpath',
                 '--enable-url-protocols=http,https',
                 '-H:IncludeResources=.*\\.properties',
-                '-H:IncludeResources=.*\\.xml'
+                '-H:IncludeResources=logging\\.properties'
             )
         }
     }
