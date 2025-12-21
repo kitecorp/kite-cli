@@ -12,6 +12,12 @@ Kite lets you define cloud infrastructure using a simple, portable language (`.k
 brew install kitecorp/tap/kite
 ```
 
+### Chocolatey (Windows)
+
+```powershell
+choco install kite
+```
+
 ### From Source
 
 ```bash
