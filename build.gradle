@@ -57,6 +57,14 @@ distributions {
     }
 }
 
+distZip {
+    archiveVersion = ''
+}
+
+distTar {
+    archiveVersion = ''
+}
+
 jar {
     archiveBaseName = "kite-cli"
 }
