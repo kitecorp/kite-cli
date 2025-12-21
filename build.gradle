@@ -90,20 +90,6 @@ graalvmNative {
     toolchainDetection = true
 }
 
-// Task to create a fat/uber JAR for distribution
-tasks.register('shadowJar', Jar) {
-    dependsOn configurations.runtimeClasspath
-    archiveClassifier.set('all')
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-    with jar
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    manifest {
-        attributes 'Main-Class': 'cloud.kitelang.cli.KiteCLI'
-    }
-}
-
 // Generate man pages using picocli-codegen
 tasks.register('generateManPages', JavaExec) {
     dependsOn classes
