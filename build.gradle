@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'application'
-    id 'org.graalvm.buildtools.native' version '0.11.1'
+    id 'org.graalvm.buildtools.native' version '0.11.3'
 }
 
 group = 'io.kite'
@@ -83,6 +83,7 @@ graalvmNative {
 
 // Task to create a fat/uber JAR for distribution
 tasks.register('shadowJar', Jar) {
+    dependsOn configurations.runtimeClasspath
     archiveClassifier.set('all')
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
