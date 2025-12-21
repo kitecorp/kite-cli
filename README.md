@@ -498,11 +498,24 @@ CLI releases are built and published from the parent [kitecorp/kite](https://git
 - GitHub releases: [kitecorp/kite-cli/releases](https://github.com/kitecorp/kite-cli/releases)
 - Homebrew formula: [kitecorp/homebrew-tap](https://github.com/kitecorp/homebrew-tap)
 
+**Supported platforms:**
+
+| Platform | Type | File |
+|----------|------|------|
+| macOS ARM64 (Apple Silicon) | Native | `kite-VERSION-osx-arm64.zip` |
+| macOS AMD64 (Intel) | Native | `kite-VERSION-osx-amd64.zip` |
+| Linux AMD64 | Native | `kite-VERSION-linux-amd64.zip` |
+| Linux ARM64 | JAR | `kite-VERSION-linux-arm64.zip` |
+| Windows AMD64 | Native | `kite-VERSION-windows-amd64.zip` |
+| Windows ARM64 | JAR | `kite-VERSION-windows-arm64.zip` |
+
+Native images are standalone executables (no JVM required). JAR distributions require Java 25+ runtime.
+
 **To trigger a release:**
 1. Go to [kitecorp/kite Actions](https://github.com/kitecorp/kite/actions)
 2. Run the "Kite-CLI Release" workflow manually
 
-The workflow builds a fat JAR, creates a GitHub release in `kitecorp/kite-cli`, and updates the Homebrew formula.
+The workflow builds native images for major platforms, creates JAR distributions for ARM64, publishes to GitHub releases, and updates the Homebrew formula.
 
 ## License
 
