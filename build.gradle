@@ -30,6 +30,11 @@ dependencies {
 
     compileOnly "org.projectlombok:lombok:${lombok}"
     annotationProcessor "org.projectlombok:lombok:${lombok}"
+
+    // BouncyCastle JSSE - required for GraalVM native-image analysis of Netty SSL
+    // (Netty references BC classes via reflection, GraalVM needs them at build time)
+    compileOnly 'org.bouncycastle:bcpkix-jdk18on:1.80'
+    compileOnly 'org.bouncycastle:bctls-jdk18on:1.80'
     annotationProcessor 'info.picocli:picocli-codegen:4.7.7'
     testCompileOnly "org.projectlombok:lombok:${lombok}"
     testAnnotationProcessor "org.projectlombok:lombok:${lombok}"
@@ -71,11 +76,9 @@ graalvmNative {
                 '-H:+ReportExceptionStackTraces',
                 // SLF4J with JDK logging - much simpler than Log4j for native images
                 '--initialize-at-build-time=org.slf4j',
-                // Netty SSL - initialize at run-time (references optional BouncyCastle)
+                // Netty SSL - initialize at run-time (BouncyCastle is optional)
                 '--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl',
                 '--initialize-at-run-time=io.netty.handler.ssl',
-                // Allow missing BouncyCastle (optional Netty SSL provider)
-                '--allow-incomplete-classpath',
                 '--enable-url-protocols=http,https',
                 '-H:IncludeResources=.*\\.properties',
                 '-H:IncludeResources=logging\\.properties'
