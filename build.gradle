@@ -76,9 +76,11 @@ graalvmNative {
                 '-H:+ReportExceptionStackTraces',
                 // SLF4J with JDK logging - much simpler than Log4j for native images
                 '--initialize-at-build-time=org.slf4j',
-                // Netty SSL - initialize at run-time (BouncyCastle is optional)
+                // Netty SSL/TLS - initialize at run-time (native libs and BouncyCastle are optional)
                 '--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl',
+                '--initialize-at-run-time=io.grpc.netty.shaded.io.netty.internal.tcnative',
                 '--initialize-at-run-time=io.netty.handler.ssl',
+                '--initialize-at-run-time=io.netty.internal.tcnative',
                 '--enable-url-protocols=http,https',
                 '-H:IncludeResources=.*\\.properties',
                 '-H:IncludeResources=logging\\.properties'
