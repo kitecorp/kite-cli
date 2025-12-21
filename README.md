@@ -490,6 +490,20 @@ asciidoctor -b manpage build/docs/man/kite.adoc
 ./gradlew generateHtmlDocs      # HTML documentation
 ```
 
+## Releases
+
+CLI releases are built and published from the parent [kitecorp/kite](https://github.com/kitecorp/kite) repository using JReleaser.
+
+**Release artifacts:**
+- GitHub releases: [kitecorp/kite-cli/releases](https://github.com/kitecorp/kite-cli/releases)
+- Homebrew formula: [kitecorp/homebrew-tap](https://github.com/kitecorp/homebrew-tap)
+
+**To trigger a release:**
+1. Go to [kitecorp/kite Actions](https://github.com/kitecorp/kite/actions)
+2. Run the "Kite-CLI Release" workflow manually
+
+The workflow builds a fat JAR, creates a GitHub release in `kitecorp/kite-cli`, and updates the Homebrew formula.
+
 ## License
 
 [Add license here]
