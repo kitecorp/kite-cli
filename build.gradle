@@ -66,6 +66,7 @@ graalvmNative {
             mainClass.set('cloud.kitelang.cli.KiteCLI')
             buildArgs.addAll(
                 '--no-fallback',
+                '-H:+UnlockExperimentalVMOptions',
                 '-H:+ReportExceptionStackTraces',
                 // SLF4J-Log4j bridge must be build-time (used by Netty/gRPC at build time)
                 '--initialize-at-build-time=org.apache.logging.slf4j',
@@ -73,8 +74,7 @@ graalvmNative {
                 '--initialize-at-run-time=org.apache.logging.log4j.core',
                 '--enable-url-protocols=http,https',
                 '-H:IncludeResources=.*\\.properties',
-                '-H:IncludeResources=.*\\.xml',
-                '-H:IncludeResources=db/migration/.*'
+                '-H:IncludeResources=.*\\.xml'
             )
         }
     }
