@@ -84,7 +84,8 @@ graalvmNative {
                 '--initialize-at-run-time=io.netty.internal.tcnative',
                 '--enable-url-protocols=http,https',
                 '-H:IncludeResources=.*\\.properties',
-                '-H:IncludeResources=logging\\.properties'
+                '-H:IncludeResources=logging\\.properties',
+                '-H:IncludeResources=templates/.*'
             )
         }
     }
