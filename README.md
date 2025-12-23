@@ -15,7 +15,7 @@ brew install kitecorp/tap/kite
 ### Chocolatey (Windows)
 
 ```powershell
-choco install kite
+choco install kite-cli
 ```
 
 ### From Source
@@ -503,7 +503,7 @@ CLI releases are built and published from the parent [kitecorp/kite](https://git
 **Release artifacts:**
 - GitHub releases: [kitecorp/kite-cli/releases](https://github.com/kitecorp/kite-cli/releases)
 - Homebrew formula: [kitecorp/homebrew-tap](https://github.com/kitecorp/homebrew-tap)
-- Chocolatey package: [kitecorp/chocolatey-bucket](https://github.com/kitecorp/chocolatey-bucket)
+- Chocolatey package: [chocolatey.org/packages/kite-cli](https://community.chocolatey.org/packages/kite-cli)
 
 **Supported platforms:**
 
@@ -512,19 +512,29 @@ CLI releases are built and published from the parent [kitecorp/kite](https://git
 | macOS ARM64 (Apple Silicon) | Native | `kite-VERSION-osx-arm64.zip` | None |
 | macOS AMD64 (Intel) | Native | `kite-VERSION-osx-amd64.zip` | None |
 | Linux AMD64 | Native | `kite-VERSION-linux-amd64.zip` | None |
-| Linux ARM64 | Java Binary | `kite-VERSION-linux-arm64.zip` | Java 25+ |
+| Linux ARM64 | Native | `kite-VERSION-linux-arm64.zip` | None |
 | Windows AMD64 | Native | `kite-VERSION-windows-amd64.zip` | None |
-| Windows ARM64 | Java Binary | `kite-VERSION-windows-arm64.zip` | Java 25+ |
+| Universal | Java | `kite-VERSION-java.zip` | Java 25+ |
 
 **Native images** are standalone executables compiled with GraalVM - no JVM required.
 
-**Java Binary** distributions contain `bin/` and `lib/` folders with launcher scripts and JARs. Requires Java 25+ runtime installed.
+**Java distribution** contains `bin/` and `lib/` folders with launcher scripts and JARs. Runs on any platform with Java 25+.
+
+**Release workflows:**
+
+| Workflow | Purpose |
+|----------|---------|
+| **Kite-CLI Release** | Full build + GitHub release + publish to Homebrew & Chocolatey |
+| **Publish to Homebrew** | Republish to Homebrew without rebuilding |
+| **Publish to Chocolatey** | Republish to Chocolatey without rebuilding |
 
 **To trigger a release:**
 1. Go to [kitecorp/kite Actions](https://github.com/kitecorp/kite/actions)
 2. Run the "Kite-CLI Release" workflow manually
+3. Select which platforms to build and which package managers to publish to
 
-The workflow builds native images for major platforms, creates Java binary distributions for ARM64, and publishes to GitHub releases, Homebrew, and Chocolatey.
+**To republish without rebuilding:**
+- Run "Publish to Homebrew" or "Publish to Chocolatey" with the version number
 
 ## License
 
