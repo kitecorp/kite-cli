@@ -44,9 +44,13 @@ public class ProjectStructureGenerator {
 
         // Get the templates directory from resources
         var templatesUri = getTemplatesUri();
+        var scheme = templatesUri.getScheme();
 
-        if (templatesUri.getScheme().equals("jar")) {
+        if (scheme.equals("jar")) {
             copyFromJar(templatesUri, projectDir, variables, providerSet, envSet);
+        } else if (scheme.equals("resource")) {
+            // GraalVM native image: resources are accessed via resource: URI
+            copyFromNativeImage(templatesUri, projectDir, variables, providerSet, envSet);
         } else {
             copyFromFileSystem(Paths.get(templatesUri), projectDir, variables, providerSet, envSet);
         }
@@ -69,6 +73,16 @@ public class ProjectStructureGenerator {
         var parts = jarUri.toString().split("!");
         try (var fs = FileSystems.newFileSystem(URI.create(parts[0]), Collections.emptyMap())) {
             var templatesRoot = fs.getPath(parts[1]);
+            copyDirectory(templatesRoot, projectDir, variables, providers, environments);
+        }
+    }
+
+    private void copyFromNativeImage(URI resourceUri, Path projectDir, Map<String, String> variables,
+                                     Set<String> providers, Set<String> environments) throws IOException {
+        // GraalVM native images use resource: URI scheme
+        // We need to create a file system for this URI before accessing it
+        try (var fs = FileSystems.newFileSystem(resourceUri, Collections.emptyMap())) {
+            var templatesRoot = fs.getPath("/" + TEMPLATES_PATH);
             copyDirectory(templatesRoot, projectDir, variables, providers, environments);
         }
     }

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.kite'
-version = '0.2.2'
+version = '0.2.3'
 
 repositories {
     mavenCentral()
@@ -58,6 +58,31 @@ jar {
 
 test {
     useJUnitPlatform()
+}
+
+// Generate version.properties with the project version
+tasks.register('generateVersionProperties') {
+    def outputDir = layout.buildDirectory.dir('generated/resources')
+    outputs.dir(outputDir)
+
+    doLast {
+        def propsFile = outputDir.get().file('version.properties').asFile
+        propsFile.parentFile.mkdirs()
+        propsFile.text = "version=${project.version}\n"
+    }
+}
+
+// Include generated resources in the build
+sourceSets {
+    main {
+        resources {
+            srcDir layout.buildDirectory.dir('generated/resources')
+        }
+    }
+}
+
+processResources {
+    dependsOn generateVersionProperties
 }
 
 compileJava {

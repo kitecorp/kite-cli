@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.VersionProvider;
 import cloud.kitelang.engine.Engine;
 import cloud.kitelang.engine.diff.Plan;
 import lombok.extern.slf4j.Slf4j;
@@ -258,7 +259,7 @@ public class PlanCommand implements Callable<Integer> {
         var json = """
             {
               "format_version": "1.0",
-              "kite_version": "0.1.0",
+              "kite_version": "%s",
               "environment": "%s",
               "provider": "%s",
               "changes": {
@@ -267,7 +268,7 @@ public class PlanCommand implements Callable<Integer> {
                 "destroy": %d
               }
             }
-            """.formatted(environment, provider, summary.creates(), summary.updates(), summary.deletes());
+            """.formatted(VersionProvider.getVersionString(), environment, provider, summary.creates(), summary.updates(), summary.deletes());
 
         System.out.println(json);
     }

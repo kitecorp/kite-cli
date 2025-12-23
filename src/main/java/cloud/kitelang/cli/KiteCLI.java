@@ -17,7 +17,7 @@ import java.nio.file.Path;
  */
 @Command(
         name = "kite",
-        version = "kite 0.1.0",
+        versionProvider = VersionProvider.class,
         description = "Kite - Write once, provision anywhere. Multi-cloud IaC tool.",
         subcommands = {
                 NewCommand.class,
