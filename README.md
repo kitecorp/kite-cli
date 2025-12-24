@@ -18,7 +18,7 @@ brew install kitecorp/tap/kite
 choco install kite-cli
 ```
 
-### Snap (Linux) - Coming Soon
+### Snap (Linux)
 
 ```bash
 sudo snap install kite
@@ -566,9 +566,10 @@ CLI releases are built and published from the parent [kitecorp/kite](https://git
 
 | Workflow | Purpose |
 |----------|---------|
-| **Kite-CLI Release** | Full build + GitHub release + publish to Homebrew & Chocolatey |
+| **Kite-CLI Release** | Full build + GitHub release + publish to Homebrew, Chocolatey & Snap |
 | **Publish to Homebrew** | Republish to Homebrew without rebuilding |
 | **Publish to Chocolatey** | Republish to Chocolatey without rebuilding |
+| **Publish to Snap** | Republish to Snap Store without rebuilding |
 
 **To trigger a release:**
 1. Go to [kitecorp/kite Actions](https://github.com/kitecorp/kite/actions)
@@ -576,7 +577,7 @@ CLI releases are built and published from the parent [kitecorp/kite](https://git
 3. Select which platforms to build and which package managers to publish to
 
 **To republish without rebuilding:**
-- Run "Publish to Homebrew" or "Publish to Chocolatey" with the version number
+- Run "Publish to Homebrew", "Publish to Chocolatey", or "Publish to Snap" with the version number
 
 ## License
 
