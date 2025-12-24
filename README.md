@@ -18,6 +18,47 @@ brew install kitecorp/tap/kite
 choco install kite-cli
 ```
 
+### Snap (Linux) - Coming Soon
+
+```bash
+sudo snap install kite
+```
+
+### Direct Download (All Platforms)
+
+Download pre-built binaries from [GitHub Releases](https://github.com/kitecorp/kite-cli/releases):
+
+```bash
+# Linux x64
+curl -LO https://github.com/kitecorp/kite-cli/releases/latest/download/kite-VERSION-linux-amd64.zip
+unzip kite-VERSION-linux-amd64.zip
+sudo mv bin/kite /usr/local/bin/
+
+# Linux ARM64
+curl -LO https://github.com/kitecorp/kite-cli/releases/latest/download/kite-VERSION-linux-arm64.zip
+
+# macOS (if not using Homebrew)
+curl -LO https://github.com/kitecorp/kite-cli/releases/latest/download/kite-VERSION-osx-arm64.zip
+```
+
+### Java Distribution (Cross-Platform)
+
+If you have Java 25+ installed, the universal Java distribution works on any platform:
+
+```bash
+# Download the Java distribution
+curl -LO https://github.com/kitecorp/kite-cli/releases/latest/download/kite-VERSION-java.zip
+unzip kite-VERSION-java.zip
+
+# Run via the launcher script
+./kite-VERSION/bin/kite --version
+
+# Or add to PATH
+export PATH="$PWD/kite-VERSION/bin:$PATH"
+```
+
+This is useful for platforms without native builds or when you already have Java installed.
+
 ### From Source
 
 ```bash
@@ -504,6 +545,7 @@ CLI releases are built and published from the parent [kitecorp/kite](https://git
 - GitHub releases: [kitecorp/kite-cli/releases](https://github.com/kitecorp/kite-cli/releases)
 - Homebrew formula: [kitecorp/homebrew-tap](https://github.com/kitecorp/homebrew-tap)
 - Chocolatey package: [chocolatey.org/packages/kite-cli](https://community.chocolatey.org/packages/kite-cli)
+- Snap package: [snapcraft.io/kite](https://snapcraft.io/kite)
 
 **Supported platforms:**
 
