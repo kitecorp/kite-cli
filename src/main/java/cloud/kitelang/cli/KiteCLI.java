@@ -49,7 +49,7 @@ public class KiteCLI implements Runnable {
         CommandLine.usage(this, System.out);
     }
 
-    static void main(String... args) {
+    public static void main(String... args) {
         // Configure logging from kitefile.yml if present
         configureLogging();
 
