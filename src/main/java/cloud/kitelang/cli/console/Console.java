@@ -174,4 +174,46 @@ public final class Console {
                 && !terminal.getType().equals(Terminal.TYPE_DUMB)
                 && terminal.getWidth() > 0;
     }
+
+    /**
+     * Prints lines surrounded by a box using Unicode box-drawing characters.
+     *
+     * @param lines The lines to display inside the box
+     */
+    public static void box(String... lines) {
+        if (lines == null || lines.length == 0) {
+            return;
+        }
+
+        // Find the longest line
+        int maxLen = 0;
+        for (var line : lines) {
+            if (line.length() > maxLen) {
+                maxLen = line.length();
+            }
+        }
+
+        // Add padding
+        int boxWidth = maxLen + 2;
+
+        // Top border: ┌───┐
+        var top = new StringBuilder();
+        top.append("┌");
+        top.append("─".repeat(boxWidth));
+        top.append("┐");
+        println(top.toString());
+
+        // Content lines: │ text │
+        for (var line : lines) {
+            var padded = String.format(" %-" + maxLen + "s ", line);
+            println("│" + padded + "│");
+        }
+
+        // Bottom border: └───┘
+        var bottom = new StringBuilder();
+        bottom.append("└");
+        bottom.append("─".repeat(boxWidth));
+        bottom.append("┘");
+        println(bottom.toString());
+    }
 }

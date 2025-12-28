@@ -120,10 +120,12 @@ public class NewCommand implements Callable<Integer> {
             validateProjectName(name);
 
             Console.println();
-            Console.println("Creating project: " + name);
-            Console.println("       Providers: " + String.join(", ", providers));
-            Console.println("    Environments: " + String.join(", ", environments));
-            Console.println("        Location: " + projectDir.toAbsolutePath());
+            Console.box(
+                "Creating project: " + name,
+                "       Providers: " + String.join(", ", providers),
+                "    Environments: " + String.join(", ", environments),
+                "        Location: " + projectDir.toAbsolutePath()
+            );
             Console.println();
 
             var generator = new ProjectStructureGenerator();
