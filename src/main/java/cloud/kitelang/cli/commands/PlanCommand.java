@@ -1,6 +1,7 @@
 package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.VersionProvider;
+import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.engine.Engine;
 import cloud.kitelang.engine.diff.Plan;
 import lombok.extern.slf4j.Slf4j;
@@ -116,6 +117,11 @@ public class PlanCommand implements Callable<Integer> {
             log.info("Environment: {}", environment);
             log.info("Provider: {}", provider);
 
+            // Check state configuration for this environment
+            if (!checkStateConfiguration()) {
+                return 1;
+            }
+
             // Determine which file(s) to plan
             var kiteFiles = determineKiteFiles();
             System.out.println("Planning: " + kiteFiles.size() + " file(s)");
@@ -215,6 +221,50 @@ public class PlanCommand implements Callable<Integer> {
                 .filter(p -> p.toString().endsWith(".kite"))
                 .sorted()
                 .toList();
+        }
+    }
+
+    /**
+     * Checks if state is configured for the target environment.
+     * Returns true if configuration is valid, false otherwise.
+     */
+    private boolean checkStateConfiguration() {
+        try {
+            var config = GlobalConfig.load();
+            var stateConfig = config.getStateConfig(environment);
+
+            if (stateConfig == null) {
+                System.err.println("Error: No state configuration found for environment '" + environment + "'");
+                System.err.println();
+                System.err.println("Configure state backend by running:");
+                System.err.println("  kite config state");
+                System.err.println();
+                System.err.println("Or use non-interactive mode:");
+                System.err.println("  kite config state -e " + environment + " --url jdbc:postgresql://localhost:5432/kite_" + environment);
+                return false;
+            }
+
+            // Check if password is available for PostgreSQL
+            if ("postgresql".equals(stateConfig.getType())) {
+                if (!stateConfig.hasPassword(environment)) {
+                    var envVarName = GlobalConfig.getPasswordEnvVarName(environment);
+                    System.err.println("Warning: No password configured for environment '" + environment + "'");
+                    System.err.println("Set password via:");
+                    System.err.println("  - Config: kite config state -e " + environment + " --password");
+                    System.err.println("  - Env var: export " + envVarName + "=<password>");
+                    System.err.println();
+                }
+
+                log.debug("Using state backend: {} (user: {})", stateConfig.getUrl(), stateConfig.getUsername());
+            } else if ("kite-cloud".equals(stateConfig.getType())) {
+                log.debug("Using Kite Cloud state backend");
+            }
+
+            return true;
+        } catch (IOException e) {
+            log.debug("Failed to load state configuration", e);
+            // Config file doesn't exist - continue without state (will fail later if needed)
+            return true;
         }
     }
 

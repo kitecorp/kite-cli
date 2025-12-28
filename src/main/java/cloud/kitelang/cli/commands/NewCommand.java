@@ -1,13 +1,18 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.generator.ProjectStructureGenerator;
+import cloud.kitelang.cli.interactive.InteractivePrompt;
+import cloud.kitelang.cli.interactive.StateBackendWizard;
+import cloud.kitelang.cli.util.TerminalColors;
 import lombok.extern.slf4j.Slf4j;
+
+import static cloud.kitelang.cli.util.TerminalColors.*;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -119,24 +124,33 @@ public class NewCommand implements Callable<Integer> {
             System.out.println();
             System.out.println("Creating project: " + name);
             System.out.println("       Providers: " + String.join(", ", providers));
+            System.out.println("    Environments: " + String.join(", ", environments));
             System.out.println("        Location: " + projectDir.toAbsolutePath());
             System.out.println();
 
             var generator = new ProjectStructureGenerator();
             generator.generate(projectDir, name, providers, environments, force);
 
-            System.out.println("✓ Project created successfully");
+            // Run state backend wizard BEFORE showing completion (if interactive)
+            if (!skipInteractive) {
+                System.out.println();
+                runStateBackendWizard();
+            }
+
+            System.out.println(success("Project created successfully"));
             System.out.println();
-            System.out.println("Next steps:");
+
+            System.out.println(bold("Next steps:"));
             System.out.println("  cd " + projectDir.getFileName());
-            System.out.println("  kite providers install   # Install providers");
-            System.out.println("  kite validate            # Check configuration");
-            System.out.println("  kite plan                # Preview changes");
-            System.out.println("  kite apply               # Provision resources");
+            System.out.println("  kite config state        " + cyan("# Configure state backend (if not done)"));
+            System.out.println("  kite providers install   " + cyan("# Install providers"));
+            System.out.println("  kite validate            " + cyan("# Check configuration"));
+            System.out.println("  kite plan                " + cyan("# Preview changes"));
+            System.out.println("  kite apply               " + cyan("# Provision resources"));
 
             return 0;
         } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
+            System.err.println(error(e.getMessage()));
             log.debug("Failed to create project", e);
             return 1;
         }
@@ -146,6 +160,101 @@ public class NewCommand implements Callable<Integer> {
      * Runs interactive mode to gather project configuration from user input.
      */
     private void runInteractiveMode() throws IOException {
+        // Try to use JLine interactive prompts
+        try (var prompt = InteractivePrompt.create()) {
+            if (prompt != null) {
+                runInteractiveModeWithJLine(prompt);
+                return;
+            }
+        }
+
+        // Fallback to basic BufferedReader if terminal not available
+        runInteractiveModeWithReader();
+    }
+
+    /**
+     * Interactive mode using JLine prompts (arrow key navigation).
+     */
+    private void runInteractiveModeWithJLine(InteractivePrompt prompt) throws IOException {
+        prompt.printHeader("Kite Project Setup");
+
+        // Skip prompts if all values are provided
+        if (projectName != null && providers != null) {
+            if (!skipChecks) {
+                checkProviderCredentialsSimple();
+            }
+            return;
+        }
+
+        // Project name - only ask if not already provided
+        if (projectName == null) {
+            projectName = prompt.input("Project name:", "infra");
+        }
+
+        // Validate project name
+        validateProjectName(projectName);
+
+        // Providers selection - only ask if not already provided
+        if (providers == null) {
+            var selectedProviders = prompt.selectMany(
+                    "Select cloud providers:",
+                    List.of(
+                            new InteractivePrompt.Option("aws", "aws (Amazon Web Services)", null, true),
+                            new InteractivePrompt.Option("gcp", "gcp (Google Cloud Platform)"),
+                            new InteractivePrompt.Option("azure", "azure (Microsoft Azure)")
+                    )
+            );
+
+            if (selectedProviders.isEmpty()) {
+                providers = new String[]{"aws"};
+            } else {
+                providers = selectedProviders.toArray(new String[0]);
+            }
+        }
+
+        // Check credentials for selected providers immediately after selection
+        if (!skipChecks) {
+            checkProviderCredentials(prompt);
+        }
+
+        // Environments selection - only ask if not already provided
+        if (environments == null) {
+            prompt.printInfo("");  // Clean separation before environment selection
+            var selectedEnvs = new ArrayList<>(prompt.selectMany(
+                    "Select environments:",
+                    List.of(
+                            new InteractivePrompt.Option("dev", "dev (Development)", null, true),
+                            new InteractivePrompt.Option("staging", "staging (Staging)", null, true),
+                            new InteractivePrompt.Option("prod", "prod (Production)", null, true),
+                            new InteractivePrompt.Option("custom", "custom (Enter custom names)", null, false)
+                    )
+            ));
+
+            // If "custom" was selected, prompt for custom environment names
+            if (selectedEnvs.remove("custom")) {
+                var customEnvs = prompt.input("Enter environment names:", "local, qa");
+                if (customEnvs != null && !customEnvs.isBlank()) {
+                    for (var env : customEnvs.split("[,\\s]+")) {
+                        var trimmed = env.trim().toLowerCase();
+                        if (!trimmed.isBlank()) {
+                            selectedEnvs.add(trimmed);
+                        }
+                    }
+                }
+            }
+
+            if (selectedEnvs.isEmpty()) {
+                environments = new String[]{"dev", "staging", "prod"};
+            } else {
+                environments = selectedEnvs.toArray(new String[0]);
+            }
+        }
+    }
+
+    /**
+     * Fallback interactive mode using BufferedReader.
+     */
+    private void runInteractiveModeWithReader() throws IOException {
         System.out.println("Kite Project Setup");
         System.out.println("==================");
 
@@ -186,8 +295,69 @@ public class NewCommand implements Callable<Integer> {
         if (!skipChecks) {
             checkProviderCredentials(reader);
         }
+    }
 
-        // Environments use default (dev/staging/prod) unless specified via -e flag
+    /**
+     * Runs the state backend configuration wizard.
+     */
+    private void runStateBackendWizard() {
+        try (var prompt = InteractivePrompt.create()) {
+            if (prompt == null) {
+                System.out.println("Run 'kite config state' to configure state backend.");
+                return;
+            }
+
+            var config = GlobalConfig.load();
+            // Pass the user's selected environments to the wizard
+            var envList = environments != null ? Arrays.asList(environments) : null;
+            var wizard = new StateBackendWizard(prompt, config, envList);
+            wizard.run();
+            System.out.println();
+        } catch (Exception e) {
+            log.debug("Failed to run state backend wizard", e);
+            System.out.println("Run 'kite config state' to configure state backend later.");
+            System.out.println();
+        }
+    }
+
+    /**
+     * Credential check using JLine prompt for consistent output.
+     */
+    private void checkProviderCredentials(InteractivePrompt prompt) {
+        prompt.printInfo("");
+        prompt.printInfo("Checking credentials...");
+
+        for (String provider : providers) {
+            var creds = detectCredentials(provider);
+            if (creds != null) {
+                prompt.printSuccess(bold(provider.toUpperCase()) + ": " + creds);
+                if (!creds.contains("region=") && !creds.contains("location=")) {
+                    prompt.printWarning("No default region configured for " + provider.toUpperCase());
+                }
+            } else {
+                prompt.printError(bold(provider.toUpperCase()) + ": No credentials found");
+            }
+        }
+    }
+
+    /**
+     * Simple credential check without interactive prompts.
+     */
+    private void checkProviderCredentialsSimple() {
+        System.out.println();
+        System.out.println("Checking credentials...");
+
+        for (String provider : providers) {
+            var creds = detectCredentials(provider);
+            if (creds != null) {
+                System.out.println("  " + green("\u2713") + " " + bold(provider.toUpperCase()) + ": " + creds);
+                if (!creds.contains("region=") && !creds.contains("location=")) {
+                    warnMissingRegion(provider);
+                }
+            } else {
+                System.out.println("  " + red("\u2717") + " " + bold(provider.toUpperCase()) + ": No credentials found");
+            }
+        }
     }
 
     /**
@@ -200,13 +370,13 @@ public class NewCommand implements Callable<Integer> {
         for (String provider : providers) {
             var creds = detectCredentials(provider);
             if (creds != null) {
-                System.out.println("  ✓ " + provider.toUpperCase() + ": " + creds);
+                System.out.println("  " + green("\u2713") + " " + bold(provider.toUpperCase()) + ": " + creds);
                 // Check if region is missing (non-blocking warning)
                 if (!creds.contains("region=") && !creds.contains("location=")) {
                     warnMissingRegion(provider);
                 }
             } else {
-                System.out.println("  ✗ " + provider.toUpperCase() + ": No credentials found");
+                System.out.println("  " + red("\u2717") + " " + bold(provider.toUpperCase()) + ": No credentials found");
                 promptForCredentials(provider, reader);
             }
         }
@@ -454,7 +624,7 @@ public class NewCommand implements Callable<Integer> {
      * Shows warning when region is not configured (non-blocking).
      */
     private void warnMissingRegion(String provider) {
-        System.out.println("    ⚠ No default region configured. To set one:");
+        System.out.println("    " + yellow("\u26A0") + " No default region configured. To set one:");
 
         switch (provider.toLowerCase()) {
             case "aws" -> System.out.println("      aws configure set region <region>  OR  export AWS_REGION=<region>");

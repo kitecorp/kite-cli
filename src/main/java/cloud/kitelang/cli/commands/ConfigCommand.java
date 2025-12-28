@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.commands.config.StateCommand;
 import cloud.kitelang.cli.config.ConfigLoader;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
@@ -29,7 +30,8 @@ import java.util.concurrent.Callable;
                 ConfigCommand.GetCommand.class,
                 ConfigCommand.SetCommand.class,
                 ConfigCommand.ListCommand.class,
-                ConfigCommand.PathCommand.class
+                ConfigCommand.PathCommand.class,
+                StateCommand.class
         }
 )
 @Slf4j
@@ -44,6 +46,7 @@ public class ConfigCommand implements Callable<Integer> {
         System.out.println("  set <key> <value>  Set a config value");
         System.out.println("  list               List all config values");
         System.out.println("  path               Show config file path");
+        System.out.println("  state              Configure state backend (database connection)");
         System.out.println();
         System.out.println("Config keys:");
         System.out.println("  defaults.environment  Default environment (dev, staging, prod)");
@@ -58,6 +61,7 @@ public class ConfigCommand implements Callable<Integer> {
         System.out.println("  kite config set aws.profile production");
         System.out.println("  kite config get defaults.environment");
         System.out.println("  kite config list");
+        System.out.println("  kite config state                         Configure state backend");
         return 0;
     }
 

@@ -24,6 +24,11 @@ dependencies {
 
     implementation 'info.picocli:picocli:4.7.7'
 
+    // JLine3 for interactive terminal UI
+    implementation 'org.jline:jline:3.30.6'
+    implementation 'org.jline:jline-console-ui:3.30.6'
+    implementation 'info.picocli:picocli-shell-jline3:4.7.7'
+
     // For config file loading
     implementation "com.fasterxml.jackson.core:jackson-databind:$jackson"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jackson"
@@ -111,7 +116,10 @@ graalvmNative {
                 '-H:IncludeResources=.+\\.(properties|yml|yaml|kite|sql|md|template)$',
                 '-H:IncludeResources=templates/.*',
                 '-H:IncludeResources=db/.*',
-                '-H:IncludeResources=META-INF/.*'
+                '-H:IncludeResources=META-INF/.*',
+                // JLine3 resources
+                '--initialize-at-run-time=org.jline',
+                '-H:IncludeResources=org/jline/.*'
             )
         }
     }
