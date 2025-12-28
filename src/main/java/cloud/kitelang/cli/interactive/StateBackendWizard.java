@@ -58,7 +58,7 @@ public class StateBackendWizard {
                 "How do you want to store infrastructure state?",
                 List.of(
                         new InteractivePrompt.Option("kite-cloud", "Kite Cloud (Managed - team collaboration, no setup)"),
-                        new InteractivePrompt.Option("postgresql", "Self-managed PostgreSQL (bring your own database)"),
+                        new InteractivePrompt.Option("self-hosted", "Self-hosted PostgreSQL (bring your own database)"),
                         new InteractivePrompt.Option("skip", "Skip for now")
                 )
         );
@@ -120,15 +120,6 @@ public class StateBackendWizard {
         if (selectedEnvs.isEmpty()) {
             prompt.printInfo("No environments selected. Skipping state configuration.");
             return false;
-        }
-
-        // Ask if user wants to add a custom environment
-        if (prompt.confirm("Add a custom environment?", false)) {
-            var customEnv = prompt.input("Enter environment name:", "local");
-            if (customEnv != null && !customEnv.isBlank()) {
-                selectedEnvs = new ArrayList<>(selectedEnvs);
-                selectedEnvs.add(customEnv);
-            }
         }
 
         prompt.printInfo("\nConfiguring " + selectedEnvs.size() + " environment(s): " + String.join(", ", selectedEnvs));
