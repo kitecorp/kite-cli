@@ -108,9 +108,10 @@ graalvmNative {
                 '--initialize-at-run-time=io.netty.handler.ssl',
                 '--initialize-at-run-time=io.netty.internal.tcnative',
                 '--enable-url-protocols=http,https',
-                '-H:IncludeResources=.*\\.properties',
-                '-H:IncludeResources=logging\\.properties',
-                '-H:IncludeResources=templates/.*'
+                '-H:IncludeResources=.+\\.(properties|yml|yaml|kite|sql|md|template)$',
+                '-H:IncludeResources=templates/.*',
+                '-H:IncludeResources=db/.*',
+                '-H:IncludeResources=META-INF/.*'
             )
         }
     }
