@@ -652,8 +652,10 @@ public class NewCommand implements Callable<Integer> {
 
         switch (provider.toLowerCase()) {
             case "aws" -> Console.println("      aws configure set region <region>  OR  export AWS_REGION=<region>");
-            case "gcp" -> Console.println("      gcloud config set compute/region <region>  OR  export CLOUDSDK_COMPUTE_REGION=<region>");
-            case "azure" -> Console.println("      az configure --defaults location=<location>  OR  export AZURE_DEFAULTS_LOCATION=<location>");
+            case "gcp" ->
+                    Console.println("      gcloud config set compute/region <region>  OR  export CLOUDSDK_COMPUTE_REGION=<region>");
+            case "azure" ->
+                    Console.println("      az configure --defaults location=<location>  OR  export AZURE_DEFAULTS_LOCATION=<location>");
         }
     }
 
@@ -668,8 +670,8 @@ public class NewCommand implements Callable<Integer> {
         // Allow alphanumeric, dash, underscore, dot
         if (!name.matches("^[a-zA-Z][a-zA-Z0-9._-]*$")) {
             throw new IllegalArgumentException(
-                "Invalid project name '" + name + "'. " +
-                "Must start with a letter and contain only letters, numbers, dashes, underscores, or dots."
+                    "Invalid project name '" + name + "'. " +
+                    "Must start with a letter and contain only letters, numbers, dashes, underscores, or dots."
             );
         }
 
@@ -685,9 +687,9 @@ public class NewCommand implements Callable<Integer> {
      */
     private String[] parseProviders(String input) {
         var providerMap = java.util.Map.of(
-            "1", "aws",
-            "2", "gcp",
-            "3", "azure"
+                "1", "aws",
+                "2", "gcp",
+                "3", "azure"
         );
 
         List<String> result = new ArrayList<>();
