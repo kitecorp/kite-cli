@@ -1,6 +1,7 @@
 package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.config.ConfigLoader;
+import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -44,9 +45,9 @@ public class DoctorCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        System.out.println("Kite Doctor");
-        System.out.println("===========");
-        System.out.println();
+        Console.println("Kite Doctor");
+        Console.println("===========");
+        Console.println();
 
         // Run all checks
         checkJavaVersion();
@@ -57,28 +58,28 @@ public class DoctorCommand implements Callable<Integer> {
         checkStateBackend();
 
         // Print summary
-        System.out.println();
-        System.out.println("Summary");
-        System.out.println("-------");
-        System.out.printf("  Passed:   %d%n", passed);
+        Console.println();
+        Console.println("Summary");
+        Console.println("-------");
+        Console.printf("  Passed:   %d%n", passed);
         if (warnings > 0) {
-            System.out.printf("  Warnings: %d%n", warnings);
+            Console.printf("  Warnings: %d%n", warnings);
         }
         if (failed > 0) {
-            System.out.printf("  Failed:   %d%n", failed);
+            Console.printf("  Failed:   %d%n", failed);
         }
 
         if (failed > 0) {
-            System.out.println();
-            System.out.println("Some checks failed. Run with --fix to attempt automatic fixes.");
+            Console.println();
+            Console.println("Some checks failed. Run with --fix to attempt automatic fixes.");
             return 1;
         } else if (warnings > 0) {
-            System.out.println();
-            System.out.println("All checks passed, but there are warnings to review.");
+            Console.println();
+            Console.println("All checks passed, but there are warnings to review.");
             return 0;
         } else {
-            System.out.println();
-            System.out.println("All checks passed! Your Kite installation is healthy.");
+            Console.println();
+            Console.println("All checks passed! Your Kite installation is healthy.");
             return 0;
         }
     }
@@ -109,7 +110,7 @@ public class DoctorCommand implements Callable<Integer> {
                 if (verbose) {
                     var list = ConfigLoader.list();
                     for (var entry : list.entrySet()) {
-                        System.out.println("      " + entry.getKey() + " = " + entry.getValue());
+                        Console.println("      " + entry.getKey() + " = " + entry.getValue());
                     }
                 }
             } catch (Exception e) {
@@ -305,29 +306,29 @@ public class DoctorCommand implements Callable<Integer> {
     // Output helpers
 
     private void printCheck(String name) {
-        System.out.println("[" + name + "]");
+        Console.println("[" + name + "]");
     }
 
     private void printPassed(String message) {
-        System.out.println("  \u2713 " + message);
+        Console.println("  \u2713 " + message);
         passed++;
     }
 
     private void printWarning(String message) {
-        System.out.println("  ! " + message);
+        Console.println("  ! " + message);
         warnings++;
     }
 
     private void printFailed(String message) {
-        System.out.println("  \u2717 " + message);
+        Console.println("  \u2717 " + message);
         failed++;
     }
 
     private void printSubcheck(String message, boolean passed, String detail) {
         var icon = passed ? "\u2713" : "\u2717";
-        System.out.println("    " + icon + " " + message);
+        Console.println("    " + icon + " " + message);
         if (detail != null) {
-            System.out.println("      " + detail);
+            Console.println("      " + detail);
         }
     }
 

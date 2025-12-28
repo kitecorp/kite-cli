@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.engine.Engine;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
@@ -88,7 +89,7 @@ public class ValidateCommand implements Callable<Integer> {
             var path = targetPath != null ? targetPath.toPath() : Path.of(".");
 
             if (!Files.exists(path)) {
-                System.err.println("Error: Path does not exist: " + path);
+                Console.error("Path does not exist: " + path);
                 return 1;
             }
 
@@ -98,13 +99,13 @@ public class ValidateCommand implements Callable<Integer> {
 
             if (kiteFiles.isEmpty()) {
                 if (!quiet) {
-                    System.out.println("No .kite files found in: " + path);
+                    Console.println("No .kite files found in: " + path);
                 }
                 return 0;
             }
 
             if (!quiet) {
-                System.out.println("Found " + kiteFiles.size() + " .kite file(s) to validate\n");
+                Console.println("Found " + kiteFiles.size() + " .kite file(s) to validate\n");
             }
 
             var errors = new ArrayList<ValidationError>();
@@ -128,7 +129,7 @@ public class ValidateCommand implements Callable<Integer> {
 
         } catch (Exception e) {
             log.error("Validation failed", e);
-            System.err.println("Error: " + e.getMessage());
+            Console.error(e.getMessage());
             return 1;
         }
     }
@@ -182,7 +183,7 @@ public class ValidateCommand implements Callable<Integer> {
             validateImports(file, content, errors, warnings);
 
             if (!quiet) {
-                System.out.println("  ✓ " + file);
+                Console.println("  ✓ " + file);
             }
 
         } catch (IOException e) {
@@ -327,27 +328,27 @@ public class ValidateCommand implements Callable<Integer> {
      * Prints validation results.
      */
     private void printResults(int totalFiles, List<ValidationError> errors, List<ValidationError> warnings) {
-        System.out.println();
+        Console.println();
 
         if (!warnings.isEmpty()) {
-            System.out.println("Warnings:");
+            Console.println("Warnings:");
             for (var warning : warnings) {
-                System.out.println("  " + warning);
+                Console.println("  " + warning);
             }
-            System.out.println();
+            Console.println();
         }
 
         if (!errors.isEmpty()) {
-            System.out.println("Errors:");
+            Console.println("Errors:");
             for (var error : errors) {
-                System.err.println("  " + error);
+                Console.println("  " + error);
             }
-            System.out.println();
+            Console.println();
         }
 
         // Summary
         var status = errors.isEmpty() ? "✓" : "✗";
-        System.out.printf("%s Validated %d file(s): %d error(s), %d warning(s)%n",
+        Console.printf("%s Validated %d file(s): %d error(s), %d warning(s)%n",
             status, totalFiles, errors.size(), warnings.size());
     }
 

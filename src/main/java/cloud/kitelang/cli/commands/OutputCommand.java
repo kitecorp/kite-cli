@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -87,7 +88,7 @@ public class OutputCommand implements Callable<Integer> {
             var outputs = loadOutputs();
 
             if (outputs.isEmpty()) {
-                System.out.println("No outputs found for environment: " + environment);
+                Console.println("No outputs found for environment: " + environment);
                 return 0;
             }
 
@@ -101,7 +102,7 @@ public class OutputCommand implements Callable<Integer> {
 
         } catch (Exception e) {
             log.error("Failed to fetch outputs", e);
-            System.err.println("Error: " + e.getMessage());
+            Console.error(e.getMessage());
             return 1;
         }
     }
@@ -166,17 +167,17 @@ public class OutputCommand implements Callable<Integer> {
         var output = outputs.get(outputName);
 
         if (output == null) {
-            System.err.println("Output not found: " + outputName);
-            System.err.println("Available outputs: " + String.join(", ", outputs.keySet()));
+            Console.error("Output not found: " + outputName);
+            Console.println("Available outputs: " + String.join(", ", outputs.keySet()));
             return 1;
         }
 
         var value = output.getValue(showSensitive);
 
         if (rawOutput) {
-            System.out.println(value);
+            Console.println(value);
         } else if (jsonOutput) {
-            System.out.printf("""
+            Console.printf("""
                 {
                   "name": "%s",
                   "value": "%s",
@@ -185,7 +186,7 @@ public class OutputCommand implements Callable<Integer> {
                 }
                 """, outputName, value, output.type(), output.sensitive());
         } else {
-            System.out.println(outputName + " = " + value);
+            Console.println(outputName + " = " + value);
         }
 
         return 0;
@@ -213,11 +214,11 @@ public class OutputCommand implements Callable<Integer> {
             .max()
             .orElse(20);
 
-        System.out.println("Outputs for environment: " + environment);
+        Console.println("Outputs for environment: " + environment);
         if (stack != null) {
-            System.out.println("Stack: " + stack);
+            Console.println("Stack: " + stack);
         }
-        System.out.println();
+        Console.println();
 
         for (var entry : outputs.entrySet()) {
             var name = entry.getKey();
@@ -225,10 +226,10 @@ public class OutputCommand implements Callable<Integer> {
             var value = output.getValue(showSensitive);
 
             var paddedName = String.format("%-" + maxKeyLen + "s", name);
-            System.out.println(paddedName + " = " + value);
+            Console.println(paddedName + " = " + value);
 
             if (output.description() != null && !output.description().isBlank()) {
-                System.out.println(String.format("%" + maxKeyLen + "s   # %s", "", output.description()));
+                Console.println(String.format("%" + maxKeyLen + "s   # %s", "", output.description()));
             }
         }
     }
@@ -259,7 +260,7 @@ public class OutputCommand implements Callable<Integer> {
         }
 
         sb.append("}\n");
-        System.out.print(sb);
+        Console.print(sb.toString());
     }
 
     /**

@@ -1,11 +1,11 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.engine.Engine;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -90,11 +90,11 @@ public class ApplyCommand implements Callable<Integer> {
 
             // Determine what files to apply
             var kiteFiles = determineKiteFiles();
-            System.out.println("Applying: " + kiteFiles.size() + " file(s)");
+            Console.println("Applying: " + kiteFiles.size() + " file(s)");
 
             if (dryRun) {
-                System.out.println("\nDRY RUN: No changes will be made");
-                System.out.println("Run 'kite plan --env " + environment + "' to see detailed changes");
+                Console.println("\nDRY RUN: No changes will be made");
+                Console.println("Run 'kite plan --env " + environment + "' to see detailed changes");
                 return 0;
             }
 
@@ -120,19 +120,19 @@ public class ApplyCommand implements Callable<Integer> {
 
                 // Show plan details and summary
                 var summary = engine.getPlanSummary(plan);
-                System.out.println();
+                Console.println();
                 engine.printPlanDetails(plan);
-                System.out.println();
+                Console.println();
                 engine.printPlanSummary(plan);
 
                 // Request confirmation unless auto-approve
                 if (!autoApprove && summary.hasChanges()) {
-                    System.out.print("\nDo you want to perform these actions? (yes/no): ");
-                    var console = System.console();
-                    if (console != null) {
-                        var answer = console.readLine();
+                    Console.print("\nDo you want to perform these actions? (yes/no): ");
+                    var sysConsole = System.console();
+                    if (sysConsole != null) {
+                        var answer = sysConsole.readLine();
                         if (!"yes".equalsIgnoreCase(answer)) {
-                            System.out.println("Apply cancelled.");
+                            Console.println("Apply cancelled.");
                             return 0;
                         }
                     } else {
@@ -141,19 +141,19 @@ public class ApplyCommand implements Callable<Integer> {
                 }
 
                 // Apply the plan
-                System.out.println("\nApplying changes...");
+                Console.println("\nApplying changes...");
                 engine.apply(plan);
 
                 // Print outputs
                 engine.printOutputs();
             }
 
-            System.out.println("\n✓ Apply completed successfully");
+            Console.println("\n✓ Apply completed successfully");
             return 0;
 
         } catch (Exception e) {
             log.error("Failed to apply changes", e);
-            System.err.println("Error: " + e.getMessage());
+            Console.error(e.getMessage());
             return 1;
         }
     }

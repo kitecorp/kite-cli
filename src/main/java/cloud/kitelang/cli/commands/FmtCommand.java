@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -98,18 +99,18 @@ public class FmtCommand implements Callable<Integer> {
             var path = targetPath != null ? targetPath.toPath() : Path.of(".");
 
             if (!Files.exists(path)) {
-                System.err.println("Error: Path does not exist: " + path);
+                Console.error("Path does not exist: " + path);
                 return 1;
             }
 
             var kiteFiles = findKiteFiles(path);
 
             if (kiteFiles.isEmpty()) {
-                System.out.println("No .kite files found in: " + path);
+                Console.println("No .kite files found in: " + path);
                 return 0;
             }
 
-            System.out.println("Found " + kiteFiles.size() + " .kite file(s)");
+            Console.println("Found " + kiteFiles.size() + " .kite file(s)");
 
             var formatted = 0;
             var unchanged = 0;
@@ -130,20 +131,20 @@ public class FmtCommand implements Callable<Integer> {
             }
 
             // Print summary
-            System.out.println();
+            Console.println();
             if (checkOnly) {
                 if (!needsFormatting.isEmpty()) {
-                    System.out.println("Files needing formatting:");
+                    Console.println("Files needing formatting:");
                     for (var file : needsFormatting) {
-                        System.out.println("  " + file);
+                        Console.println("  " + file);
                     }
-                    System.out.println();
-                    System.out.printf("Check failed: %d file(s) need formatting%n", needsFormatting.size());
+                    Console.println();
+                    Console.printf("Check failed: %d file(s) need formatting%n", needsFormatting.size());
                     return 1;
                 }
-                System.out.println("All files are properly formatted.");
+                Console.println("All files are properly formatted.");
             } else {
-                System.out.printf("Formatted: %d, Unchanged: %d, Failed: %d%n",
+                Console.printf("Formatted: %d, Unchanged: %d, Failed: %d%n",
                     formatted, unchanged, failed);
             }
 
@@ -151,7 +152,7 @@ public class FmtCommand implements Callable<Integer> {
 
         } catch (Exception e) {
             log.error("Formatting failed", e);
-            System.err.println("Error: " + e.getMessage());
+            Console.error(e.getMessage());
             return 1;
         }
     }
@@ -196,19 +197,19 @@ public class FmtCommand implements Callable<Integer> {
             }
 
             if (checkOnly) {
-                System.out.println("  Would format: " + file);
+                Console.println("  Would format: " + file);
                 return FormatResult.FORMATTED;
             }
 
             if (writeChanges) {
                 Files.writeString(file, formatted);
-                System.out.println("  Formatted: " + file);
+                Console.println("  Formatted: " + file);
             }
 
             return FormatResult.FORMATTED;
 
         } catch (IOException e) {
-            System.err.println("  Failed: " + file + " - " + e.getMessage());
+            Console.error("  Failed: " + file + " - " + e.getMessage());
             return FormatResult.FAILED;
         }
     }
@@ -319,8 +320,8 @@ public class FmtCommand implements Callable<Integer> {
      * Prints a diff between original and formatted content.
      */
     private void printDiff(Path file, String original, String formatted) {
-        System.out.println("--- " + file);
-        System.out.println("+++ " + file + " (formatted)");
+        Console.println("--- " + file);
+        Console.println("+++ " + file + " (formatted)");
 
         var origLines = original.split("\n");
         var fmtLines = formatted.split("\n");
@@ -332,16 +333,16 @@ public class FmtCommand implements Callable<Integer> {
             var fmtLine = i < fmtLines.length ? fmtLines[i] : "";
 
             if (!origLine.equals(fmtLine)) {
-                System.out.println("@@ -" + (i + 1) + " +" + (i + 1) + " @@");
+                Console.println("@@ -" + (i + 1) + " +" + (i + 1) + " @@");
                 if (!origLine.isEmpty()) {
-                    System.out.println("-" + origLine);
+                    Console.println("-" + origLine);
                 }
                 if (!fmtLine.isEmpty()) {
-                    System.out.println("+" + fmtLine);
+                    Console.println("+" + fmtLine);
                 }
             }
         }
-        System.out.println();
+        Console.println();
     }
 
     /**

@@ -1,10 +1,10 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.io.Console;
 import java.util.concurrent.Callable;
 
 /**
@@ -103,11 +103,11 @@ public class DestroyCommand implements Callable<Integer> {
 
             // Safety check for production
             if ("prod".equalsIgnoreCase(environment) && !force) {
-                System.err.println();
-                System.err.println("WARNING: You are about to destroy PRODUCTION resources!");
-                System.err.println("This action is irreversible and may cause service outages.");
-                System.err.println();
-                System.err.println("To proceed, you must use --force flag.");
+                Console.println();
+                Console.error("WARNING: You are about to destroy PRODUCTION resources!");
+                Console.println("This action is irreversible and may cause service outages.");
+                Console.println();
+                Console.println("To proceed, you must use --force flag.");
                 return 1;
             }
 
@@ -115,19 +115,19 @@ public class DestroyCommand implements Callable<Integer> {
             var resourceCount = displayDestructionPlan();
 
             if (resourceCount == 0) {
-                System.out.println("No resources to destroy.");
+                Console.println("No resources to destroy.");
                 return 0;
             }
 
             if (dryRun) {
-                System.out.println("\nDRY RUN: No changes were made.");
+                Console.println("\nDRY RUN: No changes were made.");
                 return 0;
             }
 
             // Prompt for confirmation
             if (!autoApprove) {
                 if (!confirmDestruction(resourceCount)) {
-                    System.out.println("Destruction cancelled.");
+                    Console.println("Destruction cancelled.");
                     return 0;
                 }
             }
@@ -137,7 +137,7 @@ public class DestroyCommand implements Callable<Integer> {
 
         } catch (Exception e) {
             log.error("Destruction failed", e);
-            System.err.println("Error: " + e.getMessage());
+            Console.error(e.getMessage());
             return 1;
         }
     }
@@ -147,19 +147,19 @@ public class DestroyCommand implements Callable<Integer> {
      * Returns the count of resources to destroy.
      */
     private int displayDestructionPlan() {
-        System.out.println();
-        System.out.println("Kite will destroy the following resources:");
-        System.out.println();
+        Console.println();
+        Console.println("Kite will destroy the following resources:");
+        Console.println();
 
         // TODO: Load actual resources from state
         // For now, show placeholder output
 
         if (targets != null && targets.length > 0) {
-            System.out.println("Targeted resources:");
+            Console.println("Targeted resources:");
             for (var target : targets) {
-                System.out.println("  - destroy " + target);
+                Console.println("  - destroy " + target);
             }
-            System.out.println();
+            Console.println();
             return targets.length;
         }
 
@@ -172,13 +172,13 @@ public class DestroyCommand implements Callable<Integer> {
         };
 
         for (var resource : resources) {
-            System.out.printf("  - destroy %s.%s%n", resource[0], resource[1]);
-            System.out.printf("            # %s%n", resource[2]);
+            Console.printf("  - destroy %s.%s%n", resource[0], resource[1]);
+            Console.printf("            # %s%n", resource[2]);
         }
 
-        System.out.println();
-        System.out.println("─────────────────────────────────────────────────────────────");
-        System.out.printf("%nPlan: 0 to add, 0 to change, %d to destroy.%n", resources.length);
+        Console.println();
+        Console.println("─────────────────────────────────────────────────────────────");
+        Console.printf("%nPlan: 0 to add, 0 to change, %d to destroy.%n", resources.length);
 
         return resources.length;
     }
@@ -187,22 +187,22 @@ public class DestroyCommand implements Callable<Integer> {
      * Prompts user to confirm destruction.
      */
     private boolean confirmDestruction(int resourceCount) {
-        System.out.println();
-        System.out.printf("Do you really want to destroy %d resource(s)?%n", resourceCount);
-        System.out.println("  Kite will destroy all resources shown above.");
-        System.out.println("  There is no undo. Only 'yes' will be accepted to confirm.");
-        System.out.println();
-        System.out.print("  Enter a value: ");
+        Console.println();
+        Console.printf("Do you really want to destroy %d resource(s)?%n", resourceCount);
+        Console.println("  Kite will destroy all resources shown above.");
+        Console.println("  There is no undo. Only 'yes' will be accepted to confirm.");
+        Console.println();
+        Console.print("  Enter a value: ");
 
-        var console = System.console();
-        if (console == null) {
+        var sysConsole = System.console();
+        if (sysConsole == null) {
             // Running without console (e.g., in IDE)
             log.warn("No console available, cannot prompt for confirmation");
-            System.err.println("Error: Cannot prompt for confirmation. Use --auto-approve to skip.");
+            Console.error("Cannot prompt for confirmation. Use --auto-approve to skip.");
             return false;
         }
 
-        var input = console.readLine();
+        var input = sysConsole.readLine();
         return "yes".equalsIgnoreCase(input != null ? input.trim() : "");
     }
 
@@ -210,9 +210,9 @@ public class DestroyCommand implements Callable<Integer> {
      * Executes the destruction of resources.
      */
     private int executeDestruction() {
-        System.out.println();
-        System.out.println("Destroying resources...");
-        System.out.println();
+        Console.println();
+        Console.println("Destroying resources...");
+        Console.println();
 
         // TODO: Integrate with cloud providers
         // 1. Load state from PostgreSQL
@@ -230,7 +230,7 @@ public class DestroyCommand implements Callable<Integer> {
         };
 
         for (var i = 0; i < resources.length; i++) {
-            System.out.printf("  Destroying %s... ", resources[i]);
+            Console.printf("  Destroying %s... ", resources[i]);
 
             // Simulate work
             try {
@@ -239,14 +239,14 @@ public class DestroyCommand implements Callable<Integer> {
                 Thread.currentThread().interrupt();
             }
 
-            System.out.println("done");
+            Console.println("done");
             log.info("Destroyed: {}", resources[i]);
         }
 
-        System.out.println();
-        System.out.println("─────────────────────────────────────────────────────────────");
-        System.out.println();
-        System.out.printf("Destroy complete! Resources destroyed: %d%n", resources.length);
+        Console.println();
+        Console.println("─────────────────────────────────────────────────────────────");
+        Console.println();
+        Console.printf("Destroy complete! Resources destroyed: %d%n", resources.length);
 
         return 0;
     }

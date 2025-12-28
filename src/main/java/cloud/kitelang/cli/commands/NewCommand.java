@@ -1,13 +1,11 @@
 package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.config.GlobalConfig;
+import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.generator.ProjectStructureGenerator;
 import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.cli.interactive.StateBackendWizard;
-import cloud.kitelang.cli.util.TerminalColors;
 import lombok.extern.slf4j.Slf4j;
-
-import static cloud.kitelang.cli.util.TerminalColors.*;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -121,36 +119,36 @@ public class NewCommand implements Callable<Integer> {
             // Validate project name (also validates CLI argument)
             validateProjectName(name);
 
-            System.out.println();
-            System.out.println("Creating project: " + name);
-            System.out.println("       Providers: " + String.join(", ", providers));
-            System.out.println("    Environments: " + String.join(", ", environments));
-            System.out.println("        Location: " + projectDir.toAbsolutePath());
-            System.out.println();
+            Console.println();
+            Console.println("Creating project: " + name);
+            Console.println("       Providers: " + String.join(", ", providers));
+            Console.println("    Environments: " + String.join(", ", environments));
+            Console.println("        Location: " + projectDir.toAbsolutePath());
+            Console.println();
 
             var generator = new ProjectStructureGenerator();
             generator.generate(projectDir, name, providers, environments, force);
 
             // Run state backend wizard BEFORE showing completion (if interactive)
             if (!skipInteractive) {
-                System.out.println();
+                Console.println();
                 runStateBackendWizard();
             }
 
-            System.out.println(success("Project created successfully"));
-            System.out.println();
+            Console.success("Project created successfully");
+            Console.println();
 
-            System.out.println(bold("Next steps:"));
-            System.out.println("  cd " + projectDir.getFileName());
-            System.out.println("  kite config state        " + cyan("# Configure state backend (if not done)"));
-            System.out.println("  kite providers install   " + cyan("# Install providers"));
-            System.out.println("  kite validate            " + cyan("# Check configuration"));
-            System.out.println("  kite plan                " + cyan("# Preview changes"));
-            System.out.println("  kite apply               " + cyan("# Provision resources"));
+            Console.println(Console.bold("Next steps:"));
+            Console.println("  cd " + projectDir.getFileName());
+            Console.println("  kite config state        " + Console.cyan("# Configure state backend (if not done)"));
+            Console.println("  kite providers install   " + Console.cyan("# Install providers"));
+            Console.println("  kite validate            " + Console.cyan("# Check configuration"));
+            Console.println("  kite plan                " + Console.cyan("# Preview changes"));
+            Console.println("  kite apply               " + Console.cyan("# Provision resources"));
 
             return 0;
         } catch (Exception e) {
-            System.err.println(error(e.getMessage()));
+            Console.error(e.getMessage());
             log.debug("Failed to create project", e);
             return 1;
         }
@@ -190,20 +188,35 @@ public class NewCommand implements Callable<Integer> {
         if (projectName == null) {
             projectName = prompt.input("Project name:", "infra");
         }
+        prompt.printSeparator();
 
         // Validate project name
         validateProjectName(projectName);
 
         // Providers selection - only ask if not already provided
         if (providers == null) {
-            var selectedProviders = prompt.selectMany(
+            var selectedProviders = new ArrayList<>(prompt.selectMany(
                     "Select cloud providers:",
                     List.of(
                             new InteractivePrompt.Option("aws", "aws (Amazon Web Services)", null, true),
                             new InteractivePrompt.Option("gcp", "gcp (Google Cloud Platform)"),
-                            new InteractivePrompt.Option("azure", "azure (Microsoft Azure)")
+                            new InteractivePrompt.Option("azure", "azure (Microsoft Azure)"),
+                            new InteractivePrompt.Option("custom", "custom (Enter custom provider names)", null, false)
                     )
-            );
+            ));
+
+            // If "custom" was selected, prompt for custom provider names
+            if (selectedProviders.remove("custom")) {
+                var customProviders = prompt.input("Enter provider names:", "kubernetes, docker");
+                if (customProviders != null && !customProviders.isBlank()) {
+                    for (var p : customProviders.split("[,\\s]+")) {
+                        var trimmed = p.trim().toLowerCase();
+                        if (!trimmed.isBlank()) {
+                            selectedProviders.add(trimmed);
+                        }
+                    }
+                }
+            }
 
             if (selectedProviders.isEmpty()) {
                 providers = new String[]{"aws"};
@@ -219,7 +232,6 @@ public class NewCommand implements Callable<Integer> {
 
         // Environments selection - only ask if not already provided
         if (environments == null) {
-            prompt.printInfo("");  // Clean separation before environment selection
             var selectedEnvs = new ArrayList<>(prompt.selectMany(
                     "Select environments:",
                     List.of(
@@ -255,8 +267,8 @@ public class NewCommand implements Callable<Integer> {
      * Fallback interactive mode using BufferedReader.
      */
     private void runInteractiveModeWithReader() throws IOException {
-        System.out.println("Kite Project Setup");
-        System.out.println("==================");
+        Console.println("Kite Project Setup");
+        Console.println("==================");
 
         var reader = new BufferedReader(new InputStreamReader(System.in));
 
@@ -271,7 +283,7 @@ public class NewCommand implements Callable<Integer> {
         // Project name - only ask if not already provided
         if (projectName == null) {
             String defaultName = "infra";
-            System.out.print("Project name [" + defaultName + "]: ");
+            Console.print("Project name [" + defaultName + "]: ");
             String inputName = reader.readLine().trim();
             projectName = inputName.isEmpty() ? defaultName : inputName;
         }
@@ -281,12 +293,12 @@ public class NewCommand implements Callable<Integer> {
 
         // Providers selection - only ask if not already provided
         if (providers == null) {
-            System.out.println();
-            System.out.println("Select cloud providers (comma-separated):");
-            System.out.println("  1. aws (Amazon Web Services)");
-            System.out.println("  2. gcp (Google Cloud Platform)");
-            System.out.println("  3. azure (Microsoft Azure)");
-            System.out.print("Providers [aws]: ");
+            Console.println();
+            Console.println("Select cloud providers (comma-separated):");
+            Console.println("  1. aws (Amazon Web Services)");
+            Console.println("  2. gcp (Google Cloud Platform)");
+            Console.println("  3. azure (Microsoft Azure)");
+            Console.print("Providers [aws]: ");
             String inputProviders = reader.readLine().trim();
             providers = inputProviders.isEmpty() ? new String[]{"aws"} : parseProviders(inputProviders);
         }
@@ -303,7 +315,7 @@ public class NewCommand implements Callable<Integer> {
     private void runStateBackendWizard() {
         try (var prompt = InteractivePrompt.create()) {
             if (prompt == null) {
-                System.out.println("Run 'kite config state' to configure state backend.");
+                Console.println("Run 'kite config state' to configure state backend.");
                 return;
             }
 
@@ -312,50 +324,62 @@ public class NewCommand implements Callable<Integer> {
             var envList = environments != null ? Arrays.asList(environments) : null;
             var wizard = new StateBackendWizard(prompt, config, envList);
             wizard.run();
-            System.out.println();
+            Console.println();
         } catch (Exception e) {
             log.debug("Failed to run state backend wizard", e);
-            System.out.println("Run 'kite config state' to configure state backend later.");
-            System.out.println();
+            Console.println("Run 'kite config state' to configure state backend later.");
+            Console.println();
         }
     }
 
     /**
      * Credential check using JLine prompt for consistent output.
+     * Only checks known providers (aws, gcp, azure), skips custom providers.
      */
     private void checkProviderCredentials(InteractivePrompt prompt) {
-        prompt.printInfo("");
+        var knownProviders = List.of("aws", "gcp", "azure");
+        var providersToCheck = Arrays.stream(providers)
+                .filter(knownProviders::contains)
+                .toList();
+
+        if (providersToCheck.isEmpty()) {
+            return; // No known providers to check
+        }
+
+        prompt.printSeparator();
         prompt.printInfo("Checking credentials...");
 
-        for (String provider : providers) {
+        for (String provider : providersToCheck) {
             var creds = detectCredentials(provider);
             if (creds != null) {
-                prompt.printSuccess(bold(provider.toUpperCase()) + ": " + creds);
+                prompt.printSuccess(Console.bold(provider.toUpperCase()) + ": " + creds);
                 if (!creds.contains("region=") && !creds.contains("location=")) {
                     prompt.printWarning("No default region configured for " + provider.toUpperCase());
                 }
             } else {
-                prompt.printError(bold(provider.toUpperCase()) + ": No credentials found");
+                prompt.printError(Console.bold(provider.toUpperCase()) + ": No credentials found");
             }
         }
+
+        prompt.printSeparator();
     }
 
     /**
      * Simple credential check without interactive prompts.
      */
     private void checkProviderCredentialsSimple() {
-        System.out.println();
-        System.out.println("Checking credentials...");
+        Console.println();
+        Console.println("Checking credentials...");
 
         for (String provider : providers) {
             var creds = detectCredentials(provider);
             if (creds != null) {
-                System.out.println("  " + green("\u2713") + " " + bold(provider.toUpperCase()) + ": " + creds);
+                Console.println("  " + Console.green("\u2713") + " " + Console.bold(provider.toUpperCase()) + ": " + creds);
                 if (!creds.contains("region=") && !creds.contains("location=")) {
                     warnMissingRegion(provider);
                 }
             } else {
-                System.out.println("  " + red("\u2717") + " " + bold(provider.toUpperCase()) + ": No credentials found");
+                Console.println("  " + Console.red("\u2717") + " " + Console.bold(provider.toUpperCase()) + ": No credentials found");
             }
         }
     }
@@ -364,19 +388,19 @@ public class NewCommand implements Callable<Integer> {
      * Checks credentials for selected providers.
      */
     private void checkProviderCredentials(BufferedReader reader) throws IOException {
-        System.out.println();
-        System.out.println("Checking credentials...");
+        Console.println();
+        Console.println("Checking credentials...");
 
         for (String provider : providers) {
             var creds = detectCredentials(provider);
             if (creds != null) {
-                System.out.println("  " + green("\u2713") + " " + bold(provider.toUpperCase()) + ": " + creds);
+                Console.println("  " + Console.green("✓ ") + Console.bold(provider.toUpperCase()) + ": " + creds);
                 // Check if region is missing (non-blocking warning)
                 if (!creds.contains("region=") && !creds.contains("location=")) {
                     warnMissingRegion(provider);
                 }
             } else {
-                System.out.println("  " + red("\u2717") + " " + bold(provider.toUpperCase()) + ": No credentials found");
+                Console.println("  " + Console.red("✗ ") + Console.bold(provider.toUpperCase()) + ": No credentials found");
                 promptForCredentials(provider, reader);
             }
         }
@@ -596,27 +620,27 @@ public class NewCommand implements Callable<Integer> {
      * Prompts user to configure credentials for a provider.
      */
     private void promptForCredentials(String provider, BufferedReader reader) throws IOException {
-        System.out.println();
-        System.out.println("    To configure " + provider.toUpperCase() + " credentials:");
+        Console.println();
+        Console.println("    To configure " + provider.toUpperCase() + " credentials:");
 
         switch (provider.toLowerCase()) {
             case "aws" -> {
-                System.out.println("      Option 1: aws configure");
-                System.out.println("      Option 2: export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...");
-                System.out.println("      Option 3: export AWS_PROFILE=your-profile");
+                Console.println("      Option 1: aws configure");
+                Console.println("      Option 2: export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...");
+                Console.println("      Option 3: export AWS_PROFILE=your-profile");
             }
             case "gcp" -> {
-                System.out.println("      Option 1: gcloud auth application-default login");
-                System.out.println("      Option 2: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json");
-                System.out.println("      Option 3: export GOOGLE_CLOUD_PROJECT=your-project");
+                Console.println("      Option 1: gcloud auth application-default login");
+                Console.println("      Option 2: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json");
+                Console.println("      Option 3: export GOOGLE_CLOUD_PROJECT=your-project");
             }
             case "azure" -> {
-                System.out.println("      Option 1: az login");
-                System.out.println("      Option 2: export AZURE_SUBSCRIPTION_ID=...");
+                Console.println("      Option 1: az login");
+                Console.println("      Option 2: export AZURE_SUBSCRIPTION_ID=...");
             }
         }
 
-        System.out.print("    Press Enter to continue...");
+        Console.print("    Press Enter to continue...");
         reader.readLine();
     }
 
@@ -624,12 +648,12 @@ public class NewCommand implements Callable<Integer> {
      * Shows warning when region is not configured (non-blocking).
      */
     private void warnMissingRegion(String provider) {
-        System.out.println("    " + yellow("\u26A0") + " No default region configured. To set one:");
+        Console.println("    " + Console.yellow("\u26A0") + " No default region configured. To set one:");
 
         switch (provider.toLowerCase()) {
-            case "aws" -> System.out.println("      aws configure set region <region>  OR  export AWS_REGION=<region>");
-            case "gcp" -> System.out.println("      gcloud config set compute/region <region>  OR  export CLOUDSDK_COMPUTE_REGION=<region>");
-            case "azure" -> System.out.println("      az configure --defaults location=<location>  OR  export AZURE_DEFAULTS_LOCATION=<location>");
+            case "aws" -> Console.println("      aws configure set region <region>  OR  export AWS_REGION=<region>");
+            case "gcp" -> Console.println("      gcloud config set compute/region <region>  OR  export CLOUDSDK_COMPUTE_REGION=<region>");
+            case "azure" -> Console.println("      az configure --defaults location=<location>  OR  export AZURE_DEFAULTS_LOCATION=<location>");
         }
     }
 

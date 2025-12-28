@@ -1,18 +1,14 @@
 package cloud.kitelang.cli.interactive;
 
+import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
 import org.jline.consoleui.prompt.CheckboxResult;
 import org.jline.consoleui.prompt.ConsolePrompt;
-import org.jline.consoleui.prompt.ListResult;
 import org.jline.consoleui.prompt.PromptResultItemIF;
-import org.jline.consoleui.prompt.builder.PromptBuilder;
 import org.jline.terminal.Terminal;
-import org.jline.terminal.TerminalBuilder;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Wrapper around JLine ConsoleUI for interactive terminal prompts.
@@ -30,7 +26,7 @@ public class InteractivePrompt implements AutoCloseable {
     private static final String BOLD = "\u001B[1m";
 
     private final Terminal terminal;
-    private final ConsolePrompt prompt;
+    private final ConsolePrompt.UiConfig config;
 
     /**
      * Represents an option in a selection prompt.
@@ -47,47 +43,41 @@ public class InteractivePrompt implements AutoCloseable {
 
     private InteractivePrompt(Terminal terminal) {
         this.terminal = terminal;
-        this.prompt = new ConsolePrompt(terminal);
+        // Configure checkbox characters: [✓] for checked, [ ] for unchecked
+        this.config = new ConsolePrompt.UiConfig(">", "[ ] ", "[✓] ", "[-] ");
     }
 
     /**
-     * Creates an InteractivePrompt instance.
+     * Creates a fresh ConsolePrompt for each operation.
+     * This ensures the internal Display state is clean.
+     */
+    private ConsolePrompt createPrompt() {
+        return new ConsolePrompt(terminal, config);
+    }
+
+    /**
+     * Creates an InteractivePrompt instance using the shared Console terminal.
      * Returns null if terminal is not available (e.g., piped input).
      */
     public static InteractivePrompt create() {
-        try {
-            var terminal = TerminalBuilder.builder()
-                    .system(true)
-                    .build();
-
-            if (!isInteractiveTerminal(terminal)) {
-                terminal.close();
-                return null;
-            }
-
-            return new InteractivePrompt(terminal);
-        } catch (IOException e) {
-            log.debug("Failed to create interactive terminal", e);
+        if (!Console.isInteractive()) {
+            log.debug("Terminal not interactive, cannot create InteractivePrompt");
             return null;
         }
+
+        var terminal = Console.getTerminal();
+        if (terminal == null) {
+            return null;
+        }
+
+        return new InteractivePrompt(terminal);
     }
 
     /**
      * Checks if the terminal supports interactive mode.
      */
     public static boolean isInteractive() {
-        try (var terminal = TerminalBuilder.builder().system(true).build()) {
-            return isInteractiveTerminal(terminal);
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    private static boolean isInteractiveTerminal(Terminal terminal) {
-        // Check if terminal is a dumb terminal or has no width (piped)
-        return terminal.getType() != null
-                && !terminal.getType().equals(Terminal.TYPE_DUMB)
-                && terminal.getWidth() > 0;
+        return Console.isInteractive();
     }
 
     /**
@@ -98,6 +88,7 @@ public class InteractivePrompt implements AutoCloseable {
      * @return The selected option's ID, or null if cancelled
      */
     public String selectOne(String message, List<Option> options) throws IOException {
+        var prompt = createPrompt();
         var builder = prompt.getPromptBuilder();
 
         var listBuilder = builder.createListPrompt()
@@ -132,6 +123,7 @@ public class InteractivePrompt implements AutoCloseable {
      * @return List of selected option IDs
      */
     public List<String> selectMany(String message, List<Option> options) throws IOException {
+        var prompt = createPrompt();
         var builder = prompt.getPromptBuilder();
 
         var checkboxBuilder = builder.createCheckboxPrompt()
@@ -168,6 +160,7 @@ public class InteractivePrompt implements AutoCloseable {
      * @return true for Yes, false for No
      */
     public boolean confirm(String message, boolean defaultValue) throws IOException {
+        var prompt = createPrompt();
         var builder = prompt.getPromptBuilder();
 
         var confirmBuilder = builder.createConfirmPromp()
@@ -198,6 +191,7 @@ public class InteractivePrompt implements AutoCloseable {
      * @return The user's input, or the default value if empty
      */
     public String input(String message, String defaultValue) throws IOException {
+        var prompt = createPrompt();
         var builder = prompt.getPromptBuilder();
 
         var inputBuilder = builder.createInputPrompt()
@@ -228,6 +222,7 @@ public class InteractivePrompt implements AutoCloseable {
      * @return The entered password
      */
     public String password(String message) throws IOException {
+        var prompt = createPrompt();
         var builder = prompt.getPromptBuilder();
 
         builder.createInputPrompt()
@@ -261,7 +256,7 @@ public class InteractivePrompt implements AutoCloseable {
      * Prints a success message with green checkmark.
      */
     public void printSuccess(String message) {
-        terminal.writer().println(GREEN + "\u2713 " + RESET + message);
+        terminal.writer().println(GREEN + "✓ " + RESET + message);
         terminal.flush();
     }
 
@@ -269,7 +264,7 @@ public class InteractivePrompt implements AutoCloseable {
      * Prints an error message with red X mark.
      */
     public void printError(String message) {
-        terminal.writer().println(RED + "\u2717 " + RESET + message);
+        terminal.writer().println(RED + "✗ " + RESET + message);
         terminal.flush();
     }
 
@@ -290,6 +285,14 @@ public class InteractivePrompt implements AutoCloseable {
     }
 
     /**
+     * Prints a separator line to visually separate sections and reset cursor.
+     */
+    public void printSeparator() {
+        terminal.writer().println();
+        terminal.flush();
+    }
+
+    /**
      * Prints a prompt/question indicator (cyan ?).
      */
     public void printPrompt(String message) {
@@ -298,9 +301,11 @@ public class InteractivePrompt implements AutoCloseable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
+        // Terminal is shared via Console, don't close it here
+        // Just flush any pending output
         if (terminal != null) {
-            terminal.close();
+            terminal.flush();
         }
     }
 }
