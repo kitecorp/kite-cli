@@ -119,6 +119,13 @@ public class NewCommand implements Callable<Integer> {
             // Validate project name (also validates CLI argument)
             validateProjectName(name);
 
+            // Configure state management before creating project (if interactive)
+            if (!skipInteractive) {
+                Console.println();
+                runStateBackendWizard();
+            }
+
+            // Show project summary and create
             Console.println();
             Console.box(
                 "Creating project: " + name,
@@ -130,12 +137,6 @@ public class NewCommand implements Callable<Integer> {
 
             var generator = new ProjectStructureGenerator();
             generator.generate(projectDir, name, providers, environments, force);
-
-            // Run state backend wizard BEFORE showing completion (if interactive)
-            if (!skipInteractive) {
-                Console.println();
-                runStateBackendWizard();
-            }
 
             Console.success("Project created successfully");
             Console.println();
@@ -186,15 +187,48 @@ public class NewCommand implements Callable<Integer> {
             return;
         }
 
-        // Project name - only ask if not already provided
-        if (projectName == null) {
-            projectName = prompt.input("Project name:", "infra");
+        projectName(prompt);
+
+        providers(prompt);
+
+        environmentSelection(prompt);
+    }
+
+    private void environmentSelection(InteractivePrompt prompt) throws IOException {
+        // Environments selection - only ask if not already provided
+        if (environments == null) {
+            var selectedEnvs = new ArrayList<>(prompt.selectMany(
+                    "Select environments:",
+                    List.of(
+                            new InteractivePrompt.Option("dev", "dev (Development)", null, true),
+                            new InteractivePrompt.Option("staging", "staging (Staging)", null, true),
+                            new InteractivePrompt.Option("prod", "prod (Production)", null, true),
+                            new InteractivePrompt.Option("custom", "custom (Enter custom names)", null, false)
+                    )
+            ));
+
+            // If "custom" was selected, prompt for custom environment names
+            if (selectedEnvs.remove("custom")) {
+                var customEnvs = prompt.input("Enter environment names:", "local, qa");
+                if (customEnvs != null && !customEnvs.isBlank()) {
+                    for (var env : customEnvs.split("[,\\s]+")) {
+                        var trimmed = env.trim().toLowerCase();
+                        if (!trimmed.isBlank()) {
+                            selectedEnvs.add(trimmed);
+                        }
+                    }
+                }
+            }
+
+            if (selectedEnvs.isEmpty()) {
+                environments = new String[]{"dev", "staging", "prod"};
+            } else {
+                environments = selectedEnvs.toArray(new String[0]);
+            }
         }
-        prompt.printSeparator();
+    }
 
-        // Validate project name
-        validateProjectName(projectName);
-
+    private void providers(InteractivePrompt prompt) throws IOException {
         // Providers selection - only ask if not already provided
         if (providers == null) {
             var selectedProviders = new ArrayList<>(prompt.selectMany(
@@ -231,38 +265,17 @@ public class NewCommand implements Callable<Integer> {
         if (!skipChecks) {
             checkProviderCredentials(prompt);
         }
+    }
 
-        // Environments selection - only ask if not already provided
-        if (environments == null) {
-            var selectedEnvs = new ArrayList<>(prompt.selectMany(
-                    "Select environments:",
-                    List.of(
-                            new InteractivePrompt.Option("dev", "dev (Development)", null, true),
-                            new InteractivePrompt.Option("staging", "staging (Staging)", null, true),
-                            new InteractivePrompt.Option("prod", "prod (Production)", null, true),
-                            new InteractivePrompt.Option("custom", "custom (Enter custom names)", null, false)
-                    )
-            ));
-
-            // If "custom" was selected, prompt for custom environment names
-            if (selectedEnvs.remove("custom")) {
-                var customEnvs = prompt.input("Enter environment names:", "local, qa");
-                if (customEnvs != null && !customEnvs.isBlank()) {
-                    for (var env : customEnvs.split("[,\\s]+")) {
-                        var trimmed = env.trim().toLowerCase();
-                        if (!trimmed.isBlank()) {
-                            selectedEnvs.add(trimmed);
-                        }
-                    }
-                }
-            }
-
-            if (selectedEnvs.isEmpty()) {
-                environments = new String[]{"dev", "staging", "prod"};
-            } else {
-                environments = selectedEnvs.toArray(new String[0]);
-            }
+    private void projectName(InteractivePrompt prompt) throws IOException {
+        // Project name - only ask if not already provided
+        if (projectName == null) {
+            projectName = prompt.input("Project name:", "infra");
         }
+        prompt.printSeparator();
+
+        // Validate project name
+        validateProjectName(projectName);
     }
 
     /**
