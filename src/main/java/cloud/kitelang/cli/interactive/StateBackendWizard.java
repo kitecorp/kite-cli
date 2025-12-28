@@ -58,7 +58,7 @@ public class StateBackendWizard {
                 "How do you want to store infrastructure state?",
                 List.of(
                         new InteractivePrompt.Option("kite-cloud", "Kite Cloud (Managed - team collaboration, no setup)"),
-                        new InteractivePrompt.Option("self-hosted", "Self-hosted PostgreSQL (bring your own database)"),
+                        new InteractivePrompt.Option("self-managed", "Self-managed PostgreSQL (bring your own database)"),
                         new InteractivePrompt.Option("skip", "Skip for now")
                 )
         );
