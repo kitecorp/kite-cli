@@ -127,11 +127,13 @@ public class NewCommand implements Callable<Integer> {
 
             // Show project summary and create
             Console.println();
+            var stateBackend = getStateBackendType();
             Console.box(
                 "Creating project: " + name,
                 "       Providers: " + String.join(", ", providers),
                 "    Environments: " + String.join(", ", environments),
                 "        Location: " + projectDir.toAbsolutePath(),
+                "   State backend: " + stateBackend,
                 "    State config: " + GlobalConfig.getConfigPath()
             );
             Console.println();
@@ -348,6 +350,33 @@ public class NewCommand implements Callable<Integer> {
             log.debug("Failed to run state backend wizard", e);
             Console.println("Run 'kite config state' to configure state backend later.");
             Console.println();
+        }
+    }
+
+    /**
+     * Gets a human-readable description of the configured state backend.
+     */
+    private String getStateBackendType() {
+        try {
+            var config = GlobalConfig.load();
+            var envs = config.getEnvironments();
+            if (envs.isEmpty()) {
+                return "Not configured";
+            }
+            // Check the first configured environment's state type
+            var firstEnv = envs.values().iterator().next();
+            var state = firstEnv.getState();
+            if (state == null) {
+                return "Not configured";
+            }
+            return switch (state.getType()) {
+                case "postgresql" -> "Self-managed PostgreSQL";
+                case "kite-cloud" -> "Kite Cloud";
+                default -> state.getType();
+            };
+        } catch (Exception e) {
+            log.debug("Failed to get state backend type", e);
+            return "Not configured";
         }
     }
 
