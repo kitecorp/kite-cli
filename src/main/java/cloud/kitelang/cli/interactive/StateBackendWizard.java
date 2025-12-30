@@ -201,10 +201,11 @@ public class StateBackendWizard {
 
     /**
      * Gets a sensible default URL for an environment.
+     * Uses schema-per-environment pattern: database holds all envs, each env is a schema.
      */
     private String getDefaultUrl(String environment) {
-        var dbName = "kite_" + environment.toLowerCase().replaceAll("[^a-z0-9]", "_");
-        return "jdbc:postgresql://localhost:5432/" + dbName;
+        var schema = environment.toLowerCase().replaceAll("[^a-z0-9]", "_");
+        return "jdbc:postgresql://localhost:5432/kite?currentSchema=" + schema;
     }
 
     /**

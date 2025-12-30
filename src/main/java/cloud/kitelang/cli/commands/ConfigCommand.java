@@ -2,6 +2,7 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.commands.config.StateCommand;
 import cloud.kitelang.cli.config.ConfigLoader;
+import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
@@ -39,29 +40,29 @@ public class ConfigCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        System.out.println("Usage: kite config <command>");
-        System.out.println();
-        System.out.println("Commands:");
-        System.out.println("  get <key>          Get a config value");
-        System.out.println("  set <key> <value>  Set a config value");
-        System.out.println("  list               List all config values");
-        System.out.println("  path               Show config file path");
-        System.out.println("  state              Configure state backend (database connection)");
-        System.out.println();
-        System.out.println("Config keys:");
-        System.out.println("  defaults.environment  Default environment (dev, staging, prod)");
-        System.out.println("  defaults.provider     Default cloud provider");
-        System.out.println("  defaults.output       Output format (table, json, yaml)");
-        System.out.println("  verbosity             Log level (0=quiet, 1=normal, 2=verbose)");
-        System.out.println("  aws.profile           AWS profile name");
-        System.out.println("  aws.region            AWS region");
-        System.out.println();
-        System.out.println("Examples:");
-        System.out.println("  kite config set defaults.environment prod");
-        System.out.println("  kite config set aws.profile production");
-        System.out.println("  kite config get defaults.environment");
-        System.out.println("  kite config list");
-        System.out.println("  kite config state                         Configure state backend");
+        Console.println("Usage: kite config <command>");
+        Console.println();
+        Console.println("Commands:");
+        Console.println("  get <key>          Get a config value");
+        Console.println("  set <key> <value>  Set a config value");
+        Console.println("  list               List all config values");
+        Console.println("  path               Show config file path");
+        Console.println("  state              Configure state backend (database connection)");
+        Console.println();
+        Console.println("Config keys:");
+        Console.println("  defaults.environment  Default environment (dev, staging, prod)");
+        Console.println("  defaults.provider     Default cloud provider");
+        Console.println("  defaults.output       Output format (table, json, yaml)");
+        Console.println("  verbosity             Log level (0=quiet, 1=normal, 2=verbose)");
+        Console.println("  aws.profile           AWS profile name");
+        Console.println("  aws.region            AWS region");
+        Console.println();
+        Console.println("Examples:");
+        Console.println("  kite config set defaults.environment prod");
+        Console.println("  kite config set aws.profile production");
+        Console.println("  kite config get defaults.environment");
+        Console.println("  kite config list");
+        Console.println("  kite config state                         Configure state backend");
         return 0;
     }
 
@@ -86,10 +87,10 @@ public class ConfigCommand implements Callable<Integer> {
         public Integer call() {
             var value = ConfigLoader.get(key);
             if (value == null) {
-                System.err.println("Key not found: " + key);
+                Console.error("Key not found: " + key);
                 return 1;
             }
-            System.out.println(value);
+            Console.println(value);
             return 0;
         }
     }
@@ -122,10 +123,10 @@ public class ConfigCommand implements Callable<Integer> {
         public Integer call() {
             try {
                 ConfigLoader.set(key, value);
-                System.out.println("Set " + key + " = " + value);
+                Console.success("Set " + key + " = " + value);
                 return 0;
             } catch (Exception e) {
-                System.err.println("Failed to set config: " + e.getMessage());
+                Console.error("Failed to set config: " + e.getMessage());
                 return 1;
             }
         }
@@ -146,8 +147,8 @@ public class ConfigCommand implements Callable<Integer> {
             var config = ConfigLoader.list();
 
             if (config.isEmpty()) {
-                System.out.println("No configuration set.");
-                System.out.println("Config file: " + ConfigLoader.configFile());
+                Console.println("No configuration set.");
+                Console.println("Config file: " + ConfigLoader.configFile());
                 return 0;
             }
 
@@ -158,7 +159,7 @@ public class ConfigCommand implements Callable<Integer> {
                     .orElse(20);
 
             for (var entry : config.entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList()) {
-                System.out.printf("%-" + maxLen + "s = %s%n", entry.getKey(), entry.getValue());
+                Console.printf("%-" + maxLen + "s = %s%n", entry.getKey(), entry.getValue());
             }
 
             return 0;
@@ -177,7 +178,7 @@ public class ConfigCommand implements Callable<Integer> {
 
         @Override
         public Integer call() {
-            System.out.println(ConfigLoader.configFile());
+            Console.println(ConfigLoader.configFile().toString());
             return 0;
         }
     }

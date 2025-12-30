@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
 import picocli.AutoComplete;
 import picocli.CommandLine;
@@ -72,14 +73,14 @@ public class CompletionCommand implements Callable<Integer> {
                 case "zsh" -> generateZshCompletion(rootCommand);
                 case "fish" -> generateFishCompletion(rootCommand);
                 default -> {
-                    System.err.println("Unknown shell: " + shell);
-                    System.err.println("Supported shells: bash, zsh, fish");
+                    Console.error("Unknown shell: " + shell);
+                    Console.println("Supported shells: bash, zsh, fish");
                     yield 1;
                 }
             };
         } catch (Exception e) {
             log.error("Failed to generate completion", e);
-            System.err.println("Error: " + e.getMessage());
+            Console.error(e.getMessage());
             return 1;
         }
     }

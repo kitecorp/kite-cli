@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.util.ProgressBar;
 import cloud.kitelang.engine.distribution.ProviderInstaller;
 import cloud.kitelang.engine.distribution.ProviderSpec;
@@ -42,20 +43,20 @@ public class ProvidersCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        System.out.println("Usage: kite providers <command>");
-        System.out.println();
-        System.out.println("Commands:");
-        System.out.println("  install    Install providers");
-        System.out.println("  list       List installed providers");
-        System.out.println();
-        System.out.println("Examples:");
-        System.out.println("  kite providers install                              # Install from kitefile.yml");
-        System.out.println("  kite providers install aws                          # Download from GitHub Releases");
-        System.out.println("  kite providers install aws --from-source            # Clone and build from source");
-        System.out.println("  kite providers install aws@1.0.0                    # Install specific version");
-        System.out.println("  kite providers install myp --git github.com/org/p   # Install from git repo");
-        System.out.println("  kite providers list                                 # List global providers");
-        System.out.println("  kite providers list --local                         # List project providers");
+        Console.println("Usage: kite providers <command>");
+        Console.println();
+        Console.println("Commands:");
+        Console.println("  install    Install providers");
+        Console.println("  list       List installed providers");
+        Console.println();
+        Console.println("Examples:");
+        Console.println("  kite providers install                              # Install from kitefile.yml");
+        Console.println("  kite providers install aws                          # Download from GitHub Releases");
+        Console.println("  kite providers install aws --from-source            # Clone and build from source");
+        Console.println("  kite providers install aws@1.0.0                    # Install specific version");
+        Console.println("  kite providers install myp --git github.com/org/p   # Install from git repo");
+        Console.println("  kite providers list                                 # List global providers");
+        Console.println("  kite providers list --local                         # List project providers");
         return 0;
     }
 
@@ -139,7 +140,7 @@ public class ProvidersCommand implements Callable<Integer> {
                     return installFromKitefile(installer);
                 }
             } catch (Exception e) {
-                System.err.println("✗ Error: " + e.getMessage());
+                Console.error(e.getMessage());
                 log.debug("Installation failed", e);
                 return 1;
             }
@@ -158,7 +159,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 name = nameWithVersion;
             }
 
-            System.out.println("Installing provider: " + name + "@" + version);
+            Console.println("Installing provider: " + name + "@" + version);
 
             var specBuilder = ProviderSpec.builder().name(name);
 
@@ -205,7 +206,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 return 0;
             } catch (Exception e) {
                 progress.clear();
-                System.err.println("✗ Failed to install " + name + ": " + e.getMessage());
+                Console.error("Failed to install " + name + ": " + e.getMessage());
                 return 1;
             }
         }
@@ -225,8 +226,8 @@ public class ProvidersCommand implements Callable<Integer> {
             Path kitefilePath = Path.of("kitefile.yml");
 
             if (!Files.exists(kitefilePath)) {
-                System.err.println("✗ No kitefile.yml found in current directory");
-                System.err.println("  Run 'kite new' to create a project, or specify a provider name");
+                Console.error("No kitefile.yml found in current directory");
+                Console.println("  Run 'kite new' to create a project, or specify a provider name");
                 return 1;
             }
 
@@ -234,12 +235,12 @@ public class ProvidersCommand implements Callable<Integer> {
             var config = kitefile.config();
 
             if (config.providers().isEmpty()) {
-                System.out.println("No providers configured in kitefile.yml");
+                Console.println("No providers configured in kitefile.yml");
                 return 0;
             }
 
-            System.out.println("Installing " + config.providers().size() + " provider(s)...");
-            System.out.println();
+            Console.println("Installing " + config.providers().size() + " provider(s)...");
+            Console.println();
 
             int installed = 0;
             int failed = 0;
@@ -274,7 +275,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 var spec = specBuilder.build();
 
                 if (installer.isInstalled(spec)) {
-                    System.out.println("  ✓ " + dep.name() + "@" + displayVersion + " (already installed)");
+                    Console.println("  ✓ " + dep.name() + "@" + displayVersion + " (already installed)");
                     installed++;
                     continue;
                 }
@@ -289,16 +290,16 @@ public class ProvidersCommand implements Callable<Integer> {
                     installed++;
                 } catch (Exception e) {
                     progress.clear();
-                    System.out.println("  ✗ " + dep.name() + "@" + displayVersion + " - " + e.getMessage());
+                    Console.println("  ✗ " + dep.name() + "@" + displayVersion + " - " + e.getMessage());
                     failed++;
                 }
             }
 
-            System.out.println();
+            Console.println();
             if (failed == 0) {
-                System.out.println("✓ All providers installed successfully");
+                Console.success("All providers installed successfully");
             } else {
-                System.out.println("Installed: " + installed + ", Failed: " + failed);
+                Console.println("Installed: " + installed + ", Failed: " + failed);
             }
 
             return failed > 0 ? 1 : 0;
@@ -334,11 +335,11 @@ public class ProvidersCommand implements Callable<Integer> {
                     ? Kitefile.localProvidersPath()
                     : Kitefile.globalProvidersPath();
 
-            System.out.println("Providers directory: " + providersPath);
-            System.out.println();
+            Console.println("Providers directory: " + providersPath);
+            Console.println();
 
             if (!Files.exists(providersPath)) {
-                System.out.println("No providers installed");
+                Console.println("No providers installed");
                 return 0;
             }
 
@@ -349,18 +350,18 @@ public class ProvidersCommand implements Callable<Integer> {
                         .toList();
 
                 if (providers.isEmpty()) {
-                    System.out.println("No providers installed");
+                    Console.println("No providers installed");
                     return 0;
                 }
 
-                System.out.println("Installed providers:");
+                Console.println("Installed providers:");
                 for (var provider : providers) {
-                    System.out.println("  " + provider.getFileName());
+                    Console.println("  " + provider.getFileName());
                 }
 
                 return 0;
             } catch (Exception e) {
-                System.err.println("✗ Error listing providers: " + e.getMessage());
+                Console.error("Error listing providers: " + e.getMessage());
                 return 1;
             }
         }
