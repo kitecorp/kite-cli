@@ -15,3 +15,7 @@ providers:
 #  - name: custom
 #    git: github.com/myorg/my-provider
 #    ref: v1.0.0              # Build from source
+
+# State backend is configured in ~/.kite/config.yml (per project, per environment)
+# Configure with: kite config state -e <environment>
+# See: kite config state --show
