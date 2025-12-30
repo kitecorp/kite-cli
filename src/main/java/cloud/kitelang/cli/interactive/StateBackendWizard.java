@@ -1,7 +1,6 @@
 package cloud.kitelang.cli.interactive;
 
 import cloud.kitelang.cli.config.GlobalConfig;
-import cloud.kitelang.cli.config.GlobalConfig.StateConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -57,9 +56,9 @@ public class StateBackendWizard {
         var backendType = prompt.selectOne(
                 "How do you want to store infrastructure state?",
                 List.of(
-                        new InteractivePrompt.Option("kite-cloud", "Kite Cloud (Managed - team collaboration, no setup)"),
-                        new InteractivePrompt.Option("self-managed", "Self-managed PostgreSQL (bring your own database)"),
-                        new InteractivePrompt.Option("skip", "Skip for now")
+                        new InteractivePrompt.Option("kite-cloud",   "Kite Cloud   (Managed - team collaboration, no setup)"),
+                        new InteractivePrompt.Option("self-managed", "Self-managed (PostgreSQL bring your own database)"),
+                        new InteractivePrompt.Option("skip",         "Skip for now")
                 )
         );
 
