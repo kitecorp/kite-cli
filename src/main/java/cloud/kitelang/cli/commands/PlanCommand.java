@@ -241,7 +241,7 @@ public class PlanCommand implements Callable<Integer> {
                 Console.println("  kite config state");
                 Console.println();
                 Console.println("Or use non-interactive mode:");
-                Console.println("  kite config state -e " + environment + " --url jdbc:postgresql://localhost:5432/kite?currentSchema=" + environment);
+                Console.println("  kite config state -e " + environment + " --url jdbc:postgresql://localhost:5432/postgres?currentSchema=" + environment);
                 return false;
             }
 

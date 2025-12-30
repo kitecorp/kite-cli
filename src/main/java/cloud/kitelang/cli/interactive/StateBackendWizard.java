@@ -204,7 +204,7 @@ public class StateBackendWizard {
      */
     private String getDefaultUrl(String environment) {
         var schema = environment.toLowerCase().replaceAll("[^a-z0-9]", "_");
-        return "jdbc:postgresql://localhost:5432/kite?currentSchema=" + schema;
+        return "jdbc:postgresql://localhost:5432/postgres?currentSchema=" + schema;
     }
 
     /**

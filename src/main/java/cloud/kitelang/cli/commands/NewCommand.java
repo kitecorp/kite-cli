@@ -131,7 +131,8 @@ public class NewCommand implements Callable<Integer> {
                 "Creating project: " + name,
                 "       Providers: " + String.join(", ", providers),
                 "    Environments: " + String.join(", ", environments),
-                "        Location: " + projectDir.toAbsolutePath()
+                "        Location: " + projectDir.toAbsolutePath(),
+                "    State config: " + GlobalConfig.getConfigPath()
             );
             Console.println();
 
