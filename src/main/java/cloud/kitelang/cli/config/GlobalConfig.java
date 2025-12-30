@@ -10,12 +10,15 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Manages the global Kite configuration stored in ~/.kite/config.yml.
- * Handles per-environment state backend configurations.
+ * Handles per-project, per-environment state backend configurations.
  */
 @Slf4j
 public class GlobalConfig {
@@ -38,6 +41,16 @@ public class GlobalConfig {
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class KiteConfig {
+        private List<ProjectConfig> projects = new ArrayList<>();
+    }
+
+    /**
+     * Per-project configuration.
+     */
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ProjectConfig {
+        private String name;
         private Map<String, EnvironmentConfig> environments = new HashMap<>();
     }
 
@@ -63,13 +76,14 @@ public class GlobalConfig {
 
         /**
          * Gets the effective password with priority: env var > config file.
-         * Environment variable format: KITE_DB_PASSWORD_{ENVIRONMENT}
+         * Environment variable format: KITE__{PROJECT}__{ENVIRONMENT}__DB_PASSWORD
          *
+         * @param project     the project name
          * @param environment the environment name (e.g., "prod", "dev")
          * @return the resolved password
          */
-        public String getEffectivePassword(String environment) {
-            var envVarName = getPasswordEnvVarName(environment);
+        public String getEffectivePassword(String project, String environment) {
+            var envVarName = getPasswordEnvVarName(project, environment);
             var envPassword = System.getenv(envVarName);
             if (envPassword != null && !envPassword.isBlank()) {
                 return envPassword;
@@ -80,20 +94,25 @@ public class GlobalConfig {
         /**
          * Checks if password is available from any source.
          *
+         * @param project     the project name
          * @param environment the environment name
          * @return true if password is available
          */
-        public boolean hasPassword(String environment) {
-            var effective = getEffectivePassword(environment);
+        public boolean hasPassword(String project, String environment) {
+            var effective = getEffectivePassword(project, environment);
             return effective != null && !effective.isBlank();
         }
     }
 
     /**
-     * Gets the environment variable name for a given environment's password.
+     * Gets the environment variable name for a given project/environment's password.
+     * Format: KITE__{PROJECT}__{ENVIRONMENT}__DB_PASSWORD
+     * Uses double underscores as separators to clearly delimit project/environment names.
      */
-    public static String getPasswordEnvVarName(String environment) {
-        return "KITE_DB_PASSWORD_" + environment.toUpperCase().replaceAll("[^A-Z0-9]", "_");
+    public static String getPasswordEnvVarName(String project, String environment) {
+        var projectPart = project.toUpperCase().replaceAll("[^A-Z0-9]", "_");
+        var envPart = environment.toUpperCase().replaceAll("[^A-Z0-9]", "_");
+        return "KITE__" + projectPart + "__" + envPart + "__DB_PASSWORD";
     }
 
     private GlobalConfig(Path configPath) {
@@ -147,40 +166,97 @@ public class GlobalConfig {
     }
 
     /**
-     * Gets the state configuration for a specific environment.
+     * Finds a project by name.
      */
-    public StateConfig getStateConfig(String environment) {
-        var envConfig = config.getEnvironments().get(environment);
+    private Optional<ProjectConfig> findProject(String projectName) {
+        return config.getProjects().stream()
+                .filter(p -> projectName.equals(p.getName()))
+                .findFirst();
+    }
+
+    /**
+     * Gets or creates a project by name.
+     */
+    private ProjectConfig getOrCreateProject(String projectName) {
+        return findProject(projectName).orElseGet(() -> {
+            var project = new ProjectConfig();
+            project.setName(projectName);
+            config.getProjects().add(project);
+            return project;
+        });
+    }
+
+    /**
+     * Gets the state configuration for a specific project and environment.
+     */
+    public StateConfig getStateConfig(String project, String environment) {
+        var projectConfig = findProject(project).orElse(null);
+        if (projectConfig == null) {
+            return null;
+        }
+        var envConfig = projectConfig.getEnvironments().get(environment);
         return envConfig != null ? envConfig.getState() : null;
     }
 
     /**
-     * Sets the state configuration for a specific environment.
+     * Sets the state configuration for a specific project and environment.
      */
-    public void setStateConfig(String environment, StateConfig stateConfig) {
-        var envConfig = config.getEnvironments().computeIfAbsent(environment, k -> new EnvironmentConfig());
+    public void setStateConfig(String project, String environment, StateConfig stateConfig) {
+        var projectConfig = getOrCreateProject(project);
+        var envConfig = projectConfig.getEnvironments().computeIfAbsent(environment, k -> new EnvironmentConfig());
         envConfig.setState(stateConfig);
     }
 
     /**
-     * Gets all configured environments.
+     * Gets all configured projects.
      */
-    public Map<String, EnvironmentConfig> getEnvironments() {
-        return config.getEnvironments();
+    public List<ProjectConfig> getProjects() {
+        return config.getProjects();
     }
 
     /**
-     * Checks if an environment is configured.
+     * Gets all configured environments for a project.
      */
-    public boolean hasEnvironment(String environment) {
-        return config.getEnvironments().containsKey(environment);
+    public Map<String, EnvironmentConfig> getEnvironments(String project) {
+        return findProject(project)
+                .map(ProjectConfig::getEnvironments)
+                .orElse(Map.of());
     }
 
     /**
-     * Removes an environment configuration.
+     * Checks if a project is configured.
      */
-    public void removeEnvironment(String environment) {
-        config.getEnvironments().remove(environment);
+    public boolean hasProject(String project) {
+        return findProject(project).isPresent();
+    }
+
+    /**
+     * Checks if an environment is configured for a project.
+     */
+    public boolean hasEnvironment(String project, String environment) {
+        return findProject(project)
+                .map(p -> p.getEnvironments().containsKey(environment))
+                .orElse(false);
+    }
+
+    /**
+     * Removes an environment configuration from a project.
+     */
+    public void removeEnvironment(String project, String environment) {
+        findProject(project).ifPresent(projectConfig -> {
+            projectConfig.getEnvironments().remove(environment);
+            // Clean up empty project
+            if (projectConfig.getEnvironments().isEmpty()) {
+                config.getProjects().remove(projectConfig);
+            }
+        });
+    }
+
+    /**
+     * Removes an entire project configuration.
+     */
+    public void removeProject(String project) {
+        findProject(project).ifPresent(p -> config.getProjects().remove(p));
     }
 
     /**

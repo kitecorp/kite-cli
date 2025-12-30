@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.engine.Engine;
 import lombok.extern.slf4j.Slf4j;
@@ -88,6 +89,12 @@ public class ApplyCommand implements Callable<Integer> {
             log.info("Environment: {}", environment);
             log.info("Provider: {}", provider);
 
+            // Check state configuration for this environment
+            var stateConfig = getStateConfiguration();
+            if (stateConfig == null) {
+                return 1;
+            }
+
             // Determine what files to apply
             var kiteFiles = determineKiteFiles();
             Console.println("Applying: " + kiteFiles.size() + " file(s)");
@@ -110,11 +117,21 @@ public class ApplyCommand implements Callable<Integer> {
                     ? kiteFiles.get(0).toString()
                     : "environments/" + environment;
 
-            // Use Engine to parse, plan, and apply
-            try (var engine = Engine.builder()
-                    .withProvidersDir(Path.of("providers"))
-                    .build()) {
+            // Build Engine with credentials from GlobalConfig
+            var engineBuilder = Engine.builder()
+                    .withProvidersDir(Path.of("providers"));
 
+            // Pass database credentials from state configuration
+            if ("postgresql".equals(stateConfig.getType())) {
+                var projectName = getProjectName();
+                engineBuilder.withDatabaseCredentials(
+                        stateConfig.getUrl(),
+                        stateConfig.getUsername(),
+                        stateConfig.getEffectivePassword(projectName, environment)
+                );
+            }
+
+            try (var engine = engineBuilder.build()) {
                 var resources = engine.parse(source.toString(), filePath);
                 var plan = engine.plan(resources);
 
@@ -204,6 +221,57 @@ public class ApplyCommand implements Callable<Integer> {
                 .filter(p -> p.toString().endsWith(".kite"))
                 .sorted()
                 .toList();
+        }
+    }
+
+    /**
+     * Gets the project name from the current directory.
+     */
+    private String getProjectName() {
+        return Path.of("").toAbsolutePath().getFileName().toString();
+    }
+
+    /**
+     * Gets the state configuration for the target environment.
+     * Returns the StateConfig if valid, null otherwise (with error messages printed).
+     */
+    private GlobalConfig.StateConfig getStateConfiguration() {
+        try {
+            var projectName = getProjectName();
+            var config = GlobalConfig.load();
+            var stateConfig = config.getStateConfig(projectName, environment);
+
+            if (stateConfig == null) {
+                Console.error("No state configuration found for project '" + projectName + "' environment '" + environment + "'");
+                Console.println();
+                Console.println("Configure state backend by running:");
+                Console.println("  kite config state");
+                Console.println();
+                Console.println("Or use non-interactive mode:");
+                Console.println("  kite config state -e " + environment + " --url jdbc:postgresql://localhost:5432/postgres?currentSchema=" + environment);
+                return null;
+            }
+
+            // Check if password is available for PostgreSQL
+            if ("postgresql".equals(stateConfig.getType())) {
+                if (!stateConfig.hasPassword(projectName, environment)) {
+                    var envVarName = GlobalConfig.getPasswordEnvVarName(projectName, environment);
+                    Console.warning("No password configured for environment '" + environment + "'");
+                    Console.println("Set password via:");
+                    Console.println("  - Config: kite config state -e " + environment + " --password");
+                    Console.println("  - Env var: export " + envVarName + "=<password>");
+                    Console.println();
+                }
+
+                log.debug("Using state backend: {} (user: {})", stateConfig.getUrl(), stateConfig.getUsername());
+            } else if ("kite-cloud".equals(stateConfig.getType())) {
+                log.debug("Using Kite Cloud state backend");
+            }
+
+            return stateConfig;
+        } catch (IOException e) {
+            log.debug("Failed to load state configuration", e);
+            return null;
         }
     }
 }

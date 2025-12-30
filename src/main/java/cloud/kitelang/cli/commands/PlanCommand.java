@@ -119,17 +119,18 @@ public class PlanCommand implements Callable<Integer> {
             log.info("Provider: {}", provider);
 
             // Check state configuration for this environment
-            if (!checkStateConfiguration()) {
+            var stateConfig = getStateConfiguration();
+            if (stateConfig == null) {
                 return 1;
             }
 
             // Determine which file(s) to plan
             var kiteFiles = determineKiteFiles();
-            System.out.println("Planning: " + kiteFiles.size() + " file(s)");
-            System.out.println();
+            Console.println("Planning: " + kiteFiles.size() + " file(s)");
+            Console.println();
 
             if (refresh) {
-                System.out.println("Refreshing state...");
+                Console.println("Refreshing state...");
                 refreshState();
             }
 
@@ -145,11 +146,21 @@ public class PlanCommand implements Callable<Integer> {
                     ? kiteFiles.get(0).toString()
                     : "environments/" + environment;
 
-            // Use Engine to parse and plan
-            try (var engine = Engine.builder()
-                    .withProvidersDir(Path.of("providers"))
-                    .build()) {
+            // Build Engine with credentials from GlobalConfig
+            var engineBuilder = Engine.builder()
+                    .withProvidersDir(Path.of("providers"));
 
+            // Pass database credentials from state configuration
+            if ("postgresql".equals(stateConfig.getType())) {
+                var projectName = getProjectName();
+                engineBuilder.withDatabaseCredentials(
+                        stateConfig.getUrl(),
+                        stateConfig.getUsername(),
+                        stateConfig.getEffectivePassword(projectName, environment)
+                );
+            }
+
+            try (var engine = engineBuilder.build()) {
                 var resources = engine.parse(source.toString(), filePath);
                 var plan = engine.plan(resources);
 
@@ -161,11 +172,11 @@ public class PlanCommand implements Callable<Integer> {
 
                 if (outputFile != null) {
                     // TODO: Serialize plan to file
-                    System.out.println("\nPlan saved to: " + outputFile);
+                    Console.println("\nPlan saved to: " + outputFile);
                 }
             }
 
-            System.out.println("\nTo apply this plan, run: kite apply --env " + environment);
+            Console.println("\nTo apply this plan, run: kite apply --env " + environment);
 
             return 0;
 
@@ -226,29 +237,38 @@ public class PlanCommand implements Callable<Integer> {
     }
 
     /**
-     * Checks if state is configured for the target environment.
-     * Returns true if configuration is valid, false otherwise.
+     * Gets the project name from the current directory.
+     * Uses the directory name as the project identifier.
      */
-    private boolean checkStateConfiguration() {
+    private String getProjectName() {
+        return Path.of("").toAbsolutePath().getFileName().toString();
+    }
+
+    /**
+     * Gets the state configuration for the target environment.
+     * Returns the StateConfig if valid, null otherwise (with error messages printed).
+     */
+    private GlobalConfig.StateConfig getStateConfiguration() {
         try {
+            var projectName = getProjectName();
             var config = GlobalConfig.load();
-            var stateConfig = config.getStateConfig(environment);
+            var stateConfig = config.getStateConfig(projectName, environment);
 
             if (stateConfig == null) {
-                Console.error("No state configuration found for environment '" + environment + "'");
+                Console.error("No state configuration found for project '" + projectName + "' environment '" + environment + "'");
                 Console.println();
                 Console.println("Configure state backend by running:");
                 Console.println("  kite config state");
                 Console.println();
                 Console.println("Or use non-interactive mode:");
                 Console.println("  kite config state -e " + environment + " --url jdbc:postgresql://localhost:5432/postgres?currentSchema=" + environment);
-                return false;
+                return null;
             }
 
             // Check if password is available for PostgreSQL
             if ("postgresql".equals(stateConfig.getType())) {
-                if (!stateConfig.hasPassword(environment)) {
-                    var envVarName = GlobalConfig.getPasswordEnvVarName(environment);
+                if (!stateConfig.hasPassword(projectName, environment)) {
+                    var envVarName = GlobalConfig.getPasswordEnvVarName(projectName, environment);
                     Console.warning("No password configured for environment '" + environment + "'");
                     Console.println("Set password via:");
                     Console.println("  - Config: kite config state -e " + environment + " --password");
@@ -261,11 +281,12 @@ public class PlanCommand implements Callable<Integer> {
                 log.debug("Using Kite Cloud state backend");
             }
 
-            return true;
+            return stateConfig;
         } catch (IOException e) {
             log.debug("Failed to load state configuration", e);
-            // Config file doesn't exist - continue without state (will fail later if needed)
-            return true;
+            // Config file doesn't exist - return a default config to continue
+            // This allows basic operations without configured state
+            return null;
         }
     }
 

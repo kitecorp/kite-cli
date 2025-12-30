@@ -20,13 +20,14 @@ public class StateBackendWizard {
 
     private final InteractivePrompt prompt;
     private final GlobalConfig config;
+    private final String projectName;
     private final List<String> environments;
 
     /**
      * Creates a wizard with default environments.
      */
-    public StateBackendWizard(InteractivePrompt prompt, GlobalConfig config) {
-        this(prompt, config, DEFAULT_ENVIRONMENTS);
+    public StateBackendWizard(InteractivePrompt prompt, GlobalConfig config, String projectName) {
+        this(prompt, config, projectName, DEFAULT_ENVIRONMENTS);
     }
 
     /**
@@ -34,11 +35,13 @@ public class StateBackendWizard {
      *
      * @param prompt       the interactive prompt
      * @param config       the global config
+     * @param projectName  the project name for scoping credentials
      * @param environments the list of environments to configure
      */
-    public StateBackendWizard(InteractivePrompt prompt, GlobalConfig config, List<String> environments) {
+    public StateBackendWizard(InteractivePrompt prompt, GlobalConfig config, String projectName, List<String> environments) {
         this.prompt = prompt;
         this.config = config;
+        this.projectName = projectName;
         this.environments = environments != null && !environments.isEmpty()
                 ? environments
                 : DEFAULT_ENVIRONMENTS;
@@ -129,7 +132,7 @@ public class StateBackendWizard {
             prompt.printInfo("--- Configuring: " + environment + " ---");
 
             // Check if already configured
-            if (config.hasEnvironment(environment)) {
+            if (config.hasEnvironment(projectName, environment)) {
                 if (!prompt.confirm("Environment '" + environment + "' is already configured. Overwrite?", false)) {
                     continue;
                 }
@@ -156,7 +159,7 @@ public class StateBackendWizard {
 
                 // Save configuration with password
                 var stateConfig = GlobalConfig.createPostgreSQLConfig(url, username, password);
-                config.setStateConfig(environment, stateConfig);
+                config.setStateConfig(projectName, environment, stateConfig);
 
             } else {
                 prompt.printError("Failed to connect to PostgreSQL");
@@ -165,7 +168,7 @@ public class StateBackendWizard {
                 }
 
                 var stateConfig = GlobalConfig.createPostgreSQLConfig(url, username, password);
-                config.setStateConfig(environment, stateConfig);
+                config.setStateConfig(projectName, environment, stateConfig);
             }
 
             prompt.printInfo("");
@@ -211,6 +214,7 @@ public class StateBackendWizard {
      * Runs the wizard for a specific environment (non-interactive mode).
      *
      * @param config      the global config
+     * @param projectName the project name
      * @param environment the target environment (dev, staging, prod)
      * @param url         PostgreSQL connection URL
      * @param username    database username
@@ -218,13 +222,14 @@ public class StateBackendWizard {
      */
     public static void configureEnvironment(
             GlobalConfig config,
+            String projectName,
             String environment,
             String url,
             String username,
             String password
     ) throws IOException {
         var stateConfig = GlobalConfig.createPostgreSQLConfig(url, username, password);
-        config.setStateConfig(environment, stateConfig);
+        config.setStateConfig(projectName, environment, stateConfig);
         config.save();
     }
 }

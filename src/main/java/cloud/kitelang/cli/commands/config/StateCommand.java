@@ -8,11 +8,12 @@ import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 /**
  * Configures state backend settings for infrastructure state storage.
- * State configuration is stored in ~/.kite/config.yml per environment.
+ * State configuration is stored in ~/.kite/config.yml per project and environment.
  */
 @Command(
         name = "state",
@@ -22,7 +23,7 @@ import java.util.concurrent.Callable;
                 "Examples:",
                 "  kite config state                  Interactive state configuration wizard",
                 "  kite config state --show           Show current state configuration",
-                "  kite config state -e prod --url jdbc:postgresql://db.example.com:5432/kite",
+                "  kite config state -p myproject -e prod --url jdbc:postgresql://db.example.com:5432/postgres",
                 "",
                 "State configuration is stored in: ~/.kite/config.yml"
         },
@@ -30,6 +31,12 @@ import java.util.concurrent.Callable;
 )
 @Slf4j
 public class StateCommand implements Callable<Integer> {
+
+    @Option(
+            names = {"-p", "--project"},
+            description = "Project name (defaults to current directory name)"
+    )
+    private String project;
 
     @Option(
             names = {"-e", "--environment"},
@@ -74,22 +81,23 @@ public class StateCommand implements Callable<Integer> {
     public Integer call() {
         try {
             var config = GlobalConfig.load();
+            var projectName = getProjectName();
 
             if (show) {
-                return showConfiguration(config);
+                return showConfiguration(config, projectName);
             }
 
             if (remove) {
-                return removeConfiguration(config);
+                return removeConfiguration(config, projectName);
             }
 
             // If environment and URL provided, configure non-interactively
             if (environment != null && url != null) {
-                return configureNonInteractive(config);
+                return configureNonInteractive(config, projectName);
             }
 
             // Otherwise, run interactive wizard
-            return runInteractiveWizard(config);
+            return runInteractiveWizard(config, projectName);
 
         } catch (Exception e) {
             log.error("Failed to configure state", e);
@@ -98,10 +106,20 @@ public class StateCommand implements Callable<Integer> {
         }
     }
 
-    private int showConfiguration(GlobalConfig config) {
-        var environments = config.getEnvironments();
+    /**
+     * Gets the project name from option or current directory.
+     */
+    private String getProjectName() {
+        if (project != null && !project.isBlank()) {
+            return project;
+        }
+        return Path.of("").toAbsolutePath().getFileName().toString();
+    }
 
-        if (environments.isEmpty()) {
+    private int showConfiguration(GlobalConfig config, String projectName) {
+        var projects = config.getProjects();
+
+        if (projects.isEmpty()) {
             Console.println("No state configurations found.");
             Console.println("\nRun 'kite config state' to configure state storage.");
             return 0;
@@ -111,23 +129,29 @@ public class StateCommand implements Callable<Integer> {
         Console.println("Config file: " + GlobalConfig.getConfigPath());
         Console.println();
 
-        for (var entry : environments.entrySet()) {
-            var env = entry.getKey();
-            var envConfig = entry.getValue();
-            var state = envConfig.getState();
+        for (var projectConfig : projects) {
+            var projName = projectConfig.getName();
 
-            Console.println("[" + env + "]");
-            if (state != null) {
-                Console.println("  Type: " + state.getType());
-                if ("postgresql".equals(state.getType())) {
-                    Console.println("  URL: " + state.getUrl());
-                    Console.println("  Username: " + state.getUsername());
-                    Console.println("  Password: " + getPasswordStatus(state, env));
-                } else if ("kite-cloud".equals(state.getType())) {
-                    Console.println("  Backend: Kite Cloud (managed)");
+            Console.println(Console.bold("[" + projName + "]"));
+
+            for (var envEntry : projectConfig.getEnvironments().entrySet()) {
+                var env = envEntry.getKey();
+                var envConfig = envEntry.getValue();
+                var state = envConfig.getState();
+
+                Console.println("  " + env + ":");
+                if (state != null) {
+                    Console.println("    Type: " + state.getType());
+                    if ("postgresql".equals(state.getType())) {
+                        Console.println("    URL: " + state.getUrl());
+                        Console.println("    Username: " + state.getUsername());
+                        Console.println("    Password: " + getPasswordStatus(state, projName, env));
+                    } else if ("kite-cloud".equals(state.getType())) {
+                        Console.println("    Backend: Kite Cloud (managed)");
+                    }
+                } else {
+                    Console.println("    Not configured");
                 }
-            } else {
-                Console.println("  Not configured");
             }
             Console.println();
         }
@@ -135,33 +159,33 @@ public class StateCommand implements Callable<Integer> {
         return 0;
     }
 
-    private int removeConfiguration(GlobalConfig config) throws Exception {
+    private int removeConfiguration(GlobalConfig config, String projectName) throws Exception {
         if (environment == null) {
             Console.error("--environment is required with --remove");
             return 1;
         }
 
-        if (!config.hasEnvironment(environment)) {
-            Console.error("No configuration found for environment '" + environment + "'");
+        if (!config.hasEnvironment(projectName, environment)) {
+            Console.error("No configuration found for project '" + projectName + "' environment '" + environment + "'");
             return 1;
         }
 
-        config.removeEnvironment(environment);
+        config.removeEnvironment(projectName, environment);
         config.save();
 
-        Console.success("Removed state configuration for: " + environment);
+        Console.success("Removed state configuration for: " + projectName + "/" + environment);
         return 0;
     }
 
-    private int configureNonInteractive(GlobalConfig config) throws Exception {
-        StateBackendWizard.configureEnvironment(config, environment, url, username, password);
+    private int configureNonInteractive(GlobalConfig config, String projectName) throws Exception {
+        StateBackendWizard.configureEnvironment(config, projectName, environment, url, username, password);
 
-        Console.success("State configuration saved for: " + environment);
+        Console.success("State configuration saved for: " + projectName + "/" + environment);
 
         if (password == null || password.isBlank()) {
-            var passwordEnvVar = GlobalConfig.getPasswordEnvVarName(environment);
+            var passwordEnvVar = GlobalConfig.getPasswordEnvVarName(projectName, environment);
             Console.println("\nNo password provided. Set it via:");
-            Console.println("  - Config: kite config state -e " + environment + " --url \"" + url + "\" --password");
+            Console.println("  - Config: kite config state -p " + projectName + " -e " + environment + " --url \"" + url + "\" --password");
             Console.println("  - Env var (takes precedence): export " + passwordEnvVar + "=<password>");
         }
 
@@ -171,8 +195,8 @@ public class StateCommand implements Callable<Integer> {
     /**
      * Gets a human-readable password status for display.
      */
-    private String getPasswordStatus(GlobalConfig.StateConfig state, String environment) {
-        var envVarName = GlobalConfig.getPasswordEnvVarName(environment);
+    private String getPasswordStatus(GlobalConfig.StateConfig state, String projectName, String environment) {
+        var envVarName = GlobalConfig.getPasswordEnvVarName(projectName, environment);
         var envPassword = System.getenv(envVarName);
 
         if (envPassword != null && !envPassword.isBlank()) {
@@ -184,15 +208,15 @@ public class StateCommand implements Callable<Integer> {
         }
     }
 
-    private int runInteractiveWizard(GlobalConfig config) throws Exception {
+    private int runInteractiveWizard(GlobalConfig config, String projectName) throws Exception {
         try (var prompt = InteractivePrompt.create()) {
             if (prompt == null) {
                 Console.error("Interactive mode requires a terminal.");
-                Console.println("Use --environment and --url for non-interactive configuration.");
+                Console.println("Use --project, --environment and --url for non-interactive configuration.");
                 return 1;
             }
 
-            var wizard = new StateBackendWizard(prompt, config);
+            var wizard = new StateBackendWizard(prompt, config, projectName);
             wizard.run();
             return 0;
         }

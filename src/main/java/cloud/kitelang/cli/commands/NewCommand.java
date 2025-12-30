@@ -122,12 +122,12 @@ public class NewCommand implements Callable<Integer> {
             // Configure state management before creating project (if interactive)
             if (!skipInteractive) {
                 Console.println();
-                runStateBackendWizard();
+                runStateBackendWizard(name);
             }
 
             // Show project summary and create
             Console.println();
-            var stateBackend = getStateBackendType();
+            var stateBackend = getStateBackendType(name);
             Console.box(
                 "Creating project: " + name,
                 "       Providers: " + String.join(", ", providers),
@@ -333,7 +333,7 @@ public class NewCommand implements Callable<Integer> {
     /**
      * Runs the state backend configuration wizard.
      */
-    private void runStateBackendWizard() {
+    private void runStateBackendWizard(String projectName) {
         try (var prompt = InteractivePrompt.create()) {
             if (prompt == null) {
                 Console.println("Run 'kite config state' to configure state backend.");
@@ -343,7 +343,7 @@ public class NewCommand implements Callable<Integer> {
             var config = GlobalConfig.load();
             // Pass the user's selected environments to the wizard
             var envList = environments != null ? Arrays.asList(environments) : null;
-            var wizard = new StateBackendWizard(prompt, config, envList);
+            var wizard = new StateBackendWizard(prompt, config, projectName, envList);
             wizard.run();
             Console.println();
         } catch (Exception e) {
@@ -356,10 +356,10 @@ public class NewCommand implements Callable<Integer> {
     /**
      * Gets a human-readable description of the configured state backend.
      */
-    private String getStateBackendType() {
+    private String getStateBackendType(String projectName) {
         try {
             var config = GlobalConfig.load();
-            var envs = config.getEnvironments();
+            var envs = config.getEnvironments(projectName);
             if (envs.isEmpty()) {
                 return "Not configured";
             }
