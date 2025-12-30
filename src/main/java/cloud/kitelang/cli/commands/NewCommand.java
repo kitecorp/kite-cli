@@ -200,10 +200,10 @@ public class NewCommand implements Callable<Integer> {
             var selectedEnvs = new ArrayList<>(prompt.selectMany(
                     "Select environments:",
                     List.of(
-                            new InteractivePrompt.Option("dev", "dev (Development)", null, true),
-                            new InteractivePrompt.Option("staging", "staging (Staging)", null, true),
-                            new InteractivePrompt.Option("prod", "prod (Production)", null, true),
-                            new InteractivePrompt.Option("custom", "custom (Enter custom names)", null, false)
+                            new InteractivePrompt.Option("dev",     "dev     (Development)",        null, true),
+                            new InteractivePrompt.Option("staging", "staging (Staging)",            null, true),
+                            new InteractivePrompt.Option("prod",    "prod    (Production)",         null, true),
+                            new InteractivePrompt.Option("custom",  "custom  (Enter custom names)", null, false)
                     )
             ));
 
@@ -225,6 +225,9 @@ public class NewCommand implements Callable<Integer> {
             } else {
                 environments = selectedEnvs.toArray(new String[0]);
             }
+
+            // Print final list of environments
+            Console.success("Environments: " + String.join(", ", environments));
         }
     }
 
