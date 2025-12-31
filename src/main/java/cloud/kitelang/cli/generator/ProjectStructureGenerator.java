@@ -29,7 +29,8 @@ public class ProjectStructureGenerator {
 
         var variables = new HashMap<String, String>();
         variables.put("projectName", projectName);
-        variables.put("providers", generateProvidersYaml(providers));
+        variables.put("dependencies", generateDependenciesYaml(providers));
+        variables.put("environments", generateEnvironmentsYaml(environments, providers));
 
         // Copy base templates
         copyTemplates(projectDir, variables, providers, environments);
@@ -165,14 +166,42 @@ public class ProjectStructureGenerator {
     }
 
     /**
-     * Generates YAML for the providers section based on selected providers.
+     * Generates YAML for the dependencies section based on selected providers.
      * Official providers use version: latest to download from GitHub Releases.
      */
-    private String generateProvidersYaml(String[] providers) {
+    private String generateDependenciesYaml(String[] providers) {
         var sb = new StringBuilder();
         for (String provider : providers) {
             sb.append("  - name: ").append(provider).append("\n");
             sb.append("    version: latest\n");
+        }
+        return sb.toString().stripTrailing();
+    }
+
+    /**
+     * Generates YAML for the environments section with credential placeholders.
+     */
+    private String generateEnvironmentsYaml(String[] environments, String[] providers) {
+        var sb = new StringBuilder();
+        for (String env : environments) {
+            sb.append("  ").append(env).append(":\n");
+            sb.append("    credentials:\n");
+            for (String provider : providers) {
+                sb.append("      - type: ").append(provider).append("\n");
+                // Add provider-specific placeholders
+                switch (provider.toLowerCase()) {
+                    case "aws" -> {
+                        sb.append("        profile: ").append(env).append("\n");
+                        sb.append("        region: us-east-1\n");
+                    }
+                    case "gcp" -> {
+                        sb.append("        project: my-").append(env).append("-project\n");
+                    }
+                    case "azure" -> {
+                        sb.append("        subscription: my-").append(env).append("-subscription\n");
+                    }
+                }
+            }
         }
         return sb.toString().stripTrailing();
     }

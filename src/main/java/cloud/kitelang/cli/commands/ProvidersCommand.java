@@ -234,18 +234,18 @@ public class ProvidersCommand implements Callable<Integer> {
             var kitefile = KiteInjector.createkitefile();
             var config = kitefile.config();
 
-            if (config.providers().isEmpty()) {
-                Console.println("No providers configured in kitefile.yml");
+            if (config.dependencies().isEmpty()) {
+                Console.println("No dependencies configured in kitefile.yml");
                 return 0;
             }
 
-            Console.println("Installing " + config.providers().size() + " provider(s)...");
+            Console.println("Installing " + config.dependencies().size() + " provider(s)...");
             Console.println();
 
             int installed = 0;
             int failed = 0;
 
-            for (var dep : config.providers()) {
+            for (var dep : config.dependencies()) {
                 // Determine display version (version, ref, or "latest")
                 String displayVersion = dep.version() != null ? dep.version()
                         : dep.ref() != null ? dep.ref() : "latest";
