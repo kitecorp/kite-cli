@@ -112,15 +112,19 @@ public class StateBackendWizard {
             // Pre-select all environments by default
             envOptions.add(new InteractivePrompt.Option(env, label, null, true));
         }
+        // Add skip option at the bottom
+        envOptions.add(new InteractivePrompt.Option("_skip", "skip (configure later)", "Run 'kite config state' later", false));
 
         // Let user select which environments to configure
-        var selectedEnvs = prompt.selectMany(
+        var selectedEnvs = new ArrayList<>(prompt.selectMany(
                 "Which environments do you want to configure?",
                 envOptions
-        );
+        ));
 
+        // Remove skip marker and check if anything selected
+        selectedEnvs.remove("_skip");
         if (selectedEnvs.isEmpty()) {
-            prompt.printInfo("No environments selected. Skipping state configuration.");
+            prompt.printInfo("Skipped. Run 'kite config state' to configure later.");
             return false;
         }
 

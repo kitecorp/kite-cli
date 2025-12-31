@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.generator;
 
+import cloud.kitelang.cli.commands.NewCommand.CredentialConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -16,7 +17,8 @@ public class ProjectStructureGenerator {
 
     private static final String TEMPLATES_PATH = "templates";
 
-    public void generate(Path projectDir, String projectName, String[] providers, String[] environments, boolean force)
+    public void generate(Path projectDir, String projectName, String[] providers, String[] environments,
+                         Map<String, Map<String, CredentialConfig>> environmentCredentials, boolean force)
             throws IOException {
 
         if (Files.exists(projectDir) && !isEmpty(projectDir) && !force) {
@@ -30,7 +32,7 @@ public class ProjectStructureGenerator {
         var variables = new HashMap<String, String>();
         variables.put("projectName", projectName);
         variables.put("dependencies", generateDependenciesYaml(providers));
-        variables.put("environments", generateEnvironmentsYaml(environments, providers));
+        variables.put("environments", generateEnvironmentsYaml(environments, providers, environmentCredentials));
 
         // Copy base templates
         copyTemplates(projectDir, variables, providers, environments);
@@ -179,26 +181,59 @@ public class ProjectStructureGenerator {
     }
 
     /**
-     * Generates YAML for the environments section with credential placeholders.
+     * Generates YAML for the environments section with credentials.
+     * Uses actual credentials from wizard if provided, otherwise uses placeholders.
      */
-    private String generateEnvironmentsYaml(String[] environments, String[] providers) {
+    private String generateEnvironmentsYaml(String[] environments, String[] providers,
+                                            Map<String, Map<String, CredentialConfig>> environmentCredentials) {
         var sb = new StringBuilder();
         for (String env : environments) {
             sb.append("  ").append(env).append(":\n");
             sb.append("    credentials:\n");
+
+            // Check if we have actual credentials for this environment
+            var envCreds = environmentCredentials != null ? environmentCredentials.get(env) : null;
+
             for (String provider : providers) {
+                var cred = envCreds != null ? envCreds.get(provider.toLowerCase()) : null;
+
                 sb.append("      - type: ").append(provider).append("\n");
-                // Add provider-specific placeholders
-                switch (provider.toLowerCase()) {
-                    case "aws" -> {
-                        sb.append("        profile: ").append(env).append("\n");
-                        sb.append("        region: us-east-1\n");
+
+                if (cred != null) {
+                    // Use actual credentials from wizard
+                    switch (provider.toLowerCase()) {
+                        case "aws" -> {
+                            if (cred.profile() != null) {
+                                sb.append("        profile: ").append(cred.profile()).append("\n");
+                            }
+                            if (cred.region() != null) {
+                                sb.append("        region: ").append(cred.region()).append("\n");
+                            }
+                        }
+                        case "gcp" -> {
+                            if (cred.project() != null) {
+                                sb.append("        project: ").append(cred.project()).append("\n");
+                            }
+                        }
+                        case "azure" -> {
+                            if (cred.subscription() != null) {
+                                sb.append("        subscription: ").append(cred.subscription()).append("\n");
+                            }
+                        }
                     }
-                    case "gcp" -> {
-                        sb.append("        project: my-").append(env).append("-project\n");
-                    }
-                    case "azure" -> {
-                        sb.append("        subscription: my-").append(env).append("-subscription\n");
+                } else {
+                    // Use placeholders
+                    switch (provider.toLowerCase()) {
+                        case "aws" -> {
+                            sb.append("        profile: ").append(env).append("\n");
+                            sb.append("        region: us-east-1\n");
+                        }
+                        case "gcp" -> {
+                            sb.append("        project: my-").append(env).append("-project\n");
+                        }
+                        case "azure" -> {
+                            sb.append("        subscription: my-").append(env).append("-subscription\n");
+                        }
                     }
                 }
             }

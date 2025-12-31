@@ -5,6 +5,7 @@ import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.generator.ProjectStructureGenerator;
 import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.cli.interactive.StateBackendWizard;
+import cloud.kitelang.cli.util.CredentialDetector;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -19,7 +20,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
@@ -97,6 +100,24 @@ public class NewCommand implements Callable<Integer> {
     )
     private boolean skipChecks;
 
+    // Stores credential configuration per environment: Map<environment, Map<provider, CredentialConfig>>
+    private final Map<String, Map<String, CredentialConfig>> environmentCredentials = new HashMap<>();
+
+    /**
+     * Credential configuration for a provider in an environment.
+     */
+    public record CredentialConfig(String type, String profile, String region, String project, String subscription) {
+        public static CredentialConfig aws(String profile, String region) {
+            return new CredentialConfig("aws", profile, region, null, null);
+        }
+        public static CredentialConfig gcp(String project, String region) {
+            return new CredentialConfig("gcp", null, region, project, null);
+        }
+        public static CredentialConfig azure(String subscription) {
+            return new CredentialConfig("azure", null, null, null, subscription);
+        }
+    }
+
     @Override
     public Integer call() {
         try {
@@ -139,7 +160,7 @@ public class NewCommand implements Callable<Integer> {
             Console.println();
 
             var generator = new ProjectStructureGenerator();
-            generator.generate(projectDir, name, providers, environments, force);
+            generator.generate(projectDir, name, providers, environments, environmentCredentials, force);
 
             Console.success("Project created successfully");
             Console.println();
@@ -195,6 +216,221 @@ public class NewCommand implements Callable<Integer> {
         providers(prompt);
 
         environmentSelection(prompt);
+
+        credentialConfiguration(prompt);
+    }
+
+    /**
+     * Configures cloud credentials for each environment.
+     * Shows checkbox to select which environments to configure, with skip option.
+     */
+    private void credentialConfiguration(InteractivePrompt prompt) throws IOException {
+        // Only configure for known providers
+        var knownProviders = Arrays.stream(providers)
+                .filter(p -> List.of("aws", "gcp", "azure").contains(p.toLowerCase()))
+                .toList();
+
+        if (knownProviders.isEmpty()) {
+            return;
+        }
+
+        prompt.printSeparator();
+
+        // Build options: all environments + skip
+        var options = new ArrayList<InteractivePrompt.Option>();
+        for (var env : environments) {
+            options.add(new InteractivePrompt.Option(env, env, "Configure " + String.join(", ", knownProviders) + " credentials", true));
+        }
+        options.add(new InteractivePrompt.Option("_skip", "skip (configure later)", "Edit kitefile.yml manually", false));
+
+        // Let user select which environments to configure
+        var selected = new ArrayList<>(prompt.selectMany("Configure credentials for:", options));
+
+        // If skip selected or nothing selected, skip configuration
+        if (selected.isEmpty() || selected.contains("_skip")) {
+            selected.remove("_skip");
+            if (selected.isEmpty()) {
+                prompt.printInfo("Skipped. Edit kitefile.yml later to configure credentials.");
+                return;
+            }
+        }
+
+        prompt.printSeparator();
+
+        // Detect available credentials for each provider
+        var awsProfiles = knownProviders.contains("aws") ? CredentialDetector.detectAwsProfiles() : List.<CredentialDetector.CredentialOption>of();
+        var gcpProjects = knownProviders.contains("gcp") ? CredentialDetector.detectGcpProjects() : List.<CredentialDetector.CredentialOption>of();
+        var azureSubs = knownProviders.contains("azure") ? CredentialDetector.detectAzureSubscriptions() : List.<CredentialDetector.CredentialOption>of();
+
+        // Configure credentials for selected environments
+        for (var env : selected) {
+            prompt.printInfo("Environment: " + Console.bold(env));
+            var creds = selectCredentialsForEnvironment(prompt, env, knownProviders,
+                    awsProfiles, gcpProjects, azureSubs);
+            environmentCredentials.put(env, creds);
+            prompt.printSeparator();
+        }
+
+        prompt.printSuccess("Credentials configured for " + selected.size() + " environment(s)");
+    }
+
+    /**
+     * Selects credentials for a single environment.
+     */
+    private Map<String, CredentialConfig> selectCredentialsForEnvironment(
+            InteractivePrompt prompt,
+            String envName,
+            List<String> providerList,
+            List<CredentialDetector.CredentialOption> awsProfiles,
+            List<CredentialDetector.CredentialOption> gcpProjects,
+            List<CredentialDetector.CredentialOption> azureSubs
+    ) throws IOException {
+        var creds = new HashMap<String, CredentialConfig>();
+
+        for (var provider : providerList) {
+            switch (provider.toLowerCase()) {
+                case "aws" -> {
+                    var config = selectAwsCredential(prompt, awsProfiles);
+                    if (config != null) {
+                        creds.put("aws", config);
+                    }
+                }
+                case "gcp" -> {
+                    var config = selectGcpCredential(prompt, gcpProjects);
+                    if (config != null) {
+                        creds.put("gcp", config);
+                    }
+                }
+                case "azure" -> {
+                    var config = selectAzureCredential(prompt, azureSubs);
+                    if (config != null) {
+                        creds.put("azure", config);
+                    }
+                }
+            }
+        }
+
+        return creds;
+    }
+
+    /**
+     * Selects AWS profile and region for an environment.
+     */
+    private CredentialConfig selectAwsCredential(
+            InteractivePrompt prompt,
+            List<CredentialDetector.CredentialOption> profiles
+    ) throws IOException {
+        String profile;
+        String region;
+
+        if (profiles.isEmpty()) {
+            // No profiles detected, ask for manual input
+            profile = prompt.input("AWS profile:", "default");
+            region = prompt.input("AWS region:", CredentialDetector.detectDefaultAwsRegion());
+        } else {
+            // Build options from detected profiles
+            var options = new ArrayList<InteractivePrompt.Option>();
+            for (var p : profiles) {
+                options.add(new InteractivePrompt.Option(p.id(), p.displayName()));
+            }
+            options.add(new InteractivePrompt.Option("_custom", "Enter custom profile name"));
+
+            profile = prompt.selectOne("AWS profile:", options);
+
+            if ("_custom".equals(profile)) {
+                profile = prompt.input("AWS profile name:", "default");
+            }
+
+            // Get region - use detected region or ask
+            var selectedProfile = profile; // final for lambda
+            var detectedRegion = profiles.stream()
+                    .filter(p -> p.id().equals(selectedProfile))
+                    .findFirst()
+                    .map(CredentialDetector.CredentialOption::region)
+                    .orElse(null);
+
+            if (detectedRegion != null) {
+                region = detectedRegion;
+                prompt.printInfo("  Region: " + region + " (from profile)");
+            } else {
+                region = prompt.input("AWS region:", CredentialDetector.detectDefaultAwsRegion());
+            }
+        }
+
+        return CredentialConfig.aws(profile, region);
+    }
+
+    /**
+     * Selects GCP project for an environment.
+     */
+    private CredentialConfig selectGcpCredential(
+            InteractivePrompt prompt,
+            List<CredentialDetector.CredentialOption> projects
+    ) throws IOException {
+        String project;
+        String region = null;
+
+        if (projects.isEmpty()) {
+            // No projects detected, ask for manual input
+            project = prompt.input("GCP project:", "my-project");
+        } else {
+            // Build options from detected projects
+            var options = new ArrayList<InteractivePrompt.Option>();
+            for (var p : projects) {
+                options.add(new InteractivePrompt.Option(p.id(), p.displayName()));
+            }
+            options.add(new InteractivePrompt.Option("_custom", "Enter custom project ID"));
+
+            project = prompt.selectOne("GCP project:", options);
+
+            if ("_custom".equals(project)) {
+                project = prompt.input("GCP project ID:", "my-project");
+            }
+
+            // Get region from detected project
+            var selectedProject = project; // final for lambda
+            region = projects.stream()
+                    .filter(p -> p.id().equals(selectedProject))
+                    .findFirst()
+                    .map(CredentialDetector.CredentialOption::region)
+                    .orElse(null);
+        }
+
+        return CredentialConfig.gcp(project, region);
+    }
+
+    /**
+     * Selects Azure subscription for an environment.
+     */
+    private CredentialConfig selectAzureCredential(
+            InteractivePrompt prompt,
+            List<CredentialDetector.CredentialOption> subscriptions
+    ) throws IOException {
+        String subscription;
+
+        if (subscriptions.isEmpty()) {
+            // No subscriptions detected, ask for manual input
+            subscription = prompt.input("Azure subscription ID:", "");
+            if (subscription.isBlank()) {
+                prompt.printWarning("No Azure subscription configured. Edit kitefile.yml later.");
+                return null;
+            }
+        } else {
+            // Build options from detected subscriptions
+            var options = new ArrayList<InteractivePrompt.Option>();
+            for (var s : subscriptions) {
+                options.add(new InteractivePrompt.Option(s.id(), s.displayName()));
+            }
+            options.add(new InteractivePrompt.Option("_custom", "Enter custom subscription ID"));
+
+            subscription = prompt.selectOne("Azure subscription:", options);
+
+            if ("_custom".equals(subscription)) {
+                subscription = prompt.input("Azure subscription ID:", "");
+            }
+        }
+
+        return CredentialConfig.azure(subscription);
     }
 
     private void environmentSelection(InteractivePrompt prompt) throws IOException {
@@ -696,7 +932,7 @@ public class NewCommand implements Callable<Integer> {
      * Shows warning when region is not configured (non-blocking).
      */
     private void warnMissingRegion(String provider) {
-        Console.println("    " + Console.yellow("\u26A0") + " No default region configured. To set one:");
+        Console.println("    " + Console.yellow("⚠") + " No default region configured. To set one:");
 
         switch (provider.toLowerCase()) {
             case "aws" -> Console.println("      aws configure set region <region>  OR  export AWS_REGION=<region>");

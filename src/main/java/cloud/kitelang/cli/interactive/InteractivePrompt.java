@@ -2,6 +2,7 @@ package cloud.kitelang.cli.interactive;
 
 import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
+import org.jline.consoleui.elements.ConfirmChoice;
 import org.jline.consoleui.prompt.CheckboxResult;
 import org.jline.consoleui.prompt.ConsolePrompt;
 import org.jline.consoleui.prompt.PromptResultItemIF;
@@ -165,7 +166,8 @@ public class InteractivePrompt implements AutoCloseable {
 
         var confirmBuilder = builder.createConfirmPromp()
                 .name("confirm")
-                .message(message + " (" + (defaultValue ? "Y/n" : "y/N") + ")");
+                .message(message)
+                .defaultValue(defaultValue ? ConfirmChoice.ConfirmationValue.YES : ConfirmChoice.ConfirmationValue.NO);
 
         confirmBuilder.addPrompt();
 
