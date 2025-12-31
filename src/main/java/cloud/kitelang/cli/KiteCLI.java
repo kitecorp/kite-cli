@@ -27,6 +27,7 @@ import java.nio.file.Path;
                 DestroyCommand.class,
                 OutputCommand.class,
                 FmtCommand.class,
+                EnvCommand.class,
                 ProvidersCommand.class,
                 ConfigCommand.class,
                 DoctorCommand.class,

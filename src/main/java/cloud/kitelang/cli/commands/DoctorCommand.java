@@ -2,6 +2,9 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.config.ConfigLoader;
 import cloud.kitelang.cli.console.Console;
+import cloud.kitelang.cli.validation.CredentialValidatorRegistry;
+import cloud.kitelang.engine.kitefile.Dependencies.Credential;
+import cloud.kitelang.engine.kitefile.KiteInjector;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -24,6 +27,7 @@ import java.util.concurrent.Callable;
                 "",
                 "Examples:",
                 "  kite doctor                           Run all diagnostic checks",
+                "  kite doctor -e prod                   Validate credentials for prod environment",
                 "  kite doctor --verbose                 Show detailed output for all checks",
                 "  kite doctor --fix                     Attempt to fix issues automatically"
         },
@@ -37,6 +41,9 @@ public class DoctorCommand implements Callable<Integer> {
 
     @Option(names = {"--verbose"}, description = "Show all checks, including passed ones")
     private boolean verbose;
+
+    @Option(names = {"-e", "--environment"}, description = "Environment to validate credentials for")
+    private String environment;
 
     private final List<Check> checks = new ArrayList<>();
     private int passed = 0;
@@ -222,63 +229,92 @@ public class DoctorCommand implements Callable<Integer> {
     private void checkCredentials() {
         printCheck("Cloud credentials");
 
-        var hasAny = false;
+        // Try to load kitefile.yml and validate credentials for the environment
+        var cwd = Path.of(System.getProperty("user.dir"));
+        var kitefilePath = findKitefile(cwd);
 
-        // AWS
-        var awsProfile = System.getenv("AWS_PROFILE");
-        var awsAccessKey = System.getenv("AWS_ACCESS_KEY_ID");
-        var awsConfig = Path.of(System.getProperty("user.home"), ".aws", "credentials");
-
-        if (awsProfile != null || awsAccessKey != null || Files.exists(awsConfig)) {
-            hasAny = true;
-            if (verbose) {
-                if (awsProfile != null) {
-                    printSubcheck("AWS: profile=" + awsProfile, true, null);
-                } else if (awsAccessKey != null) {
-                    printSubcheck("AWS: access key configured", true, null);
-                } else {
-                    printSubcheck("AWS: ~/.aws/credentials exists", true, null);
-                }
-            }
+        if (kitefilePath == null) {
+            // No kitefile - just check if CLIs are available
+            checkCliAvailability();
+            return;
         }
 
-        // GCP
-        var gcpProject = System.getenv("GOOGLE_CLOUD_PROJECT");
-        var gcpCreds = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
-        var gcloudConfig = Path.of(System.getProperty("user.home"), ".config", "gcloud");
+        try {
+            var kitefile = KiteInjector.createkitefile();
+            var config = kitefile.config();
 
-        if (gcpProject != null || gcpCreds != null || Files.isDirectory(gcloudConfig)) {
-            hasAny = true;
-            if (verbose) {
-                if (gcpProject != null) {
-                    printSubcheck("GCP: project=" + gcpProject, true, null);
-                } else if (gcpCreds != null) {
-                    printSubcheck("GCP: credentials file configured", true, null);
+            // Determine which environment to check
+            var envToCheck = environment != null ? environment : "dev";
+            var envConfig = config.getEnvironment(envToCheck);
+
+            if (envConfig == null || envConfig.credentials().isEmpty()) {
+                // No credentials configured for this environment - check CLI availability
+                if (verbose) {
+                    Console.println("  No credentials configured for environment: " + envToCheck);
+                }
+                checkCliAvailability();
+                return;
+            }
+
+            Console.println("  Validating credentials for environment: " + envToCheck);
+
+            var allValid = true;
+            for (var credential : envConfig.credentials()) {
+                var result = CredentialValidatorRegistry.validate(credential);
+                var label = credential.identifier();
+
+                if (result.success()) {
+                    printSubcheck(label + ": " + result.identity(), true,
+                            verbose ? result.details() : null);
                 } else {
-                    printSubcheck("GCP: gcloud configured", true, null);
+                    printSubcheck(label + ": " + result.message(), false, null);
+                    allValid = false;
                 }
             }
-        }
 
-        // Azure
-        var azureSub = System.getenv("AZURE_SUBSCRIPTION_ID");
-        var azureDir = Path.of(System.getProperty("user.home"), ".azure");
-
-        if (azureSub != null || Files.isDirectory(azureDir)) {
-            hasAny = true;
-            if (verbose) {
-                if (azureSub != null) {
-                    printSubcheck("Azure: subscription configured", true, null);
-                } else {
-                    printSubcheck("Azure: ~/.azure exists", true, null);
-                }
+            if (allValid) {
+                printPassed("All credentials valid");
+            } else {
+                failed++; // Count as failed (not using printFailed to avoid double count)
             }
+
+        } catch (Exception e) {
+            log.debug("Failed to validate credentials", e);
+            printWarning("Could not validate credentials: " + e.getMessage());
+            checkCliAvailability();
+        }
+    }
+
+    /**
+     * Checks if cloud provider CLIs are available (fallback when no kitefile).
+     */
+    private void checkCliAvailability() {
+        var awsCli = isCommandAvailable("aws", "--version");
+        var gcloudCli = isCommandAvailable("gcloud", "--version");
+        var azCli = isCommandAvailable("az", "--version");
+
+        if (verbose) {
+            printSubcheck("AWS CLI: " + (awsCli ? "available" : "not found"), awsCli, null);
+            printSubcheck("gcloud CLI: " + (gcloudCli ? "available" : "not found"), gcloudCli, null);
+            printSubcheck("Azure CLI: " + (azCli ? "available" : "not found"), azCli, null);
         }
 
-        if (hasAny) {
-            printPassed("Cloud credentials found");
+        if (awsCli || gcloudCli || azCli) {
+            printPassed("Cloud CLIs available");
         } else {
-            printWarning("No cloud credentials detected");
+            printWarning("No cloud CLIs found (aws, gcloud, az)");
+        }
+    }
+
+    private boolean isCommandAvailable(String... command) {
+        try {
+            var process = new ProcessBuilder(command)
+                    .redirectErrorStream(true)
+                    .start();
+            return process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+                    && process.exitValue() == 0;
+        } catch (Exception e) {
+            return false;
         }
     }
 
