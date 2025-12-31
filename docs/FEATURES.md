@@ -95,6 +95,76 @@ kite fmt components/ --diff
 
 ---
 
+### `env` - Environment Switching
+Quick command to show or switch the current default environment.
+
+**Example:**
+```bash
+kite env                       # Show current environment
+kite env dev                   # Switch to dev
+kite env prod                  # Switch to prod
+```
+
+Shows available environments from both `kitefile.yml` and the `environments/` directory.
+
+**File:** `commands/EnvCommand.java`
+
+---
+
+### `doctor` - Installation Diagnostics
+Diagnoses Kite installation and project configuration, including credential validation.
+
+**Example:**
+```bash
+kite doctor                    # Run all diagnostic checks
+kite doctor -e prod            # Validate prod environment credentials
+kite doctor --verbose          # Show detailed output
+kite doctor --fix              # Attempt to fix issues automatically
+```
+
+**Checks performed:**
+- Java version
+- Global configuration (~/.kite/config.yml)
+- Project files (kitefile.yml, .kite files)
+- Installed providers
+- Cloud credentials (validates using aws/gcloud/az CLI)
+- State backend configuration
+
+**File:** `commands/DoctorCommand.java`
+
+---
+
+## Credential Validation
+
+Validates cloud provider credentials from `kitefile.yml` before running `kite apply`.
+
+### Supported Providers
+
+| Provider | CLI Used | Validation Method |
+|----------|----------|-------------------|
+| AWS | `aws` | `aws sts get-caller-identity` |
+| GCP | `gcloud` | `gcloud auth list` + `gcloud projects describe` |
+| Azure | `az` | `az account show` |
+
+### Example Output
+```
+[Cloud credentials]
+  Validating credentials for environment: prod
+    ✓ aws: Account: 123456789012
+    ✓ aws.west: Account: 123456789012
+    ✓ gcp: Project: my-prod-project
+  ✓ All credentials valid
+```
+
+### Files
+- `validation/CredentialValidator.java` - Validator interface
+- `validation/AwsCredentialValidator.java`
+- `validation/GcpCredentialValidator.java`
+- `validation/AzureCredentialValidator.java`
+- `validation/CredentialValidatorRegistry.java`
+
+---
+
 ## Project Generator
 
 ### Multi-Cloud Project Structure
