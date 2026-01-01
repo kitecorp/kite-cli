@@ -1,12 +1,18 @@
 package cloud.kitelang.cli.commands;
 
+import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.interactive.InteractivePrompt;
+import cloud.kitelang.engine.Engine;
+import cloud.kitelang.engine.domain.Resource;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -92,6 +98,12 @@ public class DestroyCommand implements Callable<Integer> {
     )
     private int parallelism;
 
+    /** Resources loaded from state to destroy. */
+    private List<Resource> stateResources;
+
+    /** Engine instance for state management. */
+    private Engine engine;
+
     @Override
     public Integer call() {
         try {
@@ -101,6 +113,48 @@ public class DestroyCommand implements Callable<Integer> {
 
             if (stack != null) {
                 log.debug("Stack: {}", stack);
+            }
+
+            // Check state configuration for this environment
+            var stateConfig = getStateConfiguration();
+            if (stateConfig == null) {
+                return 1;
+            }
+
+            // Build Engine with credentials from GlobalConfig
+            var engineBuilder = Engine.builder()
+                    .withProvidersDir(Path.of("providers"));
+
+            // Pass database credentials from state configuration
+            if ("postgresql".equals(stateConfig.getType())) {
+                var projectName = getProjectName();
+                engineBuilder.withDatabaseCredentials(
+                        stateConfig.getUrl(),
+                        stateConfig.getUsername(),
+                        stateConfig.getEffectivePassword(projectName, environment)
+                );
+            }
+
+            engine = engineBuilder.build();
+
+            // Load resources from state
+            stateResources = engine.getRepository().findAll();
+            log.debug("Found {} resources in state", stateResources.size());
+
+            // Filter by provider if specified
+            if (!"all".equalsIgnoreCase(provider)) {
+                stateResources = stateResources.stream()
+                        .filter(r -> r.getKind().toLowerCase().startsWith(provider.toLowerCase()))
+                        .toList();
+            }
+
+            // Filter by targets if specified
+            if (targets != null && targets.length > 0) {
+                var targetList = Arrays.asList(targets);
+                stateResources = stateResources.stream()
+                        .filter(r -> targetList.contains(r.getResourceNameString()) ||
+                                targetList.contains(r.getKind() + "." + r.getResourceNameString()))
+                        .toList();
             }
 
             // Safety check for production
@@ -118,7 +172,7 @@ public class DestroyCommand implements Callable<Integer> {
                 return 1;
             }
 
-            // Load and display resources to be destroyed
+            // Display resources to be destroyed
             var resourceCount = displayDestructionPlan();
 
             if (resourceCount == 0) {
@@ -148,6 +202,10 @@ public class DestroyCommand implements Callable<Integer> {
             log.error("Destruction failed", e);
             Console.error(e.getMessage());
             return 1;
+        } finally {
+            if (engine != null) {
+                engine.close();
+            }
         }
     }
 
@@ -160,37 +218,21 @@ public class DestroyCommand implements Callable<Integer> {
         Console.warning("Kite will " + Console.red("DESTROY") + " the following resources:");
         Console.println();
 
-        // TODO: Load actual resources from state
-        // For now, show placeholder output
-
-        if (targets != null && targets.length > 0) {
-            Console.println(Console.yellow("Targeted resources:"));
-            for (var target : targets) {
-                Console.println("  " + Console.red("-") + " destroy " + Console.red(target));
-            }
-            Console.println();
-            return targets.length;
+        if (stateResources.isEmpty()) {
+            return 0;
         }
 
-        // Placeholder resources - would come from state backend
-        var resources = new String[][]{
-            {"Function", "handler", "aws_lambda_function.handler"},
-            {"Bucket", "data", "aws_s3_bucket.data"},
-            {"Database", "db", "aws_rds_instance.db"},
-            {"SecurityGroup", "sg", "aws_security_group.sg"}
-        };
-
-        for (var resource : resources) {
-            Console.println("  " + Console.red("-") + " destroy " + Console.red(resource[0] + "." + resource[1]));
-            Console.println("            " + Console.yellow("# " + resource[2]));
+        for (var resource : stateResources) {
+            var resourceName = resource.getKind() + "." + resource.getResourceNameString();
+            Console.println("  " + Console.red("-") + " destroy " + Console.red(resourceName));
         }
 
         Console.println();
         Console.println(Console.yellow("─────────────────────────────────────────────────────────────"));
         Console.println();
-        Console.println("Plan: 0 to add, 0 to change, " + Console.red(resources.length + " to destroy") + ".");
+        Console.println("Plan: 0 to add, 0 to change, " + Console.red(stateResources.size() + " to destroy") + ".");
 
-        return resources.length;
+        return stateResources.size();
     }
 
     /**
@@ -225,40 +267,86 @@ public class DestroyCommand implements Callable<Integer> {
         Console.warning("Destroying resources...");
         Console.println();
 
-        // TODO: Integrate with cloud providers
-        // 1. Load state from PostgreSQL
-        // 2. Build dependency graph
-        // 3. Destroy in reverse dependency order
-        // 4. Update state after each destruction
-        // 5. Handle errors and rollback if needed
+        // TODO: Integrate with cloud providers to actually destroy resources
+        // 1. Build dependency graph
+        // 2. Destroy in reverse dependency order
+        // 3. Update state after each destruction
+        // 4. Handle errors and rollback if needed
 
-        // Simulate destruction with progress
-        var resources = new String[]{
-            "Function.handler",
-            "Bucket.data",
-            "Database.db",
-            "SecurityGroup.sg"
-        };
+        var destroyedCount = 0;
+        for (var resource : stateResources) {
+            var resourceName = resource.getKind() + "." + resource.getResourceNameString();
+            Console.print("  " + Console.red("✗") + " Destroying " + Console.yellow(resourceName) + "... ");
 
-        for (var resource : resources) {
-            Console.print("  " + Console.red("✗") + " Destroying " + Console.yellow(resource) + "... ");
-
-            // Simulate work
             try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                // Delete from state database
+                engine.getRepository().delete(resource);
+                destroyedCount++;
+                Console.println(Console.red("destroyed"));
+                log.debug("Destroyed: {}", resourceName);
+            } catch (Exception e) {
+                Console.println(Console.red("FAILED"));
+                Console.error("  Failed to destroy " + resourceName + ": " + e.getMessage());
+                log.error("Failed to destroy {}", resourceName, e);
             }
-
-            Console.println(Console.red("destroyed"));
-            log.debug("Destroyed: {}", resource);
         }
 
         Console.println();
         Console.println(Console.red("─────────────────────────────────────────────────────────────"));
         Console.println();
-        Console.println(Console.red("✗") + " Destroy complete! Resources destroyed: " + Console.red(String.valueOf(resources.length)));
+        Console.println(Console.red("✗") + " Destroy complete! Resources destroyed: " + Console.red(String.valueOf(destroyedCount)));
 
         return 0;
+    }
+
+    /**
+     * Gets the project name from the current directory.
+     */
+    private String getProjectName() {
+        return Path.of("").toAbsolutePath().getFileName().toString();
+    }
+
+    /**
+     * Gets the state configuration for the target environment.
+     * Returns the StateConfig if valid, null otherwise (with error messages printed).
+     */
+    private GlobalConfig.StateConfig getStateConfiguration() {
+        try {
+            var projectName = getProjectName();
+            var config = GlobalConfig.load();
+            var stateConfig = config.getStateConfig(projectName, environment);
+
+            if (stateConfig == null) {
+                Console.error("No state configuration found for project '" + projectName + "' environment '" + environment + "'");
+                Console.println();
+                Console.println("Configure state backend by running:");
+                Console.println("  kite config state");
+                Console.println();
+                Console.println("Or use non-interactive mode:");
+                Console.println("  kite config state -e " + environment + " --url jdbc:postgresql://localhost:5432/postgres?currentSchema=" + environment);
+                return null;
+            }
+
+            // Check if password is available for PostgreSQL
+            if ("postgresql".equals(stateConfig.getType())) {
+                if (!stateConfig.hasPassword(projectName, environment)) {
+                    var envVarName = GlobalConfig.getPasswordEnvVarName(projectName, environment);
+                    Console.warning("No password configured for environment '" + environment + "'");
+                    Console.println("Set password via:");
+                    Console.println("  - Config: kite config state -e " + environment + " --password");
+                    Console.println("  - Env var: export " + envVarName + "=<password>");
+                    Console.println();
+                }
+
+                log.debug("Using state backend: {} (user: {})", stateConfig.getUrl(), stateConfig.getUsername());
+            } else if ("kite-cloud".equals(stateConfig.getType())) {
+                log.debug("Using Kite Cloud state backend");
+            }
+
+            return stateConfig;
+        } catch (IOException e) {
+            log.debug("Failed to load state configuration", e);
+            return null;
+        }
     }
 }
