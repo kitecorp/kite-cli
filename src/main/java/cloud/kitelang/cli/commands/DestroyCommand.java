@@ -4,6 +4,7 @@ import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.engine.Engine;
+import cloud.kitelang.engine.diff.Plan;
 import cloud.kitelang.engine.domain.Resource;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
@@ -103,6 +104,9 @@ public class DestroyCommand implements Callable<Integer> {
 
     /** Engine instance for state management. */
     private Engine engine;
+
+    /** Destruction plan. */
+    private Plan plan;
 
     @Override
     public Integer call() {
@@ -210,29 +214,31 @@ public class DestroyCommand implements Callable<Integer> {
     }
 
     /**
-     * Displays the resources that will be destroyed.
+     * Displays the resources that will be destroyed using the engine's plan.
      * Returns the count of resources to destroy.
      */
     private int displayDestructionPlan() {
-        Console.println();
-        Console.warning("Kite will " + Console.red("DESTROY") + " the following resources:");
-        Console.println();
-
         if (stateResources.isEmpty()) {
             return 0;
         }
 
-        for (var resource : stateResources) {
-            var resourceName = resource.getKind() + "." + resource.getResourceNameString();
-            Console.println("  " + Console.red("-") + " destroy " + Console.red(resourceName));
-        }
+        // Create destroy plan
+        plan = engine.planDestroy(stateResources);
 
+        // Show plan details
         Console.println();
-        Console.println(Console.yellow("─────────────────────────────────────────────────────────────"));
-        Console.println();
-        Console.println("Plan: 0 to add, 0 to change, " + Console.red(stateResources.size() + " to destroy") + ".");
+        engine.printPlanDetails(plan);
 
-        return stateResources.size();
+        // Show colored summary
+        Console.println();
+        Console.println(Console.red("─────────────────────────────────────────────────────────────"));
+        Console.println();
+        var summary = engine.getPlanSummary(plan);
+        Console.println("Plan: " + summary.creates() + " to add, " +
+                summary.updates() + " to change, " +
+                Console.red(summary.deletes() + " to destroy") + ".");
+
+        return summary.deletes();
     }
 
     /**
@@ -260,41 +266,20 @@ public class DestroyCommand implements Callable<Integer> {
     }
 
     /**
-     * Executes the destruction of resources.
+     * Executes the destruction of resources using the engine's apply.
      */
     private int executeDestruction() {
         Console.println();
         Console.warning("Destroying resources...");
         Console.println();
 
-        // TODO: Integrate with cloud providers to actually destroy resources
-        // 1. Build dependency graph
-        // 2. Destroy in reverse dependency order
-        // 3. Update state after each destruction
-        // 4. Handle errors and rollback if needed
-
-        var destroyedCount = 0;
-        for (var resource : stateResources) {
-            var resourceName = resource.getKind() + "." + resource.getResourceNameString();
-            Console.print("  " + Console.red("✗") + " Destroying " + Console.yellow(resourceName) + "... ");
-
-            try {
-                // Delete from state database
-                engine.getRepository().delete(resource);
-                destroyedCount++;
-                Console.println(Console.red("destroyed"));
-                log.debug("Destroyed: {}", resourceName);
-            } catch (Exception e) {
-                Console.println(Console.red("FAILED"));
-                Console.error("  Failed to destroy " + resourceName + ": " + e.getMessage());
-                log.error("Failed to destroy {}", resourceName, e);
-            }
-        }
+        // Apply the destroy plan (calls provider delete methods and updates state)
+        engine.apply(plan);
 
         Console.println();
         Console.println(Console.red("─────────────────────────────────────────────────────────────"));
         Console.println();
-        Console.println(Console.red("✗") + " Destroy complete! Resources destroyed: " + Console.red(String.valueOf(destroyedCount)));
+        Console.println(Console.red("✗") + " Destroy complete! Resources: " + Console.red(String.valueOf(stateResources.size())) + " destroyed.");
 
         return 0;
     }
