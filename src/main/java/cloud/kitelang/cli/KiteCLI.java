@@ -3,13 +3,15 @@ package cloud.kitelang.cli;
 import cloud.kitelang.cli.commands.*;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.event.Level;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 /**
  * Main entry point for the Kite CLI.
@@ -88,17 +90,28 @@ public class KiteCLI implements Runnable {
     }
 
     /**
-     * Configures logging based on kitefile.yml logs.verbosity setting.
-     * Supported values: error, warn, info, debug, trace
+     * Configures logging for the CLI.
+     * 1. Loads logging.properties from classpath
+     * 2. Applies verbosity from kitefile.yml if present
      */
     private static void configureLogging() {
+        // Load logging.properties from classpath
+        try (var stream = KiteCLI.class.getResourceAsStream("/logging.properties")) {
+            if (stream != null) {
+                LogManager.getLogManager().readConfiguration(stream);
+            }
+        } catch (Exception e) {
+            // Ignore - use JVM defaults
+        }
+
+        // Override with kitefile.yml verbosity if present
         var kitefilePath = Path.of("kitefile.yml");
         if (!Files.exists(kitefilePath)) {
             kitefilePath = Path.of("kitefile.yaml");
         }
 
         if (!Files.exists(kitefilePath)) {
-            return; // No kitefile, use defaults
+            return; // No kitefile, use defaults from logging.properties
         }
 
         try {
@@ -106,12 +119,16 @@ public class KiteCLI implements Runnable {
             var verbosity = kitefile.config().logs().verbosity();
 
             var level = switch (verbosity) {
-                case "error" -> Level.ERROR;
-                case "warn" -> Level.WARN;
-                case "debug" -> Level.DEBUG;
-                case "trace" -> Level.TRACE;
+                case "error" -> Level.SEVERE;
+                case "warn" -> Level.WARNING;
+                case "debug" -> Level.FINE;
+                case "trace" -> Level.FINEST;
                 default -> Level.INFO;
             };
+
+            // Apply to root logger and all kite/engine loggers
+            Logger.getLogger("").setLevel(level);
+            Logger.getLogger("cloud.kitelang").setLevel(level);
 
         } catch (Exception e) {
             // Silently ignore - kitefile parsing errors will be reported by commands
