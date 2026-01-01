@@ -95,12 +95,12 @@ public class DestroyCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         try {
-            log.info("Preparing to destroy infrastructure...");
-            log.info("Environment: {}", environment);
-            log.info("Provider: {}", provider);
+            log.debug("Preparing to destroy infrastructure...");
+            log.debug("Environment: {}", environment);
+            log.debug("Provider: {}", provider);
 
             if (stack != null) {
-                log.info("Stack: {}", stack);
+                log.debug("Stack: {}", stack);
             }
 
             // Safety check for production
@@ -251,7 +251,7 @@ public class DestroyCommand implements Callable<Integer> {
             }
 
             Console.println(Console.red("destroyed"));
-            log.info("Destroyed: {}", resource);
+            log.debug("Destroyed: {}", resource);
         }
 
         Console.println();
