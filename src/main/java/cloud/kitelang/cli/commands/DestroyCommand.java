@@ -1,10 +1,12 @@
 package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.console.Console;
+import cloud.kitelang.cli.interactive.InteractivePrompt;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.io.IOException;
 import java.util.concurrent.Callable;
 
 /**
@@ -190,20 +192,21 @@ public class DestroyCommand implements Callable<Integer> {
         Console.println();
         Console.printf("Do you really want to destroy %d resource(s)?%n", resourceCount);
         Console.println("  Kite will destroy all resources shown above.");
-        Console.println("  There is no undo. Only 'yes' will be accepted to confirm.");
+        Console.println("  There is no undo.");
         Console.println();
-        Console.print("  Enter a value: ");
 
-        var sysConsole = System.console();
-        if (sysConsole == null) {
-            // Running without console (e.g., in IDE)
-            log.warn("No console available, cannot prompt for confirmation");
-            Console.error("Cannot prompt for confirmation. Use --auto-approve to skip.");
+        try (var prompt = InteractivePrompt.create()) {
+            if (prompt != null) {
+                return prompt.confirm("Confirm destruction?", false);
+            } else {
+                log.warn("No interactive terminal available, cannot prompt for confirmation");
+                Console.error("Cannot prompt for confirmation. Use --auto-approve to skip.");
+                return false;
+            }
+        } catch (IOException e) {
+            log.error("Failed to read confirmation", e);
             return false;
         }
-
-        var input = sysConsole.readLine();
-        return "yes".equalsIgnoreCase(input != null ? input.trim() : "");
     }
 
     /**

@@ -2,6 +2,7 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
+import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.engine.Engine;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
@@ -144,16 +145,16 @@ public class ApplyCommand implements Callable<Integer> {
 
                 // Request confirmation unless auto-approve
                 if (!autoApprove && summary.hasChanges()) {
-                    Console.print("\nDo you want to perform these actions? (yes/no): ");
-                    var sysConsole = System.console();
-                    if (sysConsole != null) {
-                        var answer = sysConsole.readLine();
-                        if (!"yes".equalsIgnoreCase(answer)) {
-                            Console.println("Apply cancelled.");
-                            return 0;
+                    try (var prompt = InteractivePrompt.create()) {
+                        if (prompt != null) {
+                            var confirmed = prompt.confirm("Do you want to perform these actions?", false);
+                            if (!confirmed) {
+                                Console.println("Apply cancelled.");
+                                return 0;
+                            }
+                        } else {
+                            log.warn("No interactive terminal available, proceeding without confirmation");
                         }
-                    } else {
-                        log.warn("No console available, proceeding without confirmation");
                     }
                 }
 
