@@ -72,7 +72,7 @@ public class ApplyCommand implements Callable<Integer> {
     private File overrideFile;
 
     @Option(
-            names = {"-y", "--yes"},
+            names = {"-y", "--yes", "--approve", "--auto-approve"},
             description = "Skip interactive approval"
     )
     private boolean autoApprove;
