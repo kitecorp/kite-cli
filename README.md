@@ -6,20 +6,56 @@ Kite lets you define cloud infrastructure using a simple, portable language (`.k
 
 ## Installation
 
-### Homebrew (macOS/Linux)
+### Quick Install (Recommended)
 
+**macOS / Linux:**
+```bash
+curl -fsSL https://kitelang.cloud/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://kitelang.cloud/install.ps1 | iex
+```
+
+The installer automatically:
+- Detects your OS and architecture
+- Downloads the appropriate native binary (or Java distribution as fallback)
+- Installs to `~/.kite/versions/{version}/` with a `current` symlink
+- Installs required Java version if needed (via SDKMAN on macOS/Linux, winget on Windows)
+- Adds `~/.kite/current/bin` to your PATH
+
+**Installation structure:**
+```
+~/.kite/
+├── versions/
+│   ├── 1.0.0/
+│   └── 1.1.0/
+└── current -> versions/1.1.0   # symlink to active version
+```
+
+**Options via environment variables:**
+```bash
+# Install specific version
+KITE_VERSION=1.0.0 curl -fsSL https://kitelang.cloud/install.sh | bash
+
+# Skip PATH modification
+KITE_NO_MODIFY_PATH=1 curl -fsSL https://kitelang.cloud/install.sh | bash
+```
+
+### Package Managers
+
+**Homebrew (macOS/Linux):**
 ```bash
 brew install kitecorp/tap/kite
 ```
 
-### Chocolatey (Windows)
-
+**Chocolatey (Windows):**
 ```powershell
 choco install kite-cli
 ```
 
-### Snap (Linux)
-
+**Snap (Linux):**
 ```bash
 sudo snap install kite
 ```

@@ -177,3 +177,55 @@ Generates complete project scaffolding with:
 - Provider mixins (aws.kite, gcp.kite, azure.kite)
 
 **File:** `generator/ProjectStructureGenerator.java`
+
+---
+
+## Installation Scripts
+
+One-liner install scripts for quick setup across platforms. Automatically detects OS/architecture, downloads the appropriate binary, installs Java if needed, and configures PATH.
+
+### macOS / Linux
+
+```bash
+curl -fsSL https://kitelang.cloud/install.sh | bash
+```
+
+### Windows (PowerShell)
+
+```powershell
+irm https://kitelang.cloud/install.ps1 | iex
+```
+
+### Environment Variables
+
+| Variable              | Description                                   |
+|-----------------------|-----------------------------------------------|
+| `KITE_VERSION`        | Install specific version (default: latest)    |
+| `KITE_NO_MODIFY_PATH` | Set to 1 to skip PATH modification            |
+
+### Features
+
+- Auto-detects OS (Linux, macOS, Windows) and architecture (amd64, arm64)
+- Downloads native binary when available, falls back to Java distribution
+- Installs to `~/.kite/versions/{version}/` with versioned directories
+- Creates `~/.kite/current` symlink pointing to active version
+- Installs required Java version via SDKMAN (macOS/Linux) or winget (Windows) if needed
+- Adds `~/.kite/current/bin` to PATH automatically
+
+### Installation Structure
+
+```
+~/.kite/
+├── versions/
+│   ├── 1.0.0/
+│   │   ├── bin/
+│   │   └── lib/
+│   └── 1.1.0/
+│       ├── bin/
+│       └── lib/
+└── current -> versions/1.1.0   # symlink to active version
+```
+
+Re-running the installer with a different `KITE_VERSION` installs that version and updates the `current` symlink.
+
+**Files:** `scripts/install.sh`, `scripts/install.ps1`
