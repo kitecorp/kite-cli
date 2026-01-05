@@ -226,7 +226,7 @@ One-liner install scripts for quick setup across platforms. Automatically detect
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | bash
+curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | sh
 ```
 
 ### Windows (PowerShell)

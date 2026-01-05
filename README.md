@@ -10,7 +10,7 @@ Kite lets you define cloud infrastructure using a simple, portable language (`.k
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | bash
+curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | sh
 ```
 
 **Windows (PowerShell):**
@@ -42,10 +42,10 @@ The installer automatically:
 **Options via environment variables:**
 ```bash
 # Install specific version
-KITE_VERSION=1.0.0 curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | bash
+KITE_VERSION=1.0.0 curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | sh
 
 # Skip PATH modification
-KITE_NO_MODIFY_PATH=1 curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | bash
+KITE_NO_MODIFY_PATH=1 curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | sh
 ```
 
 ### Package Managers
