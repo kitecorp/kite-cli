@@ -134,6 +134,45 @@ kite doctor --fix              # Attempt to fix issues automatically
 
 ---
 
+### `upgrade` - Upgrade CLI
+
+Upgrades Kite CLI to the latest or a specified version by downloading and running the install script from GitHub.
+
+**Example:**
+```bash
+kite upgrade                          # Upgrade to latest
+kite upgrade 1.2.0                    # Upgrade to specific version
+```
+
+**File:** `commands/UpgradeCommand.java`
+
+---
+
+### `version` - Version Management
+
+Manages installed Kite CLI versions. Allows listing, installing, switching, and removing versions.
+
+**Example:**
+```bash
+kite version                          # Show current and installed versions
+kite version list --available         # List installed + available from GitHub
+kite version install 1.2.0 --use      # Install and switch to version
+kite version use 1.0.0                # Switch to installed version
+kite version remove 1.0.0             # Remove an installed version
+```
+
+**Subcommands:**
+- `list` - List installed (and optionally available) versions
+- `install <version>` - Install a specific version
+- `use <version>` - Switch to an installed version
+- `remove <version>` - Remove an installed version
+
+Versions are installed to `~/.kite/versions/{version}/` and the active version is symlinked at `~/.kite/current`.
+
+**File:** `commands/VersionCommand.java`
+
+---
+
 ## Credential Validation
 
 Validates cloud provider credentials from `kitefile.yml` before running `kite apply`.

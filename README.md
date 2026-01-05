@@ -451,6 +451,39 @@ providers:
     ref: v1.0.0
 ```
 
+### `kite upgrade`
+
+Upgrade Kite CLI to the latest or specified version.
+
+```bash
+kite upgrade                          # Upgrade to latest version
+kite upgrade 1.2.0                    # Upgrade to specific version
+```
+
+The upgrade command downloads the install script from GitHub and runs it with the specified version, then updates the `~/.kite/current` symlink.
+
+### `kite version`
+
+Manage installed Kite CLI versions.
+
+```bash
+kite version                          # Show current and installed versions
+kite version list                     # List installed versions
+kite version list --available         # List installed + available from GitHub
+kite version install 1.2.0            # Install specific version
+kite version install 1.2.0 --use      # Install and switch to it
+kite version use 1.2.0                # Switch to installed version
+kite version remove 1.2.0             # Remove an installed version
+```
+
+**Subcommands:**
+| Command | Description |
+|---------|-------------|
+| `list` | List installed (and optionally available) versions |
+| `install <version>` | Install a specific version |
+| `use <version>` | Switch to an installed version |
+| `remove <version>` | Remove an installed version |
+
 ## Project Structure
 
 After running `kite new`, your project will have:

@@ -33,6 +33,8 @@ import java.util.logging.Logger;
                 ProvidersCommand.class,
                 ConfigCommand.class,
                 DoctorCommand.class,
+                VersionCommand.class,
+                UpgradeCommand.class,
                 CompletionCommand.class,
                 CommandLine.HelpCommand.class
         }
