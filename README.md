@@ -20,7 +20,7 @@ irm https://cli.kitelang.cloud/scripts/install.ps1 | iex
 
 **Windows (CMD):**
 ```cmd
-powershell -Command "irm https://cli.kitelang.cloud/scripts/install.ps1 | iex"
+curl -fsSL https://cli.kitelang.cloud/scripts/install.bat -o install.bat && install.bat
 ```
 
 The installer automatically:
