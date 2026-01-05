@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 public class VersionCommand implements Callable<Integer> {
 
     private static final String GITHUB_REPO = "kitecorp/kite-cli";
-    private static final String INSTALL_SCRIPT_BASE = "https://install.kitelang.cloud/scripts";
+    private static final String INSTALL_SCRIPT_BASE = "https://cli.kitelang.cloud/scripts";
     private static final String INSTALL_SCRIPT_URL = INSTALL_SCRIPT_BASE + "/install.sh";
     private static final String INSTALL_SCRIPT_PS1_URL = INSTALL_SCRIPT_BASE + "/install.ps1";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(30);
