@@ -232,6 +232,8 @@ main() {
     if [[ -z "$version" ]]; then
         error "Could not determine version. Set KITE_VERSION environment variable."
     fi
+    # Normalize version: strip 'v' prefix if present
+    version="${version#v}"
     info "Version: $version"
 
     local version_dir="${KITE_HOME}/versions/${version}"

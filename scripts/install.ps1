@@ -221,6 +221,8 @@ function Main {
     if (-not $version) {
         Write-Err "Could not determine version. Set KITE_VERSION environment variable."
     }
+    # Normalize version: strip 'v' prefix if present
+    $version = $version -replace '^v', ''
     Write-Info "Version: $version"
 
     $versionDir = Join-Path $KiteHome "versions\$version"
