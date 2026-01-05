@@ -54,6 +54,8 @@ java {
 application {
     mainClass = 'cloud.kitelang.cli.KiteCLI'
     applicationName = 'kite'
+    // Enable native access for JLine terminal handling (required for Java 22+)
+    applicationDefaultJvmArgs = ['--enable-native-access=ALL-UNNAMED']
 }
 
 
