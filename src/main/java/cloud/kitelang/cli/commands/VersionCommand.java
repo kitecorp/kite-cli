@@ -49,8 +49,9 @@ import java.util.concurrent.TimeUnit;
 public class VersionCommand implements Callable<Integer> {
 
     private static final String GITHUB_REPO = "kitecorp/kite-cli";
-    private static final String INSTALL_SCRIPT_URL = "https://raw.githubusercontent.com/" + GITHUB_REPO + "/main/scripts/install.sh";
-    private static final String INSTALL_SCRIPT_PS1_URL = "https://raw.githubusercontent.com/" + GITHUB_REPO + "/main/scripts/install.ps1";
+    private static final String INSTALL_SCRIPT_BASE = "https://install.kitelang.cloud/kite-cli/scripts";
+    private static final String INSTALL_SCRIPT_URL = INSTALL_SCRIPT_BASE + "/install.sh";
+    private static final String INSTALL_SCRIPT_PS1_URL = INSTALL_SCRIPT_BASE + "/install.ps1";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(30);
     private static final int PROCESS_TIMEOUT_SECONDS = 300; // 5 minutes for download
 

@@ -226,13 +226,13 @@ One-liner install scripts for quick setup across platforms. Automatically detect
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://kitelang.cloud/install.sh | bash
+curl -fsSL https://install.kitelang.cloud/kite-cli/scripts/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://kitelang.cloud/install.ps1 | iex
+irm https://install.kitelang.cloud/kite-cli/scripts/install.ps1 | iex
 ```
 
 ### Environment Variables
