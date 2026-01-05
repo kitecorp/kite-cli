@@ -276,6 +276,12 @@ main() {
     echo "  kite --version"
     echo "  kite new my-project"
     echo ""
+    echo "To upgrade or manage versions later:"
+    echo "  kite upgrade              # Upgrade to latest version"
+    echo "  kite version list         # List installed versions"
+    echo "  kite version install 1.0  # Install specific version"
+    echo "  kite version use 1.0      # Switch to installed version"
+    echo ""
 }
 
 main "$@"

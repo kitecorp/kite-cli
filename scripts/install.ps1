@@ -270,6 +270,12 @@ function Main {
     Write-Host "  kite --version"
     Write-Host "  kite new my-project"
     Write-Host ""
+    Write-Host "To upgrade or manage versions later:"
+    Write-Host "  kite upgrade              # Upgrade to latest version"
+    Write-Host "  kite version list         # List installed versions"
+    Write-Host "  kite version install 1.0  # Install specific version"
+    Write-Host "  kite version use 1.0      # Switch to installed version"
+    Write-Host ""
 }
 
 Main
