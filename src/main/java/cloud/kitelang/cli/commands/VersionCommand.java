@@ -395,7 +395,10 @@ public class VersionCommand implements Callable<Integer> {
                     var tagName = release.get("tag_name").asText();
                     // Remove 'v' prefix if present
                     var version = tagName.startsWith("v") ? tagName.substring(1) : tagName;
-                    versions.add(version);
+                    // Avoid duplicates (in case both v0.x.x and 0.x.x tags exist)
+                    if (!versions.contains(version)) {
+                        versions.add(version);
+                    }
                 }
             }
         } catch (Exception e) {
