@@ -113,15 +113,20 @@ function Install-Kite {
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
     try {
-        Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+        Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
     } catch {
         # Try without 'v' prefix
         $url = "https://github.com/$GitHubRepo/releases/download/$Version/$filename"
         try {
-            Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+            Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
         } catch {
-            Write-Err "Failed to download: $url"
+            Write-Err "Failed to download Kite $Version. Version may not exist.`nCheck available versions: https://github.com/$GitHubRepo/releases"
         }
+    }
+
+    # Verify download succeeded
+    if (-not (Test-Path $zipPath) -or (Get-Item $zipPath).Length -eq 0) {
+        Write-Err "Downloaded file is empty or missing. Version $Version may not exist."
     }
 
     Write-Info "Extracting to $InstallDir..."

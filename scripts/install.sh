@@ -109,10 +109,17 @@ download_kite() {
     temp_dir=$(mktemp -d)
 
     info "Downloading Kite ${version}..."
-    if ! curl -fsSL "$url" -o "${temp_dir}/${filename}"; then
+    if ! curl -fsSL "$url" -o "${temp_dir}/${filename}" 2>/dev/null; then
         # Try without 'v' prefix
         url="https://github.com/${GITHUB_REPO}/releases/download/${version}/${filename}"
-        curl -fsSL "$url" -o "${temp_dir}/${filename}" || error "Failed to download: $url"
+        if ! curl -fsSL "$url" -o "${temp_dir}/${filename}" 2>/dev/null; then
+            error "Failed to download Kite ${version}. Version may not exist.\nCheck available versions: https://github.com/${GITHUB_REPO}/releases"
+        fi
+    fi
+
+    # Verify download succeeded (file exists and is not empty)
+    if [[ ! -s "${temp_dir}/${filename}" ]]; then
+        error "Downloaded file is empty or missing. Version ${version} may not exist."
     fi
 
     info "Extracting to ${install_dir}..."
