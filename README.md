@@ -18,6 +18,11 @@ curl -fsSL https://cli.kitelang.cloud/scripts/install.sh | bash
 irm https://cli.kitelang.cloud/scripts/install.ps1 | iex
 ```
 
+**Windows (CMD):**
+```cmd
+powershell -Command "irm https://cli.kitelang.cloud/scripts/install.ps1 | iex"
+```
+
 The installer automatically:
 - Detects your OS and architecture
 - Downloads the appropriate native binary (or Java distribution as fallback)
