@@ -53,8 +53,10 @@ function Install-Java {
         Write-Info "Installing Java $JavaVersionRequired via winget..."
         try {
             winget install Microsoft.OpenJDK.$JavaVersionRequired --accept-source-agreements --accept-package-agreements
-            Write-Success "Java installed. Please restart your terminal and run this script again."
-            exit 0
+            # Refresh PATH in current session
+            $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+            Write-Success "Java installed"
+            return
         } catch {
             Write-Warn "winget installation failed, trying alternative..."
         }
@@ -65,8 +67,10 @@ function Install-Java {
         Write-Info "Installing Java $JavaVersionRequired via Chocolatey..."
         try {
             choco install openjdk --version=$JavaVersionRequired -y
-            Write-Success "Java installed. Please restart your terminal and run this script again."
-            exit 0
+            # Refresh PATH in current session
+            $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+            Write-Success "Java installed"
+            return
         } catch {
             Write-Warn "Chocolatey installation failed"
         }
