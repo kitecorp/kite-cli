@@ -133,6 +133,8 @@ graalvmNative {
                 '--no-fallback',
                 '-H:+UnlockExperimentalVMOptions',
                 '-H:+ReportExceptionStackTraces',
+                // Enable native access for JLine terminal (suppresses Java 22+ warnings)
+                '-J--enable-native-access=ALL-UNNAMED',
                 // SLF4J with JDK logging - much simpler than Log4j for native images
                 '--initialize-at-build-time=org.slf4j',
                 // Netty SSL/TLS - initialize at run-time (native libs and BouncyCastle are optional)
