@@ -268,3 +268,47 @@ irm https://cli.kitelang.cloud/scripts/install.ps1 | iex
 Re-running the installer with a different `KITE_VERSION` installs that version and updates the `current` symlink.
 
 **Files:** `scripts/install.sh`, `scripts/install.ps1`
+
+---
+
+## Version Check via GitHub Pages
+
+The CLI checks for new versions using a static JSON file hosted on GitHub Pages instead of the GitHub API. This avoids rate limiting (60 requests/hour unauthenticated).
+
+### Endpoint
+
+```
+https://cli.kitelang.cloud/version.json
+```
+
+### Response Format
+
+```json
+{
+  "latest": "0.3.1",
+  "versions": [
+    "0.3.1",
+    "0.3.0",
+    "0.2.0",
+    "0.1.0"
+  ]
+}
+```
+
+### Auto-Update Workflow
+
+The `version.json` file is automatically updated when a new release is published:
+
+1. GitHub release triggers `.github/workflows/update-version.yml`
+2. Workflow extracts version from release tag (strips `v` prefix)
+3. Updates `latest` field and prepends to `versions` array
+4. Commits and pushes to main branch
+5. GitHub Pages deploys the updated file
+
+Manual trigger is also supported via `workflow_dispatch` with a version input.
+
+### Files
+
+- `version.json` - Static version manifest
+- `.github/workflows/update-version.yml` - Auto-update workflow
+- `commands/VersionCommand.java` - Fetches from GitHub Pages (`fetchLatestVersion()`)
