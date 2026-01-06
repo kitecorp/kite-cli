@@ -27,6 +27,7 @@ import java.util.concurrent.Callable;
                 "  kite providers install                Install all from kitefile.yml",
                 "  kite providers install aws            Install latest AWS provider",
                 "  kite providers install aws@1.0.0      Install specific version",
+                "  kite providers install aws --local    Install to project (.kite/providers)",
                 "  kite providers install myp --git github.com/org/provider",
                 "  kite providers install myp --git github.com/org/repo/tree/dev/aws",
                 "  kite providers list                   List global providers",
@@ -170,6 +171,9 @@ public class ProvidersCommand implements Callable<Integer> {
                 effectiveGitUrl = getOfficialProviderUrl(name);
             }
 
+            // Always set version for proper directory naming
+            specBuilder.version(version);
+
             if (effectiveGitUrl != null) {
                 // Parse GitHub /tree/branch/path URLs automatically
                 var parsed = ProviderSpec.parseGitHubUrl(name, effectiveGitUrl);
@@ -190,8 +194,6 @@ public class ProvidersCommand implements Callable<Integer> {
                 } else if (parsed.getPath() != null) {
                     specBuilder.path(parsed.getPath());
                 }
-            } else {
-                specBuilder.version(version);
             }
 
             var spec = specBuilder.build();
@@ -344,25 +346,161 @@ public class ProvidersCommand implements Callable<Integer> {
             }
 
             try (var stream = Files.list(providersPath)) {
-                var providers = stream
+                var providerDirs = stream
                         .filter(Files::isDirectory)
-                        .filter(p -> Files.exists(p.resolve("provider.json")))
                         .toList();
 
-                if (providers.isEmpty()) {
+                if (providerDirs.isEmpty()) {
                     Console.println("No providers installed");
                     return 0;
                 }
 
-                Console.println("Installed providers:");
-                for (var provider : providers) {
-                    Console.println("  " + provider.getFileName());
+                var found = false;
+
+                for (var providerDir : providerDirs) {
+                    var providerName = providerDir.getFileName().toString();
+
+                    // Check for versioned structure: aws/v0.1.3/provider.json
+                    var currentLink = providerDir.resolve("current");
+                    if (Files.exists(currentLink)) {
+                        // Has current symlink - resolve it
+                        Path currentVersion;
+                        if (Files.isSymbolicLink(currentLink)) {
+                            currentVersion = providerDir.resolve(Files.readSymbolicLink(currentLink));
+                        } else {
+                            // Text file fallback (Windows)
+                            var versionName = Files.readString(currentLink).trim();
+                            currentVersion = providerDir.resolve(versionName);
+                        }
+
+                        if (Files.exists(currentVersion.resolve("provider.json"))) {
+                            if (!found) {
+                                Console.println("Installed providers:");
+                                found = true;
+                            }
+                            var version = formatVersion(currentVersion.getFileName().toString());
+                            Console.println("  " + providerName + " " + version + " (current)");
+
+                            // List other installed versions
+                            listOtherVersions(providerDir, currentVersion.getFileName().toString(), providerName);
+                            continue;
+                        }
+                    }
+
+                    // List all version subdirectories
+                    try (var versions = Files.list(providerDir)) {
+                        var versionList = versions
+                                .filter(Files::isDirectory)
+                                .filter(v -> !v.getFileName().toString().equals("current"))
+                                .filter(v -> Files.exists(v.resolve("provider.json")))
+                                .map(v -> v.getFileName().toString())
+                                .sorted(this::compareVersions)
+                                .toList();
+
+                        if (!versionList.isEmpty()) {
+                            if (!found) {
+                                Console.println("Installed providers:");
+                                found = true;
+                            }
+                            // Show highest as current
+                            var highest = versionList.get(versionList.size() - 1);
+                            Console.println("  " + providerName + " " + formatVersion(highest));
+                            for (int i = versionList.size() - 2; i >= 0; i--) {
+                                Console.println("    └─ " + formatVersion(versionList.get(i)));
+                            }
+                        }
+                    }
+
+                    // Legacy: provider.json directly in provider dir
+                    if (Files.exists(providerDir.resolve("provider.json"))) {
+                        if (!found) {
+                            Console.println("Installed providers:");
+                            found = true;
+                        }
+                        Console.println("  " + providerName);
+                    }
+                }
+
+                if (!found) {
+                    Console.println("No providers installed");
                 }
 
                 return 0;
             } catch (Exception e) {
                 Console.error("Error listing providers: " + e.getMessage());
                 return 1;
+            }
+        }
+
+        /**
+         * Format version string - strip provider prefix and ensure it starts with 'v'.
+         * Handles: aws-v0.1.3 -> v0.1.3, v0.1.3 -> v0.1.3, 0.1.3 -> v0.1.3
+         */
+        private String formatVersion(String version) {
+            // Strip provider prefix (e.g., aws-v0.1.3 -> v0.1.3)
+            int dashV = version.indexOf("-v");
+            if (dashV > 0) {
+                version = version.substring(dashV + 1);
+            } else {
+                int dash = version.indexOf("-");
+                if (dash > 0 && !version.startsWith("v")) {
+                    version = version.substring(dash + 1);
+                }
+            }
+
+            if (version.startsWith("v")) {
+                return version;
+            }
+            return "v" + version;
+        }
+
+        /**
+         * List other installed versions (not current).
+         */
+        private void listOtherVersions(Path providerDir, String currentVersion, String providerName) {
+            try (var versions = Files.list(providerDir)) {
+                var otherVersions = versions
+                        .filter(Files::isDirectory)
+                        .filter(v -> !v.getFileName().toString().equals("current"))
+                        .filter(v -> !v.getFileName().toString().equals(currentVersion))
+                        .filter(v -> Files.exists(v.resolve("provider.json")))
+                        .map(v -> v.getFileName().toString())
+                        .sorted(this::compareVersions)
+                        .toList();
+
+                for (var version : otherVersions.reversed()) {
+                    Console.println("    └─ " + formatVersion(version));
+                }
+            } catch (Exception e) {
+                // Ignore errors listing other versions
+            }
+        }
+
+        /**
+         * Compare version strings for sorting.
+         */
+        private int compareVersions(String v1, String v2) {
+            String s1 = v1.startsWith("v") ? v1.substring(1) : v1;
+            String s2 = v2.startsWith("v") ? v2.substring(1) : v2;
+
+            String[] parts1 = s1.split("\\.");
+            String[] parts2 = s2.split("\\.");
+
+            for (int i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+                int p1 = i < parts1.length ? parseIntSafe(parts1[i]) : 0;
+                int p2 = i < parts2.length ? parseIntSafe(parts2[i]) : 0;
+                if (p1 != p2) {
+                    return Integer.compare(p1, p2);
+                }
+            }
+            return 0;
+        }
+
+        private int parseIntSafe(String s) {
+            try {
+                return Integer.parseInt(s.replaceAll("[^0-9]", ""));
+            } catch (NumberFormatException e) {
+                return 0;
             }
         }
     }
