@@ -295,20 +295,14 @@ https://cli.kitelang.cloud/version.json
 }
 ```
 
-### Auto-Update Workflow
+### Automatic Updates
 
-The `version.json` file is automatically updated when a new release is published:
+The `updateVersionJson` Gradle task runs automatically during `./gradlew build`. When you bump the version in `build.gradle`, version.json is updated on the next build.
 
-1. GitHub release triggers `.github/workflows/update-version.yml`
-2. Workflow extracts version from release tag (strips `v` prefix)
-3. Updates `latest` field and prepends to `versions` array
-4. Commits and pushes to main branch
-5. GitHub Pages deploys the updated file
-
-Manual trigger is also supported via `workflow_dispatch` with a version input.
+Gradle's up-to-date checking skips the task if the version hasn't changed.
 
 ### Files
 
 - `version.json` - Static version manifest
-- `.github/workflows/update-version.yml` - Auto-update workflow
+- `build.gradle` - Contains `updateVersionJson` task (runs via `processResources`)
 - `commands/VersionCommand.java` - Fetches from GitHub Pages (`fetchLatestVersion()`)

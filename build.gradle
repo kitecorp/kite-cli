@@ -79,6 +79,32 @@ tasks.register('generateVersionProperties') {
     }
 }
 
+// Update version.json for GitHub Pages (latest version endpoint)
+tasks.register('updateVersionJson') {
+    group = 'publishing'
+    description = 'Update version.json with current project version'
+
+    inputs.property('version', project.version)
+    outputs.file('version.json')
+
+    doLast {
+        def versionFile = file('version.json')
+        def json = new groovy.json.JsonSlurper().parse(versionFile)
+        def currentVersion = project.version.toString()
+
+        json.latest = currentVersion
+        if (!json.versions.contains(currentVersion)) {
+            json.versions.add(0, currentVersion)
+            def output = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(json))
+            // Use 2-space indent and add trailing newline
+            versionFile.text = output.replaceAll('    ', '  ') + '\n'
+            println "Updated version.json: latest = ${currentVersion}"
+        }
+    }
+}
+
+processResources.dependsOn updateVersionJson
+
 // Include generated resources in the build
 sourceSets {
     main {
