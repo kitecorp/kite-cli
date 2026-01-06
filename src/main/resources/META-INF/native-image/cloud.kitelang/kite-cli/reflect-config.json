@@ -100,5 +100,23 @@
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true
+  },
+  {
+    "name": "org.jline.terminal.impl.exec.ExecTerminalProvider",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.jline.terminal.impl.exec.ExecPty",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.jline.terminal.TerminalBuilder",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true
   }
 ]
