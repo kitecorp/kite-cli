@@ -570,20 +570,85 @@ public class NewCommand implements Callable<Integer> {
      * Runs the state backend configuration wizard.
      */
     private void runStateBackendWizard(String projectName) {
+        // Try JLine interactive prompt first
         try (var prompt = InteractivePrompt.create()) {
-            if (prompt == null) {
-                Console.println("Run 'kite config state' to configure state backend.");
+            if (prompt != null) {
+                var config = GlobalConfig.load();
+                var envList = environments != null ? Arrays.asList(environments) : null;
+                var wizard = new StateBackendWizard(prompt, config, projectName, envList);
+                wizard.run();
+                Console.println();
+                return;
+            }
+        } catch (Exception e) {
+            log.debug("JLine prompt failed, trying fallback", e);
+        }
+
+        // Fallback to simple BufferedReader-based wizard
+        runStateBackendWizardSimple(projectName);
+    }
+
+    /**
+     * Simple fallback state backend wizard using BufferedReader.
+     */
+    private void runStateBackendWizardSimple(String projectName) {
+        try {
+            var reader = new BufferedReader(new InputStreamReader(System.in));
+            var config = GlobalConfig.load();
+
+            Console.println("State Management Setup");
+            Console.println("======================");
+            Console.println();
+            Console.println("Need a quick PostgreSQL instance? Run:");
+            Console.println("  docker run --name postgres -dit -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres");
+            Console.println();
+            Console.println("How do you want to store infrastructure state?");
+            Console.println("  1. self-managed (PostgreSQL - bring your own database)");
+            Console.println("  2. skip (configure later with 'kite config state')");
+            Console.print("Choice [2]: ");
+
+            var choice = reader.readLine();
+            if (choice == null || choice.isBlank() || choice.equals("2")) {
+                Console.println("Skipped. Run 'kite config state' to configure later.");
                 return;
             }
 
-            var config = GlobalConfig.load();
-            // Pass the user's selected environments to the wizard
-            var envList = environments != null ? Arrays.asList(environments) : null;
-            var wizard = new StateBackendWizard(prompt, config, projectName, envList);
-            wizard.run();
+            if (!choice.equals("1")) {
+                Console.println("Skipped. Run 'kite config state' to configure later.");
+                return;
+            }
+
+            // Configure PostgreSQL for each environment
+            var envList = environments != null ? environments : new String[]{"dev", "staging", "prod"};
+            for (var env : envList) {
+                Console.println();
+                Console.println("--- Configuring: " + env + " ---");
+
+                var schema = env.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                var defaultUrl = "jdbc:postgresql://localhost:5432/postgres?currentSchema=" + schema;
+
+                Console.print("PostgreSQL URL [" + defaultUrl + "]: ");
+                var url = reader.readLine();
+                if (url == null || url.isBlank()) url = defaultUrl;
+
+                Console.print("Username [postgres]: ");
+                var username = reader.readLine();
+                if (username == null || username.isBlank()) username = "postgres";
+
+                Console.print("Password: ");
+                var password = reader.readLine();
+                if (password == null) password = "";
+
+                var stateConfig = GlobalConfig.createPostgreSQLConfig(url, username, password);
+                config.setStateConfig(projectName, env, stateConfig);
+                Console.success("Configured " + env);
+            }
+
+            config.save();
+            Console.success("Configuration saved to: " + GlobalConfig.getConfigPath());
             Console.println();
         } catch (Exception e) {
-            log.debug("Failed to run state backend wizard", e);
+            log.debug("Failed to run simple state backend wizard", e);
             Console.println("Run 'kite config state' to configure state backend later.");
             Console.println();
         }
