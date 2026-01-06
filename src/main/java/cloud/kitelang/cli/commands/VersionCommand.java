@@ -431,6 +431,10 @@ public class VersionCommand implements Callable<Integer> {
                 var release = mapper.readTree(response.body());
                 var tagName = release.get("tag_name").asText();
                 return tagName.startsWith("v") ? tagName.substring(1) : tagName;
+            } else if (response.statusCode() == 403) {
+                log.warn("GitHub API rate limit exceeded. Try again later or use: kite upgrade <version>");
+            } else {
+                log.debug("GitHub API returned status: {}", response.statusCode());
             }
         } catch (Exception e) {
             log.debug("Failed to fetch latest version", e);

@@ -43,7 +43,8 @@ public class UpgradeCommand implements Callable<Integer> {
             if ("latest".equalsIgnoreCase(version)) {
                 targetVersion = VersionCommand.fetchLatestVersion();
                 if (targetVersion == null) {
-                    Console.error("Could not determine latest version");
+                    Console.error("Could not determine latest version (GitHub API rate limit?)");
+                    Console.println("  Try: kite upgrade <version>  (e.g., kite upgrade 0.3.1)");
                     return 1;
                 }
             }
