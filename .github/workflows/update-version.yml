@@ -1,0 +1,47 @@
+name: Update version.json
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to set as latest (e.g., 0.3.1)'
+        required: true
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update version.json
+        run: |
+          # Get version from release event or manual input
+          VERSION="${{ github.event.release.tag_name || inputs.version }}"
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+
+          # Add new version to the list (if not already present)
+          if ! grep -q "\"$VERSION\"" version.json; then
+            # Update latest and prepend to versions array
+            jq --arg v "$VERSION" '.latest = $v | .versions = [$v] + .versions' version.json > tmp.json
+            mv tmp.json version.json
+          else
+            # Just update latest
+            jq --arg v "$VERSION" '.latest = $v' version.json > tmp.json
+            mv tmp.json version.json
+          fi
+
+          cat version.json
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json
+          git commit -m "chore: Update version.json to ${{ github.event.release.tag_name }}" || echo "No changes to commit"
+          git push

@@ -408,19 +408,21 @@ public class VersionCommand implements Callable<Integer> {
         return versions;
     }
 
+    private static final String VERSION_URL = "https://cli.kitelang.cloud/version.json";
+
     /**
-     * Fetch the latest version from GitHub.
+     * Fetch the latest version from GitHub Pages (no rate limiting).
      */
     static String fetchLatestVersion() {
         try {
             var client = HttpClient.newBuilder()
                     .connectTimeout(HTTP_TIMEOUT)
+                    .followRedirects(HttpClient.Redirect.NORMAL)
                     .build();
 
             var request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://api.github.com/repos/" + GITHUB_REPO + "/releases/latest"))
+                    .uri(URI.create(VERSION_URL))
                     .timeout(HTTP_TIMEOUT)
-                    .header("Accept", "application/vnd.github.v3+json")
                     .GET()
                     .build();
 
@@ -428,13 +430,10 @@ public class VersionCommand implements Callable<Integer> {
 
             if (response.statusCode() == 200) {
                 var mapper = new ObjectMapper();
-                var release = mapper.readTree(response.body());
-                var tagName = release.get("tag_name").asText();
-                return tagName.startsWith("v") ? tagName.substring(1) : tagName;
-            } else if (response.statusCode() == 403) {
-                log.warn("GitHub API rate limit exceeded. Try again later or use: kite upgrade <version>");
+                var versionInfo = mapper.readTree(response.body());
+                return versionInfo.get("latest").asText();
             } else {
-                log.debug("GitHub API returned status: {}", response.statusCode());
+                log.debug("Failed to fetch version.json: HTTP {}", response.statusCode());
             }
         } catch (Exception e) {
             log.debug("Failed to fetch latest version", e);
