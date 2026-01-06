@@ -100,6 +100,10 @@ public class StateBackendWizard {
      * Configures self-managed PostgreSQL backend.
      */
     private boolean configurePostgreSQL() throws IOException {
+        // Show Docker hint for quick local setup
+        prompt.printInfo("\nNeed a quick PostgreSQL instance? Run:");
+        prompt.printInfo("  docker run --name postgres -dit -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres\n");
+
         // Build environment options from the user's selected environments
         var envOptions = new ArrayList<InteractivePrompt.Option>();
         for (var env : environments) {
