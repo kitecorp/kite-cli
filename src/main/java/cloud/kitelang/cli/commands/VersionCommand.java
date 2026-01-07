@@ -1,8 +1,8 @@
 package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.console.Console;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import cloud.kitelang.cli.util.JacksonMappers;
+import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -388,7 +388,7 @@ public class VersionCommand implements Callable<Integer> {
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                var mapper = new ObjectMapper();
+                var mapper = JacksonMappers.json();
                 var releases = mapper.readTree(response.body());
 
                 for (var release : releases) {
@@ -429,7 +429,7 @@ public class VersionCommand implements Callable<Integer> {
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                var mapper = new ObjectMapper();
+                var mapper = JacksonMappers.json();
                 var versionInfo = mapper.readTree(response.body());
                 return versionInfo.get("latest").asText();
             } else {

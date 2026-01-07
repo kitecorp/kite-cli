@@ -1,8 +1,8 @@
 package cloud.kitelang.cli.validation;
 
 import cloud.kitelang.engine.kitefile.Dependencies.Credential;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import cloud.kitelang.cli.util.JacksonMappers;
+import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class AwsCredentialValidator implements CredentialValidator {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int TIMEOUT_SECONDS = 30;
 
     @Override
@@ -101,7 +100,7 @@ public class AwsCredentialValidator implements CredentialValidator {
      */
     private ValidationResult parseSuccess(String output) {
         try {
-            var json = MAPPER.readTree(output);
+            var json = JacksonMappers.json().readTree(output);
             var account = json.path("Account").asText();
             var arn = json.path("Arn").asText();
             var userId = json.path("UserId").asText();

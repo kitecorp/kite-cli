@@ -1,7 +1,7 @@
 package cloud.kitelang.cli.validation;
 
 import cloud.kitelang.engine.kitefile.Dependencies.Credential;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import cloud.kitelang.cli.util.JacksonMappers;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class AzureCredentialValidator implements CredentialValidator {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int TIMEOUT_SECONDS = 30;
 
     @Override
@@ -95,7 +94,7 @@ public class AzureCredentialValidator implements CredentialValidator {
      */
     private ValidationResult parseSuccess(String output, Credential credential) {
         try {
-            var json = MAPPER.readTree(output);
+            var json = JacksonMappers.json().readTree(output);
             var subscriptionId = json.path("id").asText();
             var subscriptionName = json.path("name").asText();
             var tenantId = json.path("tenantId").asText();

@@ -1,7 +1,7 @@
 package cloud.kitelang.cli.validation;
 
 import cloud.kitelang.engine.kitefile.Dependencies.Credential;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import cloud.kitelang.cli.util.JacksonMappers;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class GcpCredentialValidator implements CredentialValidator {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int TIMEOUT_SECONDS = 30;
 
     @Override

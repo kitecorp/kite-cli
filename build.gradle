@@ -13,7 +13,7 @@ repositories {
 
 def lombok = '1.18.42'
 
-def jackson = '2.20.0'
+def jackson = '3.0.3'
 
 dependencies {
     implementation project(':engine')
@@ -29,9 +29,9 @@ dependencies {
     implementation 'org.jline:jline-console-ui:3.30.6'
     implementation 'info.picocli:picocli-shell-jline3:4.7.7'
 
-    // For config file loading
-    implementation "com.fasterxml.jackson.core:jackson-databind:$jackson"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jackson"
+    // For config file loading (Jackson 3.x uses new groupId)
+    implementation "tools.jackson.core:jackson-databind:$jackson"
+    implementation "tools.jackson.dataformat:jackson-dataformat-yaml:$jackson"
 
     compileOnly "org.projectlombok:lombok:${lombok}"
     annotationProcessor "org.projectlombok:lombok:${lombok}"

@@ -1,8 +1,6 @@
 package cloud.kitelang.cli.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
+import cloud.kitelang.cli.util.JacksonMappers;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -16,12 +14,6 @@ import java.util.Map;
  */
 @Slf4j
 public class ConfigLoader {
-
-    private static final ObjectMapper YAML_MAPPER = new ObjectMapper(
-            new YAMLFactory()
-                    .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
-                    .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-    );
 
     private static KiteConfig cachedConfig;
 
@@ -69,13 +61,8 @@ public class ConfigLoader {
             return KiteConfig.empty();
         }
 
-        try {
-            var data = YAML_MAPPER.readValue(configPath.toFile(), ConfigData.class);
-            return toConfig(data);
-        } catch (IOException e) {
-            log.warn("Failed to load config from {}: {}", configPath, e.getMessage());
-            return KiteConfig.empty();
-        }
+        var data = JacksonMappers.yaml().readValue(configPath.toFile(), ConfigData.class);
+        return toConfig(data);
     }
 
     /**
@@ -86,8 +73,7 @@ public class ConfigLoader {
         Files.createDirectories(configPath.getParent());
 
         var data = toData(config);
-        YAML_MAPPER.writerWithDefaultPrettyPrinter()
-                .writeValue(configPath.toFile(), data);
+        JacksonMappers.yaml().writeValue(configPath.toFile(), data);
 
         cachedConfig = config;
         log.debug("Saved config to {}", configPath);
@@ -197,9 +183,9 @@ public class ConfigLoader {
     private static KiteConfig toConfig(ConfigData data) {
         var defaults = data.defaults != null
                 ? new KiteConfig.Defaults(
-                        data.defaults.getOrDefault("environment", "dev"),
-                        data.defaults.get("provider"),
-                        data.defaults.getOrDefault("output", "table"))
+                data.defaults.getOrDefault("environment", "dev"),
+                data.defaults.get("provider"),
+                data.defaults.getOrDefault("output", "table"))
                 : KiteConfig.Defaults.empty();
 
         var providers = new HashMap<String, KiteConfig.ProviderConfig>();

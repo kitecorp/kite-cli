@@ -1,9 +1,7 @@
 package cloud.kitelang.cli.config;
 
+import cloud.kitelang.cli.util.JacksonMappers;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -28,11 +26,6 @@ public class GlobalConfig {
     private static final String KITE_DIR = ".kite";
     private static final String CONFIG_FILE = "config.yml";
 
-    private static final ObjectMapper YAML_MAPPER = new ObjectMapper(
-            new YAMLFactory()
-                    .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
-                    .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-    );
 
     private final Path configPath;
     private KiteConfig config;
@@ -155,7 +148,7 @@ public class GlobalConfig {
 
     private void loadFromFile() throws IOException {
         if (Files.exists(configPath)) {
-            config = YAML_MAPPER.readValue(configPath.toFile(), KiteConfig.class);
+            config = JacksonMappers.yaml().readValue(configPath.toFile(), KiteConfig.class);
             log.debug("Loaded config from {}", configPath);
         } else {
             config = new KiteConfig();
@@ -171,7 +164,7 @@ public class GlobalConfig {
         if (!Files.exists(kiteDir)) {
             Files.createDirectories(kiteDir);
         }
-        YAML_MAPPER.writeValue(configPath.toFile(), config);
+        JacksonMappers.yaml().writeValue(configPath.toFile(), config);
         log.debug("Saved config to {}", configPath);
     }
 
