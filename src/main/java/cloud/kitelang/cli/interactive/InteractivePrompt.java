@@ -58,15 +58,9 @@ public class InteractivePrompt implements AutoCloseable {
 
     /**
      * Creates an InteractivePrompt instance using the shared Console terminal.
-     * Returns null if terminal is not available (e.g., piped input) or in native images.
+     * Returns null if terminal is not available (e.g., piped input).
      */
     public static InteractivePrompt create() {
-        // Force fallback in GraalVM native images - JLine ConsoleUI has issues
-        if (isNativeImage()) {
-            log.debug("Running in native image, using fallback prompts");
-            return null;
-        }
-
         if (!Console.isInteractive()) {
             log.debug("Terminal not interactive, cannot create InteractivePrompt");
             return null;
@@ -78,13 +72,6 @@ public class InteractivePrompt implements AutoCloseable {
         }
 
         return new InteractivePrompt(terminal);
-    }
-
-    /**
-     * Checks if running in a GraalVM native image.
-     */
-    private static boolean isNativeImage() {
-        return System.getProperty("org.graalvm.nativeimage.imagecode") != null;
     }
 
     /**
