@@ -118,5 +118,33 @@
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true
+  },
+  {
+    "name": "cloud.kitelang.cli.config.GlobalConfig$KiteConfig",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "cloud.kitelang.cli.config.GlobalConfig$ProjectConfig",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "cloud.kitelang.cli.config.GlobalConfig$EnvironmentConfig",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "cloud.kitelang.cli.config.GlobalConfig$StateConfig",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
   }
 ]
