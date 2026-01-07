@@ -572,6 +572,7 @@ public class NewCommand implements Callable<Integer> {
     private void runStateBackendWizard(String projectName) {
         try (var prompt = InteractivePrompt.create()) {
             if (prompt == null) {
+                Console.warning("Interactive prompt not available");
                 Console.println("Run 'kite config state' to configure state backend.");
                 return;
             }
@@ -583,6 +584,7 @@ public class NewCommand implements Callable<Integer> {
             wizard.run();
             Console.println();
         } catch (Exception e) {
+            Console.error("State wizard failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             log.debug("Failed to run state backend wizard", e);
             Console.println("Run 'kite config state' to configure state backend later.");
             Console.println();
