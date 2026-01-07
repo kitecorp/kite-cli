@@ -1,6 +1,8 @@
 package cloud.kitelang.cli.config;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
@@ -41,7 +43,16 @@ public class GlobalConfig {
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class KiteConfig {
-        private List<ProjectConfig> projects = new ArrayList<>();
+        private List<ProjectConfig> projects;
+
+        @JsonCreator
+        public KiteConfig(@JsonProperty("projects") List<ProjectConfig> projects) {
+            this.projects = projects != null ? projects : new ArrayList<>();
+        }
+
+        public KiteConfig() {
+            this(new ArrayList<>());
+        }
     }
 
     /**
@@ -51,7 +62,19 @@ public class GlobalConfig {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ProjectConfig {
         private String name;
-        private Map<String, EnvironmentConfig> environments = new HashMap<>();
+        private Map<String, EnvironmentConfig> environments;
+
+        @JsonCreator
+        public ProjectConfig(
+                @JsonProperty("name") String name,
+                @JsonProperty("environments") Map<String, EnvironmentConfig> environments) {
+            this.name = name;
+            this.environments = environments != null ? environments : new HashMap<>();
+        }
+
+        public ProjectConfig() {
+            this(null, new HashMap<>());
+        }
     }
 
     /**
@@ -61,6 +84,15 @@ public class GlobalConfig {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class EnvironmentConfig {
         private StateConfig state;
+
+        @JsonCreator
+        public EnvironmentConfig(@JsonProperty("state") StateConfig state) {
+            this.state = state;
+        }
+
+        public EnvironmentConfig() {
+            this(null);
+        }
     }
 
     /**
@@ -73,6 +105,22 @@ public class GlobalConfig {
         private String url;
         private String username;
         private String password; // Stored password (fallback if env var not set)
+
+        @JsonCreator
+        public StateConfig(
+                @JsonProperty("type") String type,
+                @JsonProperty("url") String url,
+                @JsonProperty("username") String username,
+                @JsonProperty("password") String password) {
+            this.type = type;
+            this.url = url;
+            this.username = username;
+            this.password = password;
+        }
+
+        public StateConfig() {
+            this(null, null, null, null);
+        }
 
         /**
          * Gets the effective password with priority: env var > config file.
