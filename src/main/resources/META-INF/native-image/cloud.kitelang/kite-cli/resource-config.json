@@ -1,0 +1,10 @@
+{
+  "resources": {
+    "includes": [
+      {"pattern": "org/jline/.*"},
+      {"pattern": ".*/libjlinenative\\..*"},
+      {"pattern": ".*/jlinenative\\.dll"}
+    ]
+  },
+  "bundles": []
+}
