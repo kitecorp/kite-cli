@@ -579,8 +579,12 @@ public class NewCommand implements Callable<Integer> {
                 wizard.run();
                 Console.println();
                 return;
+            } else {
+                log.debug("InteractivePrompt.create() returned null for state wizard");
             }
         } catch (Exception e) {
+            // Print to stderr so user sees the actual error
+            System.err.println("State wizard error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             log.debug("JLine prompt failed, trying fallback", e);
         }
 
