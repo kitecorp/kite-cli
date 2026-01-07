@@ -584,7 +584,6 @@ public class NewCommand implements Callable<Integer> {
             wizard.run();
             Console.println();
         } catch (Exception e) {
-            Console.error("State wizard failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             log.debug("Failed to run state backend wizard", e);
             Console.println("Run 'kite config state' to configure state backend later.");
             Console.println();

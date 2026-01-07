@@ -1,0 +1,26 @@
+[
+  {
+    "name": "cloud.kitelang.cli.config.GlobalConfig$KiteConfig",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "cloud.kitelang.cli.config.GlobalConfig$ProjectConfig",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "cloud.kitelang.cli.config.GlobalConfig$EnvironmentConfig",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "cloud.kitelang.cli.config.GlobalConfig$StateConfig",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  }
+]
