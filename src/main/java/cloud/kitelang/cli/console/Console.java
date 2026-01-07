@@ -29,48 +29,15 @@ public final class Console {
         // Suppress JLine warnings about dumb terminals
         Logger.getLogger("org.jline").setLevel(Level.SEVERE);
 
-        terminal = createTerminal();
-        writer = terminal != null ? terminal.writer() : new PrintWriter(System.out, true);
-    }
-
-    /**
-     * Creates terminal with fallback strategies for native images.
-     */
-    private static Terminal createTerminal() {
-        // Try FFM/JNA first (preferred for full functionality)
         try {
-            var term = TerminalBuilder.builder()
+            terminal = TerminalBuilder.builder()
                     .system(true)
-                    .nativeSignals(true)
                     .build();
-            if (term != null && !Terminal.TYPE_DUMB.equals(term.getType())) {
-                return term;
-            }
-        } catch (Exception e) {
-            // Fall through to exec provider
-        }
-
-        // Try exec provider (uses stty command, works in native images)
-        try {
-            var term = TerminalBuilder.builder()
-                    .system(true)
-                    .exec(true)
-                    .nativeSignals(false)
-                    .build();
-            if (term != null && !Terminal.TYPE_DUMB.equals(term.getType())) {
-                return term;
-            }
-        } catch (Exception e) {
-            // Fall through to dumb terminal
-        }
-
-        // Last resort: dumb terminal
-        try {
-            return TerminalBuilder.builder()
-                    .dumb(true)
-                    .build();
-        } catch (Exception e) {
-            return null;
+            writer = terminal.writer();
+        } catch (IOException e) {
+            // Fallback to System.out
+            terminal = null;
+            writer = new PrintWriter(System.out, true);
         }
     }
 
