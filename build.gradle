@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id 'org.graalvm.buildtools.native' version '0.11.3'
+    id 'com.gradleup.shadow' version '9.3.1'
 }
 
 group = 'io.kite'
@@ -61,6 +62,16 @@ application {
 
 jar {
     archiveBaseName = "kite-cli"
+}
+
+// Fat JAR with all dependencies
+shadowJar {
+    archiveBaseName = "kite"
+    archiveClassifier = "fat"
+    mergeServiceFiles()
+    manifest {
+        attributes 'Main-Class': 'cloud.kitelang.cli.KiteCLI'
+    }
 }
 
 test {
@@ -130,28 +141,28 @@ graalvmNative {
             imageName.set('kite')
             mainClass.set('cloud.kitelang.cli.KiteCLI')
             buildArgs.addAll(
-                '--no-fallback',
-                '-H:+UnlockExperimentalVMOptions',
-                '-H:+ReportExceptionStackTraces',
-                // Enable native access for JLine terminal (suppresses Java 22+ warnings)
-                // -J flag is for build-time JVM, --enable-native-access is for runtime binary
-                '-J--enable-native-access=ALL-UNNAMED',
-                '--enable-native-access=ALL-UNNAMED',
-                // SLF4J with JDK logging - much simpler than Log4j for native images
-                '--initialize-at-build-time=org.slf4j',
-                // Netty SSL/TLS - initialize at run-time (native libs and BouncyCastle are optional)
-                '--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl',
-                '--initialize-at-run-time=io.grpc.netty.shaded.io.netty.internal.tcnative',
-                '--initialize-at-run-time=io.netty.handler.ssl',
-                '--initialize-at-run-time=io.netty.internal.tcnative',
-                '--enable-url-protocols=http,https',
-                '-H:IncludeResources=.+\\.(properties|yml|yaml|kite|sql|md|template)$',
-                '-H:IncludeResources=templates/.*',
-                '-H:IncludeResources=db/.*',
-                '-H:IncludeResources=META-INF/.*',
-                // JLine3 resources
-                '--initialize-at-run-time=org.jline',
-                '-H:IncludeResources=org/jline/.*'
+                    '--no-fallback',
+                    '-H:+UnlockExperimentalVMOptions',
+                    '-H:+ReportExceptionStackTraces',
+                    // Enable native access for JLine terminal (suppresses Java 22+ warnings)
+                    // -J flag is for build-time JVM, --enable-native-access is for runtime binary
+                    '-J--enable-native-access=ALL-UNNAMED',
+                    '--enable-native-access=ALL-UNNAMED',
+                    // SLF4J with JDK logging - much simpler than Log4j for native images
+                    '--initialize-at-build-time=org.slf4j',
+                    // Netty SSL/TLS - initialize at run-time (native libs and BouncyCastle are optional)
+                    '--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl',
+                    '--initialize-at-run-time=io.grpc.netty.shaded.io.netty.internal.tcnative',
+                    '--initialize-at-run-time=io.netty.handler.ssl',
+                    '--initialize-at-run-time=io.netty.internal.tcnative',
+                    '--enable-url-protocols=http,https',
+                    '-H:IncludeResources=.+\\.(properties|yml|yaml|kite|sql|md|template)$',
+                    '-H:IncludeResources=templates/.*',
+                    '-H:IncludeResources=db/.*',
+                    '-H:IncludeResources=META-INF/.*',
+                    // JLine3 resources
+                    '--initialize-at-run-time=org.jline',
+                    '-H:IncludeResources=org/jline/.*'
             )
         }
     }
@@ -171,8 +182,8 @@ tasks.register('generateManPages', JavaExec) {
     outputs.dir(outputDir)
 
     args = [
-        'cloud.kitelang.cli.KiteCLI',
-        '--outdir=' + outputDir.get().asFile.absolutePath
+            'cloud.kitelang.cli.KiteCLI',
+            '--outdir=' + outputDir.get().asFile.absolutePath
     ]
 }
 
@@ -189,8 +200,8 @@ tasks.register('generateHtmlDocs', JavaExec) {
     outputs.dir(outputDir)
 
     args = [
-        'cloud.kitelang.cli.KiteCLI',
-        '--outdir=' + outputDir.get().asFile.absolutePath,
-        '--format=html'
+            'cloud.kitelang.cli.KiteCLI',
+            '--outdir=' + outputDir.get().asFile.absolutePath,
+            '--format=html'
     ]
 }
