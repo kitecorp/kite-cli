@@ -3,9 +3,12 @@ plugins {
     id 'application'
     id 'org.graalvm.buildtools.native' version '0.11.3'
     id 'com.gradleup.shadow' version '9.3.1'
+    id 'maven-publish'
+    id 'signing'
+    id 'org.jreleaser' version '1.22.0'  // For Maven Central via Central Portal
 }
 
-group = 'io.kite'
+group = 'cloud.kitelang'
 version = '0.3.4'
 
 repositories {
@@ -50,6 +53,8 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(25))
     }
+    withJavadocJar()
+    withSourcesJar()
 }
 
 application {
@@ -129,6 +134,11 @@ processResources {
     dependsOn generateVersionProperties
 }
 
+// Ensure sourcesJar runs after version properties are generated
+tasks.named('sourcesJar') {
+    dependsOn generateVersionProperties
+}
+
 compileJava {
     options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
 }
@@ -204,4 +214,104 @@ tasks.register('generateHtmlDocs', JavaExec) {
             '--outdir=' + outputDir.get().asFile.absolutePath,
             '--format=html'
     ]
+}
+
+// ========== Maven Central Publishing ==========
+
+// JReleaser configuration for Maven Central via new Central Portal
+jreleaser {
+    signing {
+        active = 'ALWAYS'
+        armored = true
+        mode = 'MEMORY'  // Use keys from environment variables
+    }
+    deploy {
+        maven {
+            mavenCentral {
+                sonatype {
+                    active = 'ALWAYS'
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    stagingRepository('build/staging-deploy')
+                    applyMavenCentralRules = true
+                    retryDelay = 30
+                    maxRetries = 60
+                }
+            }
+        }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            artifactId = 'kite-cli'
+
+            pom {
+                name = 'Kite CLI'
+                description = 'Multi-cloud Infrastructure as Code CLI tool'
+                url = 'https://github.com/kitecorp/kite-cli'
+
+                licenses {
+                    license {
+                        name = 'Apache License 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'kitecorp'
+                        name = 'Kite Team'
+                        url = 'https://github.com/kitecorp'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/kitecorp/kite-cli.git'
+                    developerConnection = 'scm:git:ssh://github.com/kitecorp/kite-cli.git'
+                    url = 'https://github.com/kitecorp/kite-cli'
+                }
+            }
+        }
+    }
+
+    repositories {
+        // Staging directory for JReleaser
+        maven {
+            name = "stagingDeploy"
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}
+
+// Sign all publications
+signing {
+    def signingKey = System.getenv("GPG_PRIVATE_KEY")
+    def signingPassword = System.getenv("GPG_PASSPHRASE") ?: ""
+
+    if (signingKey) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+
+    sign publishing.publications.mavenJava
+}
+
+// Don't fail build if signing credentials are missing (for local dev)
+tasks.withType(Sign).configureEach {
+    onlyIf { System.getenv("GPG_PRIVATE_KEY") != null }
+}
+
+// Task to publish to Maven Central (via JReleaser -> Central Portal)
+tasks.register('publishToMavenCentral') {
+    group = 'publishing'
+    description = 'Publish to Maven Central via JReleaser'
+    dependsOn 'publishAllPublicationsToStagingDeployRepository'
+    dependsOn 'jreleaserDeploy'
+}
+
+// Ensure staging happens before JReleaser deploy
+tasks.named('jreleaserDeploy') {
+    dependsOn 'publishAllPublicationsToStagingDeployRepository'
 }
