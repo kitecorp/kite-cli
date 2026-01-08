@@ -286,19 +286,18 @@ publishing {
     }
 }
 
-// Sign all publications
+// Sign all publications (only when GPG key is available)
 signing {
     def signingKey = System.getenv("GPG_PRIVATE_KEY")
     def signingPassword = System.getenv("GPG_PASSPHRASE") ?: ""
 
     if (signingKey) {
         useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications.mavenJava
     }
-
-    sign publishing.publications.mavenJava
 }
 
-// Don't fail build if signing credentials are missing (for local dev)
+// Skip signing tasks when no GPG key is configured
 tasks.withType(Sign).configureEach {
     onlyIf { System.getenv("GPG_PRIVATE_KEY") != null }
 }
