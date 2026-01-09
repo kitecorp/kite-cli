@@ -1,5 +1,8 @@
 {
   "catalogs": {},
+  "trusted-sources": [
+    "https://github.com/kitecorp/"
+  ],
   "aliases": {
     "kite": {
       "script-ref": "https://github.com/kitecorp/kite-cli/releases/latest/download/kite-fat.jar",
