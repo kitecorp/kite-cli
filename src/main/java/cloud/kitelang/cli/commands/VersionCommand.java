@@ -377,17 +377,30 @@ public class VersionCommand implements Callable<Integer> {
 
     /**
      * Detect if Kite was installed via JBang.
-     * JBang installs to ~/.jbang/bin/kite
+     * JBang installs the launcher to ~/.jbang/bin/kite and runs JARs from ~/.m2/repository
      */
     static boolean isJBangInstallation() {
+        // Check if JBang's kite launcher exists
         var jbangBin = Path.of(System.getProperty("user.home"), ".jbang", "bin", "kite");
         if (!Files.exists(jbangBin)) {
             return false;
         }
 
-        // Check if we're running from JBang by looking at the java.class.path
+        // Check if we're NOT running from ~/.kite/ (install script location)
+        // JBang runs from ~/.m2/repository/cloud/kitelang/kite-cli/...
         var classPath = System.getProperty("java.class.path", "");
-        return classPath.contains(".jbang") || classPath.contains("jbang");
+        var kiteHome = Path.of(System.getProperty("user.home"), ".kite").toString();
+
+        // If classpath contains ~/.kite, it's the install script version
+        // If classpath contains .m2/repository or .jbang, it's JBang
+        if (classPath.contains(kiteHome)) {
+            return false;
+        }
+
+        return classPath.contains(".m2/repository") ||
+               classPath.contains(".jbang") ||
+               classPath.contains("cloud/kitelang/kite-cli") ||
+               classPath.contains("cloud.kitelang");
     }
 
     // ========== Utility Methods ==========
