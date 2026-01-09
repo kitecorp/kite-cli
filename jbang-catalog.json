@@ -2,7 +2,7 @@
   "catalogs": {},
   "aliases": {
     "kite": {
-      "script-ref": "cloud.kitelang:kite-cli:RELEASE:fat",
+      "script-ref": "https://github.com/kitecorp/kite-cli/releases/latest/download/kite-fat.jar",
       "description": "Multi-cloud Infrastructure as Code CLI",
       "java": "25"
     }
