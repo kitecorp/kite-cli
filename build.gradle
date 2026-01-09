@@ -275,6 +275,46 @@ publishing {
                 }
             }
         }
+
+        // Standalone fat JAR with NO dependencies (for JBang, direct execution)
+        standalone(MavenPublication) {
+            artifactId = 'kite-cli-standalone'
+            artifact(tasks.shadowJar)
+
+            pom {
+                name = 'Kite CLI Standalone'
+                description = 'Multi-cloud Infrastructure as Code CLI - standalone fat JAR with all dependencies bundled'
+                url = 'https://github.com/kitecorp/kite-cli'
+                packaging = 'jar'
+
+                licenses {
+                    license {
+                        name = 'Apache License 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'kitecorp'
+                        name = 'Kite Team'
+                        url = 'https://github.com/kitecorp'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/kitecorp/kite-cli.git'
+                    developerConnection = 'scm:git:ssh://github.com/kitecorp/kite-cli.git'
+                    url = 'https://github.com/kitecorp/kite-cli'
+                }
+
+                // No dependencies - everything is bundled in the fat JAR
+                withXml {
+                    def dependenciesNode = asNode().appendNode('dependencies')
+                    // Empty - no dependencies needed
+                }
+            }
+        }
     }
 
     repositories {
@@ -294,6 +334,7 @@ signing {
     if (signingKey) {
         useInMemoryPgpKeys(signingKey, signingPassword)
         sign publishing.publications.mavenJava
+        sign publishing.publications.standalone
     }
 }
 
