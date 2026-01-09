@@ -2,7 +2,6 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.util.JacksonMappers;
-import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -60,6 +59,16 @@ public class VersionCommand implements Callable<Integer> {
         // Default behavior: show current and installed versions
         try {
             var currentVersion = getCurrentVersion();
+
+            if (isJBangInstallation()) {
+                Console.println("Current: " + (currentVersion != null ? currentVersion : "unknown"));
+                Console.println("Installation: JBang (~/.jbang/bin/kite)");
+                Console.println();
+                Console.println("To upgrade: kite upgrade");
+                Console.println("            jbang app install kite@kitecorp --force");
+                return 0;
+            }
+
             var installedVersions = getInstalledVersions();
 
             Console.println("Current: " + (currentVersion != null ? currentVersion : "not set"));
@@ -100,6 +109,29 @@ public class VersionCommand implements Callable<Integer> {
         @Override
         public Integer call() {
             try {
+                if (isJBangInstallation()) {
+                    var currentVersion = getCurrentVersion();
+                    Console.println("Current: " + (currentVersion != null ? currentVersion : "unknown"));
+                    Console.println("Installation: JBang");
+                    Console.println();
+                    Console.println("JBang manages versions automatically via Maven Central.");
+                    Console.println("Use 'kite upgrade' to get the latest version.");
+
+                    if (showAvailable) {
+                        Console.println();
+                        Console.println("Available:");
+                        var availableVersions = fetchAvailableVersions();
+                        if (availableVersions.isEmpty()) {
+                            Console.println("  (could not fetch releases)");
+                        } else {
+                            for (var version : availableVersions) {
+                                Console.println("  " + version);
+                            }
+                        }
+                    }
+                    return 0;
+                }
+
                 var currentVersion = getCurrentVersion();
                 var installedVersions = getInstalledVersions();
 
@@ -166,6 +198,17 @@ public class VersionCommand implements Callable<Integer> {
 
         @Override
         public Integer call() {
+            if (isJBangInstallation()) {
+                Console.println("Kite is installed via JBang.");
+                Console.println();
+                Console.println("To install a specific version with JBang:");
+                Console.printf("  jbang app install kite@kitecorp --force cloud.kitelang:kite-cli:%s%n", version);
+                Console.println();
+                Console.println("Or upgrade to latest:");
+                Console.println("  kite upgrade");
+                return 0;
+            }
+
             try {
                 // Resolve 'latest' to actual version
                 var targetVersion = version;
@@ -236,6 +279,14 @@ public class VersionCommand implements Callable<Integer> {
 
         @Override
         public Integer call() {
+            if (isJBangInstallation()) {
+                Console.println("Kite is installed via JBang.");
+                Console.println();
+                Console.println("To use a specific version with JBang:");
+                Console.printf("  jbang app install kite@kitecorp --force cloud.kitelang:kite-cli:%s%n", version);
+                return 0;
+            }
+
             return switchToVersion(version);
         }
     }
@@ -268,6 +319,16 @@ public class VersionCommand implements Callable<Integer> {
 
         @Override
         public Integer call() {
+            if (isJBangInstallation()) {
+                Console.println("Kite is installed via JBang.");
+                Console.println();
+                Console.println("To uninstall:");
+                Console.println("  jbang app uninstall kite");
+                Console.println();
+                Console.println("JBang caches are managed automatically.");
+                return 0;
+            }
+
             try {
                 var versionDir = getVersionsDir().resolve(version);
 
@@ -312,6 +373,23 @@ public class VersionCommand implements Callable<Integer> {
         }
     }
 
+    // ========== Installation Detection ==========
+
+    /**
+     * Detect if Kite was installed via JBang.
+     * JBang installs to ~/.jbang/bin/kite
+     */
+    static boolean isJBangInstallation() {
+        var jbangBin = Path.of(System.getProperty("user.home"), ".jbang", "bin", "kite");
+        if (!Files.exists(jbangBin)) {
+            return false;
+        }
+
+        // Check if we're running from JBang by looking at the java.class.path
+        var classPath = System.getProperty("java.class.path", "");
+        return classPath.contains(".jbang") || classPath.contains("jbang");
+    }
+
     // ========== Utility Methods ==========
 
     private static Path getKiteHome() {
@@ -327,9 +405,24 @@ public class VersionCommand implements Callable<Integer> {
     }
 
     /**
-     * Get the currently active version by reading the symlink target.
+     * Get the currently active version by reading the symlink target or from properties.
      */
     static String getCurrentVersion() {
+        // First try to get version from the running JAR's properties
+        try (var stream = VersionCommand.class.getResourceAsStream("/version.properties")) {
+            if (stream != null) {
+                var props = new java.util.Properties();
+                props.load(stream);
+                var version = props.getProperty("version");
+                if (version != null && !version.isBlank()) {
+                    return version;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to read version.properties", e);
+        }
+
+        // Fall back to symlink for non-JBang installations
         try {
             var currentLink = getCurrentLink();
             if (!Files.exists(currentLink)) {
@@ -339,7 +432,7 @@ public class VersionCommand implements Callable<Integer> {
             var target = Files.readSymbolicLink(currentLink);
             return target.getFileName().toString();
         } catch (Exception e) {
-            log.debug("Failed to read current version", e);
+            log.debug("Failed to read current version from symlink", e);
             return null;
         }
     }
@@ -523,6 +616,36 @@ public class VersionCommand implements Callable<Integer> {
         if (!completed) {
             process.destroyForcibly();
             throw new RuntimeException("Installation timed out");
+        }
+
+        return process.exitValue();
+    }
+
+    /**
+     * Run JBang to upgrade the installation.
+     */
+    static int runJBangUpgrade(String version) throws Exception {
+        var catalog = "kite@kitecorp";
+        String[] command;
+
+        if (version == null || "latest".equalsIgnoreCase(version)) {
+            // Install latest from catalog
+            command = new String[]{"jbang", "app", "install", "--force", catalog};
+        } else {
+            // Install specific version from Maven Central
+            command = new String[]{"jbang", "app", "install", "--force", "--name", "kite",
+                    "cloud.kitelang:kite-cli:" + version};
+        }
+
+        var processBuilder = new ProcessBuilder(command)
+                .inheritIO();
+
+        var process = processBuilder.start();
+        var completed = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+        if (!completed) {
+            process.destroyForcibly();
+            throw new RuntimeException("JBang upgrade timed out");
         }
 
         return process.exitValue();
