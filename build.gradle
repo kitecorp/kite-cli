@@ -79,6 +79,7 @@ shadowJar {
     }
 }
 
+
 test {
     useJUnitPlatform()
 }
@@ -243,46 +244,15 @@ jreleaser {
 
 publishing {
     publications {
+        // Fat JAR with NO dependencies (for JBang, direct execution)
         mavenJava(MavenPublication) {
-            from components.java
-
             artifactId = 'kite-cli'
+            artifact(tasks.shadowJar) {
+                classifier = null  // Remove 'fat' classifier - this is the main jar
+            }
 
             pom {
                 name = 'Kite CLI'
-                description = 'Multi-cloud Infrastructure as Code CLI tool'
-                url = 'https://github.com/kitecorp/kite-cli'
-
-                licenses {
-                    license {
-                        name = 'Apache License 2.0'
-                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
-                    }
-                }
-
-                developers {
-                    developer {
-                        id = 'kitecorp'
-                        name = 'Kite Team'
-                        url = 'https://github.com/kitecorp'
-                    }
-                }
-
-                scm {
-                    connection = 'scm:git:git://github.com/kitecorp/kite-cli.git'
-                    developerConnection = 'scm:git:ssh://github.com/kitecorp/kite-cli.git'
-                    url = 'https://github.com/kitecorp/kite-cli'
-                }
-            }
-        }
-
-        // Standalone fat JAR with NO dependencies (for JBang, direct execution)
-        standalone(MavenPublication) {
-            artifactId = 'kite-cli-standalone'
-            artifact(tasks.shadowJar)
-
-            pom {
-                name = 'Kite CLI Standalone'
                 description = 'Multi-cloud Infrastructure as Code CLI - standalone fat JAR with all dependencies bundled'
                 url = 'https://github.com/kitecorp/kite-cli'
                 packaging = 'jar'
@@ -309,10 +279,6 @@ publishing {
                 }
 
                 // No dependencies - everything is bundled in the fat JAR
-                withXml {
-                    def dependenciesNode = asNode().appendNode('dependencies')
-                    // Empty - no dependencies needed
-                }
             }
         }
     }
@@ -334,7 +300,6 @@ signing {
     if (signingKey) {
         useInMemoryPgpKeys(signingKey, signingPassword)
         sign publishing.publications.mavenJava
-        sign publishing.publications.standalone
     }
 }
 
