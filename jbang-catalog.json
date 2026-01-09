@@ -2,7 +2,7 @@
   "catalogs": {},
   "aliases": {
     "kite": {
-      "script-ref": "cloud.kitelang:kite-cli:RELEASE",
+      "script-ref": "cloud.kitelang:kite-cli:RELEASE:fat",
       "description": "Multi-cloud Infrastructure as Code CLI",
       "java": "25"
     }
