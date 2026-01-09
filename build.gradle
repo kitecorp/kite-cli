@@ -250,6 +250,8 @@ publishing {
             artifact(tasks.shadowJar) {
                 classifier = null  // Remove 'fat' classifier - this is the main jar
             }
+            artifact(tasks.sourcesJar)
+            artifact(tasks.javadocJar)
 
             pom {
                 name = 'Kite CLI'
