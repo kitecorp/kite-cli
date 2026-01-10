@@ -4,6 +4,9 @@ import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.engine.Engine;
+import cloud.kitelang.engine.kitefile.Dependencies;
+import cloud.kitelang.engine.kitefile.KiteInjector;
+import cloud.kitelang.engine.kitefile.Kitefile;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -90,6 +93,10 @@ public class ApplyCommand implements Callable<Integer> {
             log.info("Environment: {}", environment);
             log.info("Provider: {}", provider);
 
+            // Load kitefile.yml for provider and project configuration
+            var kitefile = loadKitefile();
+            var environmentsDir = kitefile.config().environmentsDir();
+
             // Check state configuration for this environment
             var stateConfig = getStateConfiguration();
             if (stateConfig == null) {
@@ -97,7 +104,7 @@ public class ApplyCommand implements Callable<Integer> {
             }
 
             // Determine what files to apply
-            var kiteFiles = determineKiteFiles();
+            var kiteFiles = determineKiteFiles(environmentsDir);
             Console.println("Applying: " + kiteFiles.size() + " file(s)");
 
             if (dryRun) {
@@ -116,11 +123,11 @@ public class ApplyCommand implements Callable<Integer> {
             // Use first file path for tracking (when single file) or environment path (when multiple)
             var filePath = kiteFiles.size() == 1
                     ? kiteFiles.get(0).toString()
-                    : "environments/" + environment;
+                    : environmentsDir + "/" + environment;
 
-            // Build Engine with credentials from GlobalConfig
+            // Build Engine with kitefile and credentials
             var engineBuilder = Engine.builder()
-                    .withProvidersDir(Path.of("providers"));
+                    .withKitefile(kitefile);
 
             // Pass database credentials from state configuration
             if ("postgresql".equals(stateConfig.getType())) {
@@ -179,8 +186,10 @@ public class ApplyCommand implements Callable<Integer> {
     /**
      * Determines the .kite files to apply based on options.
      * Priority: --file override > --stack > all stacks in environment
+     *
+     * @param environmentsDir Base directory for environments (from kitefile.yml)
      */
-    private List<Path> determineKiteFiles() throws IOException {
+    private List<Path> determineKiteFiles(String environmentsDir) throws IOException {
         // If explicit file override, use that
         if (overrideFile != null) {
             if (!overrideFile.exists()) {
@@ -191,7 +200,7 @@ public class ApplyCommand implements Callable<Integer> {
 
         // If specific stack requested
         if (stack != null) {
-            var stackFile = Path.of("environments", environment, stack + ".kite");
+            var stackFile = Path.of(environmentsDir, environment, stack + ".kite");
             if (!Files.exists(stackFile)) {
                 throw new IOException("Stack not found: " + stackFile);
             }
@@ -199,7 +208,7 @@ public class ApplyCommand implements Callable<Integer> {
         }
 
         // Default: all stacks in the environment
-        var envDir = Path.of("environments", environment);
+        var envDir = Path.of(environmentsDir, environment);
         if (!Files.exists(envDir)) {
             throw new IOException("Environment not found: " + envDir);
         }
@@ -230,6 +239,23 @@ public class ApplyCommand implements Callable<Integer> {
      */
     private String getProjectName() {
         return Path.of("").toAbsolutePath().getFileName().toString();
+    }
+
+    /**
+     * Loads provider configuration from kitefile.yml.
+     * Falls back to empty dependencies if kitefile.yml doesn't exist.
+     */
+    private Kitefile loadKitefile() {
+        try {
+            if (Files.exists(Path.of("kitefile.yml"))) {
+                return KiteInjector.createkitefile();
+            }
+            log.debug("No kitefile.yml found, using empty dependencies");
+            return new Kitefile(new Dependencies(List.of()));
+        } catch (IOException e) {
+            log.warn("Failed to load kitefile.yml: {}", e.getMessage());
+            return new Kitefile(new Dependencies(List.of()));
+        }
     }
 
     /**

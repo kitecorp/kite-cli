@@ -70,12 +70,12 @@ public class EnvCommand implements Callable<Integer> {
         if (kitefilePath != null) {
             try {
                 var kitefile = KiteInjector.createkitefile();
-                var environments = kitefile.config().environments();
+                var envConfigs = kitefile.config().environments().names();
 
-                if (!environments.isEmpty()) {
+                if (!envConfigs.isEmpty()) {
                     Console.println();
                     Console.println("Available environments:");
-                    for (var env : environments.keySet()) {
+                    for (var env : envConfigs.keySet()) {
                         var marker = env.equals(currentEnv) ? " (current)" : "";
                         Console.println("  " + env + marker);
                     }
@@ -148,7 +148,7 @@ public class EnvCommand implements Callable<Integer> {
         if (kitefilePath != null) {
             try {
                 var kitefile = KiteInjector.createkitefile();
-                if (kitefile.config().environments().containsKey(env)) {
+                if (kitefile.config().environments().names().containsKey(env)) {
                     return true;
                 }
             } catch (Exception e) {

@@ -183,13 +183,15 @@ public class ProjectStructureGenerator {
     /**
      * Generates YAML for the environments section with credentials.
      * Uses actual credentials from wizard if provided, otherwise uses placeholders.
+     * Output is nested under environments.configs in the YAML structure.
      */
     private String generateEnvironmentsYaml(String[] environments, String[] providers,
                                             Map<String, Map<String, CredentialConfig>> environmentCredentials) {
         var sb = new StringBuilder();
         for (String env : environments) {
-            sb.append("  ").append(env).append(":\n");
-            sb.append("    credentials:\n");
+            // Extra indent level since environments are under configs:
+            sb.append("    ").append(env).append(":\n");
+            sb.append("      credentials:\n");
 
             // Check if we have actual credentials for this environment
             var envCreds = environmentCredentials != null ? environmentCredentials.get(env) : null;
@@ -197,27 +199,27 @@ public class ProjectStructureGenerator {
             for (String provider : providers) {
                 var cred = envCreds != null ? envCreds.get(provider.toLowerCase()) : null;
 
-                sb.append("      - type: ").append(provider).append("\n");
+                sb.append("        - type: ").append(provider).append("\n");
 
                 if (cred != null) {
                     // Use actual credentials from wizard
                     switch (provider.toLowerCase()) {
                         case "aws" -> {
                             if (cred.profile() != null) {
-                                sb.append("        profile: ").append(cred.profile()).append("\n");
+                                sb.append("          profile: ").append(cred.profile()).append("\n");
                             }
                             if (cred.region() != null) {
-                                sb.append("        region: ").append(cred.region()).append("\n");
+                                sb.append("          region: ").append(cred.region()).append("\n");
                             }
                         }
                         case "gcp" -> {
                             if (cred.project() != null) {
-                                sb.append("        project: ").append(cred.project()).append("\n");
+                                sb.append("          project: ").append(cred.project()).append("\n");
                             }
                         }
                         case "azure" -> {
                             if (cred.subscription() != null) {
-                                sb.append("        subscription: ").append(cred.subscription()).append("\n");
+                                sb.append("          subscription: ").append(cred.subscription()).append("\n");
                             }
                         }
                     }
@@ -225,14 +227,14 @@ public class ProjectStructureGenerator {
                     // Use placeholders
                     switch (provider.toLowerCase()) {
                         case "aws" -> {
-                            sb.append("        profile: ").append(env).append("\n");
-                            sb.append("        region: us-east-1\n");
+                            sb.append("          profile: ").append(env).append("\n");
+                            sb.append("          region: us-east-1\n");
                         }
                         case "gcp" -> {
-                            sb.append("        project: my-").append(env).append("-project\n");
+                            sb.append("          project: my-").append(env).append("-project\n");
                         }
                         case "azure" -> {
-                            sb.append("        subscription: my-").append(env).append("-subscription\n");
+                            sb.append("          subscription: my-").append(env).append("-subscription\n");
                         }
                     }
                 }
