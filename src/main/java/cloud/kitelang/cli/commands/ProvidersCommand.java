@@ -186,7 +186,8 @@ public class ProvidersCommand implements Callable<Integer> {
                     specBuilder.ref(parsed.getRef());
                 } else if (!"latest".equals(version)) {
                     // Use version as tag (e.g., aws@0.1.0 -> aws-v0.1.0)
-                    specBuilder.ref(name + "-v" + version);
+                    // Version is already normalized to have 'v' prefix
+                    specBuilder.ref(name + "-" + version);
                 }
 
                 if (gitPath != null) {
@@ -311,13 +312,13 @@ public class ProvidersCommand implements Callable<Integer> {
         }
 
         /**
-         * Normalize version by stripping 'v' prefix.
-         * Accepts: v0.1.3 -> 0.1.3, 0.1.3 -> 0.1.3
-         * kitefile.yml should use version without 'v' prefix.
+         * Normalize version to always have 'v' prefix.
+         * Accepts: 0.1.3 -> v0.1.3, v0.1.3 -> v0.1.3
+         * Matches folder naming: ~/.kite/providers/aws/aws-v0.1.3
          */
         private String normalizeVersion(String version) {
-            if (version == null) return null;
-            return version.startsWith("v") ? version.substring(1) : version;
+            if (version == null || "latest".equals(version)) return version;
+            return version.startsWith("v") ? version : "v" + version;
         }
     }
 
