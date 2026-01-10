@@ -6,11 +6,15 @@ import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.engine.Engine;
 import cloud.kitelang.engine.diff.Plan;
 import cloud.kitelang.engine.domain.Resource;
+import cloud.kitelang.engine.kitefile.Dependencies;
+import cloud.kitelang.engine.kitefile.KiteInjector;
+import cloud.kitelang.engine.kitefile.Kitefile;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
@@ -125,8 +129,13 @@ public class DestroyCommand implements Callable<Integer> {
                 return 1;
             }
 
-            // Build Engine with credentials from GlobalConfig
+            // Load kitefile.yml for provider and project configuration
+            var kitefile = loadKitefile();
+
+            // Build Engine with kitefile, environment, and credentials
             var engineBuilder = Engine.builder()
+                    .withKitefile(kitefile)
+                    .withEnvironment(environment)
                     .withProvidersDir(Path.of("providers"));
 
             // Pass database credentials from state configuration
@@ -332,6 +341,23 @@ public class DestroyCommand implements Callable<Integer> {
         } catch (IOException e) {
             log.debug("Failed to load state configuration", e);
             return null;
+        }
+    }
+
+    /**
+     * Loads provider configuration from kitefile.yml.
+     * Falls back to empty dependencies if kitefile.yml doesn't exist.
+     */
+    private Kitefile loadKitefile() {
+        try {
+            if (Files.exists(Path.of("kitefile.yml"))) {
+                return KiteInjector.createkitefile();
+            }
+            log.debug("No kitefile.yml found, using empty dependencies");
+            return new Kitefile(new Dependencies(List.of()));
+        } catch (IOException e) {
+            log.warn("Failed to load kitefile.yml: {}", e.getMessage());
+            return new Kitefile(new Dependencies(List.of()));
         }
     }
 }

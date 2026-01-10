@@ -125,9 +125,10 @@ public class ApplyCommand implements Callable<Integer> {
                     ? kiteFiles.get(0).toString()
                     : environmentsDir + "/" + environment;
 
-            // Build Engine with kitefile and credentials
+            // Build Engine with kitefile, environment, and credentials
             var engineBuilder = Engine.builder()
-                    .withKitefile(kitefile);
+                    .withKitefile(kitefile)
+                    .withEnvironment(environment);
 
             // Pass database credentials from state configuration
             if ("postgresql".equals(stateConfig.getType())) {
