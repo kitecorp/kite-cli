@@ -155,7 +155,7 @@ public class ProvidersCommand implements Callable<Integer> {
             if (nameWithVersion.contains("@")) {
                 var parts = nameWithVersion.split("@", 2);
                 name = parts[0];
-                version = parts[1];
+                version = normalizeVersion(parts[1]);
             } else {
                 name = nameWithVersion;
             }
@@ -248,8 +248,11 @@ public class ProvidersCommand implements Callable<Integer> {
             int failed = 0;
 
             for (var dep : config.dependencies()) {
+                // Normalize version (strip 'v' prefix if present)
+                String version = normalizeVersion(dep.version());
+
                 // Determine display version (version, ref, or "latest")
-                String displayVersion = dep.version() != null ? dep.version()
+                String displayVersion = version != null ? version
                         : dep.ref() != null ? dep.ref() : "latest";
 
                 // Resolve official provider URLs if no git specified
@@ -260,7 +263,7 @@ public class ProvidersCommand implements Callable<Integer> {
 
                 var specBuilder = ProviderSpec.builder()
                         .name(dep.name())
-                        .version(dep.version())
+                        .version(version)
                         .git(gitUrl);
 
                 // Parse GitHub URLs automatically to extract ref and path
@@ -305,6 +308,16 @@ public class ProvidersCommand implements Callable<Integer> {
             }
 
             return failed > 0 ? 1 : 0;
+        }
+
+        /**
+         * Normalize version by stripping 'v' prefix.
+         * Accepts: v0.1.3 -> 0.1.3, 0.1.3 -> 0.1.3
+         * kitefile.yml should use version without 'v' prefix.
+         */
+        private String normalizeVersion(String version) {
+            if (version == null) return null;
+            return version.startsWith("v") ? version.substring(1) : version;
         }
     }
 
