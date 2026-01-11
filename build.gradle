@@ -60,8 +60,13 @@ java {
 application {
     mainClass = 'cloud.kitelang.cli.KiteCLI'
     applicationName = 'kite'
-    // Enable native access for JLine terminal handling (required for Java 22+)
-    applicationDefaultJvmArgs = ['--enable-native-access=ALL-UNNAMED']
+    applicationDefaultJvmArgs = [
+        // Enable native access for JLine terminal handling (required for Java 22+)
+        '--enable-native-access=ALL-UNNAMED',
+        // Suppress Netty/gRPC internal API warnings (sun.misc.Unsafe)
+        '--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED',
+        '--add-opens=java.base/java.nio=ALL-UNNAMED'
+    ]
 }
 
 
