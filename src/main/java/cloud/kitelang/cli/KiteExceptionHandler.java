@@ -46,6 +46,15 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
     public int handleExecutionException(Exception ex, CommandLine cmd, ParseResult parseResult) {
         PrintWriter err = cmd.getErr();
 
+        // Get the root cause for user-facing exceptions
+        Throwable cause = getRootCause(ex);
+
+        // Check if this is a user-facing error (no stack trace needed)
+        if (isUserFacingError(cause)) {
+            err.println(cmd.getColorScheme().errorText("Error: " + cause.getMessage()));
+            return cmd.getCommandSpec().exitCodeOnExecutionException();
+        }
+
         // Print error message
         err.println(cmd.getColorScheme().errorText("Error: " + ex.getMessage()));
 
@@ -76,6 +85,44 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
         }
 
         return cmd.getCommandSpec().exitCodeOnExecutionException();
+    }
+
+    /**
+     * Check if exception is a user-facing error that doesn't need a stack trace.
+     * These are errors caused by user input, not bugs in the code.
+     */
+    private boolean isUserFacingError(Throwable ex) {
+        if (ex == null) return false;
+
+        String className = ex.getClass().getName();
+
+        // Kite language/execution exceptions are user-facing
+        if (className.startsWith("cloud.kitelang.execution.exceptions.")) {
+            return true;
+        }
+
+        // Kite analysis exceptions are user-facing
+        if (className.startsWith("cloud.kitelang.analysis.")) {
+            return true;
+        }
+
+        // Semantic errors are user-facing
+        if (className.startsWith("cloud.kitelang.semantics.")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the root cause of an exception chain.
+     */
+    private Throwable getRootCause(Throwable ex) {
+        Throwable cause = ex;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause;
     }
 
     /**
