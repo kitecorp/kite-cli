@@ -6,13 +6,17 @@ import cloud.kitelang.engine.distribution.ProviderInstaller;
 import cloud.kitelang.engine.distribution.ProviderSpec;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
+import cloud.kitelang.engine.plugin.grpc.PluginManifest;
+import cloud.kitelang.engine.plugin.grpc.PluginProcessManager;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.concurrent.Callable;
 
 /**
@@ -36,7 +40,10 @@ import java.util.concurrent.Callable;
         mixinStandardHelpOptions = true,
         subcommands = {
                 ProvidersCommand.InstallCommand.class,
-                ProvidersCommand.ListCommand.class
+                ProvidersCommand.ListCommand.class,
+                ProvidersCommand.StartCommand.class,
+                ProvidersCommand.StopCommand.class,
+                ProvidersCommand.StatusCommand.class
         }
 )
 @Slf4j
@@ -49,6 +56,9 @@ public class ProvidersCommand implements Callable<Integer> {
         Console.println("Commands:");
         Console.println("  install    Install providers");
         Console.println("  list       List installed providers");
+        Console.println("  start      Start a provider process (keeps running for fast operations)");
+        Console.println("  stop       Stop a running provider process");
+        Console.println("  status     Show running provider processes");
         Console.println();
         Console.println("Examples:");
         Console.println("  kite providers install                              # Install from kitefile.yml");
@@ -58,6 +68,9 @@ public class ProvidersCommand implements Callable<Integer> {
         Console.println("  kite providers install myp --git github.com/org/p   # Install from git repo");
         Console.println("  kite providers list                                 # List global providers");
         Console.println("  kite providers list --local                         # List project providers");
+        Console.println("  kite providers start aws                            # Start AWS provider");
+        Console.println("  kite providers stop aws                             # Stop AWS provider");
+        Console.println("  kite providers status                               # Show running providers");
         return 0;
     }
 
@@ -270,8 +283,8 @@ public class ProvidersCommand implements Callable<Integer> {
                 // Parse GitHub URLs automatically to extract ref and path
                 if (gitUrl != null) {
                     var parsed = ProviderSpec.parseGitHubUrl(dep.name(), gitUrl);
-                    // Use parsed values unless explicitly overridden in kitefile
-                    specBuilder.ref(dep.ref() != null && !dep.ref().equals("main") ? dep.ref() : parsed.getRef());
+                    // Use explicit ref from kitefile, otherwise use parsed ref
+                    specBuilder.ref(dep.ref() != null ? dep.ref() : parsed.getRef());
                     specBuilder.path(dep.path() != null ? dep.path() : parsed.getPath());
                 } else {
                     specBuilder.ref(dep.ref());
@@ -312,12 +325,15 @@ public class ProvidersCommand implements Callable<Integer> {
         }
 
         /**
-         * Normalize version to always have 'v' prefix.
-         * Accepts: 0.1.3 -> v0.1.3, v0.1.3 -> v0.1.3
+         * Normalize version to always have 'v' prefix for semantic versions.
+         * Treats "main" as "latest" since kitefile.yml commonly uses "main" to mean latest release.
+         * Accepts: 0.1.3 -> v0.1.3, v0.1.3 -> v0.1.3, main -> latest
          * Matches folder naming: ~/.kite/providers/aws/aws-v0.1.3
          */
         private String normalizeVersion(String version) {
             if (version == null || "latest".equals(version)) return version;
+            // "main" in kitefile.yml means "latest release", not the main branch
+            if ("main".equals(version)) return "latest";
             return version.startsWith("v") ? version : "v" + version;
         }
     }
@@ -516,6 +532,474 @@ public class ProvidersCommand implements Callable<Integer> {
             } catch (NumberFormatException e) {
                 return 0;
             }
+        }
+    }
+
+    /**
+     * Start a provider process that keeps running for fast operations.
+     * The provider will auto-stop after 30 minutes of inactivity (configurable).
+     */
+    @Command(
+            name = "start",
+            description = "Start a provider process (keeps running for fast operations)",
+            footer = {
+                    "",
+                    "Providers auto-stop after 30 min of inactivity.",
+                    "Use 'kite providers status' to see running providers.",
+                    "",
+                    "Examples:",
+                    "  kite providers start aws              Start AWS provider (latest version)",
+                    "  kite providers start aws@0.1.5        Start specific version"
+            },
+            mixinStandardHelpOptions = true
+    )
+    @Slf4j
+    public static class StartCommand implements Callable<Integer> {
+
+        private static final Path RUN_DIR = Path.of(System.getProperty("user.home"), ".kite", "run");
+
+        @Parameters(
+                index = "0",
+                paramLabel = "PROVIDER[@VERSION]",
+                description = "Provider name with optional version (e.g., aws@0.1.5)"
+        )
+        private String providerName;
+
+        @Override
+        public Integer call() {
+            try {
+                // Parse name@version format
+                String name;
+                String version = "latest";
+
+                if (providerName.contains("@")) {
+                    var parts = providerName.split("@", 2);
+                    name = parts[0];
+                    version = normalizeVersion(parts[1]);
+                } else {
+                    name = providerName;
+                }
+
+                // Find the provider executable and resolve actual version
+                var resolved = resolveProvider(name, version);
+                if (resolved == null) {
+                    Console.error("Provider not found: " + name + "@" + version);
+                    Console.println("  Run 'kite providers install " + name + "' first");
+                    return 1;
+                }
+
+                String pluginId = name + "@" + resolved.version;
+
+                // Check if already running
+                if (isProviderRunning(pluginId)) {
+                    Console.println("Provider already running: " + pluginId);
+                    return 0;
+                }
+
+                Console.print("Starting provider " + pluginId + "... ");
+
+                var manifest = PluginManifest.builder()
+                        .name(name)
+                        .version(resolved.version)
+                        .executable(resolved.executable)
+                        .build();
+
+                var manager = new PluginProcessManager();
+                manager.setPersistentMode(true);
+                manager.setIdleTimeout(Duration.ofMinutes(30));
+
+                var plugin = manager.startPlugin(manifest);
+
+                if (plugin.isAlive()) {
+                    Console.println("done");
+                    Console.println("  Provider will auto-stop after 30 min of inactivity");
+                    // Disconnect without stopping (leave running)
+                    manager.disconnect();
+                    return 0;
+                } else {
+                    Console.println("failed");
+                    Console.error("Provider exited unexpectedly");
+                    return 1;
+                }
+            } catch (Exception e) {
+                Console.println("failed");
+                Console.error(e.getMessage());
+                log.debug("Start failed", e);
+                return 1;
+            }
+        }
+
+        private String normalizeVersion(String version) {
+            if (version == null || "latest".equals(version)) return version;
+            if ("main".equals(version)) return "latest";
+            return version.startsWith("v") ? version : "v" + version;
+        }
+
+        private record ResolvedProvider(Path executable, String version) {}
+
+        /**
+         * Resolve provider executable and actual version.
+         * For "latest", finds the highest installed version.
+         */
+        private ResolvedProvider resolveProvider(String name, String version) throws IOException {
+            Path providersDir = Kitefile.globalProvidersPath().resolve(name);
+
+            if (!Files.exists(providersDir)) {
+                return null;
+            }
+
+            // For specific version, look in that version directory
+            if (!"latest".equals(version)) {
+                Path versionDir = providersDir.resolve(name + "-" + version);
+                if (!Files.exists(versionDir)) {
+                    versionDir = providersDir.resolve(version);
+                }
+                var exec = findExecutable(versionDir);
+                return exec != null ? new ResolvedProvider(exec, version) : null;
+            }
+
+            // For latest, find the highest version
+            Path currentLink = providersDir.resolve("current");
+            if (Files.exists(currentLink)) {
+                Path currentVersion;
+                if (Files.isSymbolicLink(currentLink)) {
+                    currentVersion = providersDir.resolve(Files.readSymbolicLink(currentLink));
+                } else {
+                    var versionName = Files.readString(currentLink).trim();
+                    currentVersion = providersDir.resolve(versionName);
+                }
+                var exec = findExecutable(currentVersion);
+                if (exec != null) {
+                    var actualVersion = extractVersion(currentVersion.getFileName().toString(), name);
+                    return new ResolvedProvider(exec, actualVersion);
+                }
+            }
+
+            // Find highest version directory
+            try (var stream = Files.list(providersDir)) {
+                var highestVersion = stream
+                        .filter(Files::isDirectory)
+                        .filter(v -> !v.getFileName().toString().equals("current"))
+                        .max((a, b) -> compareVersions(a.getFileName().toString(), b.getFileName().toString()));
+
+                if (highestVersion.isPresent()) {
+                    var exec = findExecutable(highestVersion.get());
+                    if (exec != null) {
+                        var actualVersion = extractVersion(highestVersion.get().getFileName().toString(), name);
+                        return new ResolvedProvider(exec, actualVersion);
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Extract version from directory name (e.g., "aws-v0.1.5" -> "v0.1.5")
+         */
+        private String extractVersion(String dirName, String providerName) {
+            if (dirName.startsWith(providerName + "-")) {
+                return dirName.substring(providerName.length() + 1);
+            }
+            return dirName;
+        }
+
+        private Path findExecutable(Path versionDir) {
+            if (!Files.exists(versionDir)) return null;
+
+            // Try bin/provider first (new structure)
+            Path binProvider = versionDir.resolve("bin/provider");
+            if (Files.exists(binProvider) && Files.isExecutable(binProvider)) {
+                return binProvider;
+            }
+
+            // Try provider directly
+            Path provider = versionDir.resolve("provider");
+            if (Files.exists(provider) && Files.isExecutable(provider)) {
+                return provider;
+            }
+
+            return null;
+        }
+
+        private int compareVersions(String v1, String v2) {
+            String s1 = v1.replaceFirst("^[^0-9]*", "");
+            String s2 = v2.replaceFirst("^[^0-9]*", "");
+
+            String[] parts1 = s1.split("\\.");
+            String[] parts2 = s2.split("\\.");
+
+            for (int i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+                int p1 = i < parts1.length ? parseIntSafe(parts1[i]) : 0;
+                int p2 = i < parts2.length ? parseIntSafe(parts2[i]) : 0;
+                if (p1 != p2) return Integer.compare(p1, p2);
+            }
+            return 0;
+        }
+
+        private int parseIntSafe(String s) {
+            try {
+                return Integer.parseInt(s.replaceAll("[^0-9]", ""));
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+
+        private boolean isProviderRunning(String pluginId) {
+            var manager = new PluginProcessManager();
+            return manager.isProviderRunning(pluginId);
+        }
+    }
+
+    /**
+     * Stop a running provider process.
+     */
+    @Command(
+            name = "stop",
+            description = "Stop a running provider process",
+            footer = {
+                    "",
+                    "Examples:",
+                    "  kite providers stop aws               Stop AWS provider",
+                    "  kite providers stop aws@0.1.5         Stop specific version",
+                    "  kite providers stop --all             Stop all running providers"
+            },
+            mixinStandardHelpOptions = true
+    )
+    @Slf4j
+    public static class StopCommand implements Callable<Integer> {
+
+        private static final Path RUN_DIR = Path.of(System.getProperty("user.home"), ".kite", "run");
+
+        @Parameters(
+                index = "0",
+                paramLabel = "PROVIDER[@VERSION]",
+                description = "Provider name with optional version (e.g., aws@0.1.5)",
+                arity = "0..1"
+        )
+        private String providerName;
+
+        @Option(
+                names = {"--all", "-a"},
+                description = "Stop all running providers"
+        )
+        private boolean stopAll;
+
+        @Override
+        public Integer call() {
+            try {
+                if (stopAll) {
+                    return stopAllProviders();
+                }
+
+                if (providerName == null) {
+                    Console.error("Provider name required. Use --all to stop all providers.");
+                    return 1;
+                }
+
+                // Parse name@version format
+                String name;
+                String version = "latest";
+
+                if (providerName.contains("@")) {
+                    var parts = providerName.split("@", 2);
+                    name = parts[0];
+                    version = normalizeVersion(parts[1]);
+                } else {
+                    name = providerName;
+                }
+
+                // Resolve "latest" to actual version
+                String pluginId = resolvePluginId(name, version);
+                return stopProvider(pluginId);
+            } catch (Exception e) {
+                Console.error(e.getMessage());
+                log.debug("Stop failed", e);
+                return 1;
+            }
+        }
+
+        /**
+         * Resolve plugin ID, converting "latest" to actual installed version.
+         */
+        private String resolvePluginId(String name, String version) throws IOException {
+            if (!"latest".equals(version)) {
+                return name + "@" + version;
+            }
+
+            // Find the actual installed version
+            Path providersDir = Kitefile.globalProvidersPath().resolve(name);
+            if (!Files.exists(providersDir)) {
+                return name + "@" + version;
+            }
+
+            // Check current symlink first
+            Path currentLink = providersDir.resolve("current");
+            if (Files.exists(currentLink)) {
+                String versionDir;
+                if (Files.isSymbolicLink(currentLink)) {
+                    versionDir = Files.readSymbolicLink(currentLink).toString();
+                } else {
+                    versionDir = Files.readString(currentLink).trim();
+                }
+                var actualVersion = extractVersion(versionDir, name);
+                return name + "@" + actualVersion;
+            }
+
+            // Find highest version directory
+            try (var stream = Files.list(providersDir)) {
+                var highestVersion = stream
+                        .filter(Files::isDirectory)
+                        .filter(v -> !v.getFileName().toString().equals("current"))
+                        .max((a, b) -> compareVersions(a.getFileName().toString(), b.getFileName().toString()));
+
+                if (highestVersion.isPresent()) {
+                    var actualVersion = extractVersion(highestVersion.get().getFileName().toString(), name);
+                    return name + "@" + actualVersion;
+                }
+            }
+
+            return name + "@" + version;
+        }
+
+        private String extractVersion(String dirName, String providerName) {
+            if (dirName.startsWith(providerName + "-")) {
+                return dirName.substring(providerName.length() + 1);
+            }
+            return dirName;
+        }
+
+        private int compareVersions(String v1, String v2) {
+            String s1 = v1.replaceFirst("^[^0-9]*", "");
+            String s2 = v2.replaceFirst("^[^0-9]*", "");
+
+            String[] parts1 = s1.split("\\.");
+            String[] parts2 = s2.split("\\.");
+
+            for (int i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+                int p1 = i < parts1.length ? parseIntSafe(parts1[i]) : 0;
+                int p2 = i < parts2.length ? parseIntSafe(parts2[i]) : 0;
+                if (p1 != p2) return Integer.compare(p1, p2);
+            }
+            return 0;
+        }
+
+        private int parseIntSafe(String s) {
+            try {
+                return Integer.parseInt(s.replaceAll("[^0-9]", ""));
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+
+        private Integer stopProvider(String pluginId) {
+            var manager = new PluginProcessManager();
+
+            if (!manager.isProviderRunning(pluginId)) {
+                Console.println("Provider not running: " + pluginId);
+                return 0;
+            }
+
+            Console.print("Stopping provider " + pluginId + "... ");
+
+            if (manager.stopPluginByPortFile(pluginId)) {
+                Console.println("done");
+                return 0;
+            } else {
+                Console.println("failed");
+                return 1;
+            }
+        }
+
+        private Integer stopAllProviders() {
+            if (!Files.exists(RUN_DIR)) {
+                Console.println("No running providers");
+                return 0;
+            }
+
+            try (var stream = Files.list(RUN_DIR)) {
+                var portFiles = stream
+                        .filter(p -> p.toString().endsWith(".port"))
+                        .toList();
+
+                if (portFiles.isEmpty()) {
+                    Console.println("No running providers");
+                    return 0;
+                }
+
+                int stopped = 0;
+                for (var portFile : portFiles) {
+                    String pluginId = portFile.getFileName().toString().replace(".port", "");
+                    if (stopProvider(pluginId) == 0) {
+                        stopped++;
+                    }
+                }
+
+                Console.println("Stopped " + stopped + " provider(s)");
+                return 0;
+            } catch (IOException e) {
+                Console.error("Failed to list running providers: " + e.getMessage());
+                return 1;
+            }
+        }
+
+        private String normalizeVersion(String version) {
+            if (version == null || "latest".equals(version)) return version;
+            if ("main".equals(version)) return "latest";
+            return version.startsWith("v") ? version : "v" + version;
+        }
+    }
+
+    /**
+     * Show status of running provider processes.
+     */
+    @Command(
+            name = "status",
+            description = "Show running provider processes",
+            mixinStandardHelpOptions = true
+    )
+    @Slf4j
+    public static class StatusCommand implements Callable<Integer> {
+
+        @Override
+        public Integer call() {
+            var manager = new PluginProcessManager();
+            var providers = manager.listRunningProviders();
+
+            if (providers.isEmpty()) {
+                Console.println("No running providers");
+                return 0;
+            }
+
+            Console.println("Running providers:");
+            Console.println();
+
+            int running = 0;
+            for (var pluginId : providers) {
+                var status = manager.getProviderStatus(pluginId);
+
+                if (status != null && status.healthy()) {
+                    Console.printf("  %-20s port %-5d uptime %s  idle %s%n",
+                            pluginId, status.port(), formatDuration(status.uptimeMs()), formatDuration(status.idleMs()));
+                    running++;
+                } else {
+                    Console.printf("  %-20s (not responding)%n", pluginId);
+                }
+            }
+
+            if (running > 0) {
+                Console.println();
+                Console.println("Providers auto-stop after idle timeout (default: 30 min)");
+            }
+
+            return 0;
+        }
+
+        private String formatDuration(long ms) {
+            if (ms < 1000) return ms + "ms";
+            if (ms < 60_000) return (ms / 1000) + "s";
+            if (ms < 3600_000) return (ms / 60_000) + "m " + ((ms % 60_000) / 1000) + "s";
+            return (ms / 3600_000) + "h " + ((ms % 3600_000) / 60_000) + "m";
         }
     }
 }

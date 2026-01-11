@@ -231,8 +231,8 @@ public class DestroyCommand implements Callable<Integer> {
             return 0;
         }
 
-        // Create destroy plan
-        plan = engine.planDestroy(stateResources);
+        // Create destroy plan with progress display
+        plan = engine.planDestroy(stateResources, true);
 
         // Show plan details
         Console.println();

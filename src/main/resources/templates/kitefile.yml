@@ -15,6 +15,11 @@ environments:
 # logs:
 #   verbosity: info  # error, warn, info, debug, trace
 
+# Provider process configuration (persistent mode)
+# providers:
+#   idleTimeout: 30m  # Auto-stop after 30 minutes of inactivity
+#   persistent: true  # Keep providers running between CLI commands
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Examples
 # ─────────────────────────────────────────────────────────────────────────────
