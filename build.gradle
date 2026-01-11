@@ -63,7 +63,8 @@ application {
     applicationDefaultJvmArgs = [
         // Enable native access for JLine terminal handling (required for Java 22+)
         '--enable-native-access=ALL-UNNAMED',
-        // Suppress Netty/gRPC internal API warnings (sun.misc.Unsafe)
+        // Suppress Netty/gRPC sun.misc.Unsafe deprecation warnings (Java 23+)
+        '--sun-misc-unsafe-memory-access=allow',
         '--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED',
         '--add-opens=java.base/java.nio=ALL-UNNAMED'
     ]
