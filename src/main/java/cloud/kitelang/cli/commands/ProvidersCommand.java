@@ -270,8 +270,8 @@ public class ProvidersCommand implements Callable<Integer> {
                 // Parse GitHub URLs automatically to extract ref and path
                 if (gitUrl != null) {
                     var parsed = ProviderSpec.parseGitHubUrl(dep.name(), gitUrl);
-                    // Use parsed values unless explicitly overridden in kitefile
-                    specBuilder.ref(dep.ref() != null && !dep.ref().equals("main") ? dep.ref() : parsed.getRef());
+                    // Use explicit ref from kitefile, otherwise use parsed ref
+                    specBuilder.ref(dep.ref() != null ? dep.ref() : parsed.getRef());
                     specBuilder.path(dep.path() != null ? dep.path() : parsed.getPath());
                 } else {
                     specBuilder.ref(dep.ref());
@@ -312,12 +312,15 @@ public class ProvidersCommand implements Callable<Integer> {
         }
 
         /**
-         * Normalize version to always have 'v' prefix.
-         * Accepts: 0.1.3 -> v0.1.3, v0.1.3 -> v0.1.3
+         * Normalize version to always have 'v' prefix for semantic versions.
+         * Treats "main" as "latest" since kitefile.yml commonly uses "main" to mean latest release.
+         * Accepts: 0.1.3 -> v0.1.3, v0.1.3 -> v0.1.3, main -> latest
          * Matches folder naming: ~/.kite/providers/aws/aws-v0.1.3
          */
         private String normalizeVersion(String version) {
             if (version == null || "latest".equals(version)) return version;
+            // "main" in kitefile.yml means "latest release", not the main branch
+            if ("main".equals(version)) return "latest";
             return version.startsWith("v") ? version : "v" + version;
         }
     }
