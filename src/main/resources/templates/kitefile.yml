@@ -55,3 +55,10 @@ environments:
 #
 # State backend is configured in ~/.kite/config.yml (secrets not in version control)
 # Configure with: kite config state -e <environment>
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# Debugging
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Set KITE_DEBUG=1 to see full stack traces when debugging:
+#   KITE_DEBUG=1 kite apply -e dev
