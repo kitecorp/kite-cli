@@ -419,8 +419,8 @@ Manage Kite providers (cloud integrations).
 ```bash
 kite providers                           # Show usage and examples
 kite providers install                   # Install providers from kitefile.yml
-kite providers install aws               # Install latest version
-kite providers install aws@1.0.0         # Install specific version
+kite providers install name               # Install latest version
+kite providers install name@1.0.0         # Install specific version
 kite providers install myp --git github.com/org/provider  # Install from git
 kite providers list                      # List local providers
 kite providers list --global             # List global providers

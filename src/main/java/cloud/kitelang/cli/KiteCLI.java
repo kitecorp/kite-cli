@@ -106,21 +106,29 @@ public class KiteCLI implements Runnable {
             // Ignore - use JVM defaults
         }
 
-        // Override with kitefile.yml verbosity if present
-        var kitefilePath = Path.of("kitefile.yml");
-        if (!Files.exists(kitefilePath)) {
-            kitefilePath = Path.of("kitefile.yaml");
+        // Priority: KITE_LOGGING env var > kitefile.yml > logging.properties
+        String verbosity = System.getenv("KITE_LOGGING");
+
+        // If no env var, try kitefile.yml
+        if (verbosity == null) {
+            var kitefilePath = Path.of("kitefile.yml");
+            if (!Files.exists(kitefilePath)) {
+                kitefilePath = Path.of("kitefile.yaml");
+            }
+
+            if (Files.exists(kitefilePath)) {
+                try {
+                    var kitefile = KiteInjector.createkitefile();
+                    verbosity = kitefile.config().logs().verbosity();
+                } catch (Exception e) {
+                    // Silently ignore - kitefile parsing errors will be reported by commands
+                }
+            }
         }
 
-        if (!Files.exists(kitefilePath)) {
-            return; // No kitefile, use defaults from logging.properties
-        }
-
-        try {
-            var kitefile = KiteInjector.createkitefile();
-            var verbosity = kitefile.config().logs().verbosity();
-
-            var level = switch (verbosity) {
+        // Apply logging level if configured
+        if (verbosity != null) {
+            var level = switch (verbosity.toLowerCase()) {
                 case "error" -> Level.SEVERE;
                 case "warn" -> Level.WARNING;
                 case "debug" -> Level.FINE;
@@ -131,9 +139,6 @@ public class KiteCLI implements Runnable {
             // Apply to root logger and all kite/engine loggers
             Logger.getLogger("").setLevel(level);
             Logger.getLogger("cloud.kitelang").setLevel(level);
-
-        } catch (Exception e) {
-            // Silently ignore - kitefile parsing errors will be reported by commands
         }
     }
 }

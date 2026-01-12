@@ -65,5 +65,7 @@ environments:
 # Debugging
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# Set KITE_DEBUG=1 to see full stack traces when debugging:
-#   KITE_DEBUG=1 kite apply -e dev
+# Set KITE_LOGGING to control log verbosity (overrides logs.verbosity above):
+#   KITE_LOGGING=DEBUG kite apply -e dev    # Show debug logs and stack traces
+#   KITE_LOGGING=TRACE kite apply -e dev    # Show all logs
+#   KITE_LOGGING=ERROR kite apply -e dev    # Show only errors

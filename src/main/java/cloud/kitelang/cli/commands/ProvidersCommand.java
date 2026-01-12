@@ -29,9 +29,9 @@ import java.util.concurrent.Callable;
                 "",
                 "Examples:",
                 "  kite providers install                Install all from kitefile.yml",
-                "  kite providers install aws            Install latest AWS provider",
-                "  kite providers install aws@1.0.0      Install specific version",
-                "  kite providers install aws --local    Install to project (.kite/providers)",
+                "  kite providers install name            Install latest AWS provider",
+                "  kite providers install name@1.0.0      Install specific version",
+                "  kite providers install name --local    Install to project (.kite/providers)",
                 "  kite providers install myp --git github.com/org/provider",
                 "  kite providers install myp --git github.com/org/repo/tree/dev/aws",
                 "  kite providers list                   List global providers",
@@ -62,14 +62,14 @@ public class ProvidersCommand implements Callable<Integer> {
         Console.println();
         Console.println("Examples:");
         Console.println("  kite providers install                              # Install from kitefile.yml");
-        Console.println("  kite providers install aws                          # Download from GitHub Releases");
-        Console.println("  kite providers install aws --from-source            # Clone and build from source");
-        Console.println("  kite providers install aws@1.0.0                    # Install specific version");
+        Console.println("  kite providers install name                          # Download from GitHub Releases");
+        Console.println("  kite providers install name --from-source            # Clone and build from source");
+        Console.println("  kite providers install name@1.0.0                    # Install specific version");
         Console.println("  kite providers install myp --git github.com/org/p   # Install from git repo");
         Console.println("  kite providers list                                 # List global providers");
         Console.println("  kite providers list --local                         # List project providers");
-        Console.println("  kite providers start aws                            # Start AWS provider");
-        Console.println("  kite providers stop aws                             # Stop AWS provider");
+        Console.println("  kite providers start name                            # Start AWS provider");
+        Console.println("  kite providers stop name                             # Stop AWS provider");
         Console.println("  kite providers status                               # Show running providers");
         return 0;
     }
@@ -84,12 +84,12 @@ public class ProvidersCommand implements Callable<Integer> {
                     "",
                     "Examples:",
                     "  kite providers install                Install all from kitefile.yml",
-                    "  kite providers install aws            Install latest (from GitHub Releases)",
-                    "  kite providers install aws@1.0.0      Install specific version",
+                    "  kite providers install name            Install latest (from GitHub Releases)",
+                    "  kite providers install name@1.0.0      Install specific version",
                     "  kite providers install myp --git github.com/org/provider",
                     "  kite providers install myp --git github.com/org/repo/aws",
-                    "  kite providers install aws --from-source   Clone and build from source",
-                    "  kite providers install aws --local    Install to .kite/providers"
+                    "  kite providers install name --from-source   Clone and build from source",
+                    "  kite providers install name --local    Install to .kite/providers"
             },
             mixinStandardHelpOptions = true
     )
@@ -548,8 +548,8 @@ public class ProvidersCommand implements Callable<Integer> {
                     "Use 'kite providers status' to see running providers.",
                     "",
                     "Examples:",
-                    "  kite providers start aws              Start AWS provider (latest version)",
-                    "  kite providers start aws@0.1.5        Start specific version"
+                    "  kite providers start name              Start AWS provider (latest version)",
+                    "  kite providers start name@0.1.5        Start specific version"
             },
             mixinStandardHelpOptions = true
     )
@@ -760,8 +760,8 @@ public class ProvidersCommand implements Callable<Integer> {
             footer = {
                     "",
                     "Examples:",
-                    "  kite providers stop aws               Stop AWS provider",
-                    "  kite providers stop aws@0.1.5         Stop specific version",
+                    "  kite providers stop name               Stop AWS provider",
+                    "  kite providers stop name@0.1.5         Stop specific version",
                     "  kite providers stop --all             Stop all running providers"
             },
             mixinStandardHelpOptions = true

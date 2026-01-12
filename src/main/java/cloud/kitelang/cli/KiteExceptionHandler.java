@@ -51,12 +51,19 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
 
         // Check if this is a user-facing error (no stack trace needed)
         if (isUserFacingError(cause)) {
-            err.println(cmd.getColorScheme().errorText("Error: " + cause.getMessage()));
+            String friendlyMessage = getUserFriendlyMessage(cause);
+            err.println(cmd.getColorScheme().errorText("\u2717 " + friendlyMessage));
+
+            // Show stack trace in debug mode even for user-facing errors
+            if (isDebugEnabled()) {
+                err.println();
+                ex.printStackTrace(err);
+            }
             return cmd.getCommandSpec().exitCodeOnExecutionException();
         }
 
         // Print error message
-        err.println(cmd.getColorScheme().errorText("Error: " + ex.getMessage()));
+        err.println(cmd.getColorScheme().errorText("\u2717 " + ex.getMessage()));
 
         // Provide context-specific suggestions
         String message = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
@@ -76,12 +83,12 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
         }
 
         // Print stack trace in debug mode
-        if (System.getenv("KITE_DEBUG") != null) {
+        if (isDebugEnabled()) {
             err.println();
             ex.printStackTrace(err);
         } else {
             err.println();
-            err.println("Set KITE_DEBUG=1 for detailed error information.");
+            err.println("Set KITE_LOGGING=DEBUG for detailed error information.");
         }
 
         return cmd.getCommandSpec().exitCodeOnExecutionException();
@@ -111,7 +118,53 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
             return true;
         }
 
+        // Database connection errors are user-facing
+        if (className.contains("Flyway") || className.contains("PSQLException") ||
+            className.contains("SQLException") || className.contains("ConnectException")) {
+            return true;
+        }
+
         return false;
+    }
+
+    /**
+     * Get a user-friendly message for common errors.
+     */
+    private String getUserFriendlyMessage(Throwable ex) {
+        if (ex == null) return null;
+
+        String message = ex.getMessage();
+        if (message == null) return null;
+
+        // Database connection refused
+        if (message.contains("Connection") && message.contains("refused")) {
+            // Extract host:port from message like "Connection to localhost:5432 refused"
+            var matcher = java.util.regex.Pattern.compile("Connection to ([^\\s]+) refused").matcher(message);
+            if (matcher.find()) {
+                return "Cannot connect to database at " + matcher.group(1) + ". Is PostgreSQL running?";
+            }
+            return "Cannot connect to database. Is PostgreSQL running?";
+        }
+
+        // Authentication failure
+        if (message.contains("password authentication failed") || message.contains("authentication failed")) {
+            return "Database authentication failed. Check your credentials in kitefile.yml.";
+        }
+
+        // Database doesn't exist
+        if (message.contains("does not exist") && message.contains("database")) {
+            return "Database does not exist. Create it first or check the database name in kitefile.yml.";
+        }
+
+        return message;
+    }
+
+    /**
+     * Check if debug logging is enabled via KITE_LOGGING env var.
+     */
+    private boolean isDebugEnabled() {
+        String level = System.getenv("KITE_LOGGING");
+        return level != null && (level.equalsIgnoreCase("DEBUG") || level.equalsIgnoreCase("TRACE"));
     }
 
     /**
