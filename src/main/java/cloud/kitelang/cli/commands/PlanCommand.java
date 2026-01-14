@@ -115,84 +115,79 @@ public class PlanCommand implements Callable<Integer> {
     private boolean jsonOutput;
 
     @Override
-    public Integer call() {
-        try {
-            log.info("Creating execution plan...");
-            log.info("Environment: {}", environment);
-            log.info("Provider: {}", provider);
+    public Integer call() throws Exception {
+        log.info("Creating execution plan...");
+        log.info("Environment: {}", environment);
+        log.info("Provider: {}", provider);
 
-            // Load kitefile.yml for provider and project configuration
-            var kitefile = loadKitefile();
-            var environmentsDir = kitefile.config().environmentsDir();
+        // Load kitefile.yml for provider and project configuration
+        var kitefile = loadKitefile();
+        var environmentsDir = kitefile.config().environmentsDir();
 
-            // Check state configuration for this environment
-            var stateConfig = getStateConfiguration();
-            if (stateConfig == null) {
-                return 1;
-            }
-
-            // Determine which file(s) to plan
-            var kiteFiles = determineKiteFiles(environmentsDir);
-            Console.println("Planning: " + kiteFiles.size() + " file(s)");
-            Console.println();
-
-            if (refresh) {
-                Console.println("Refreshing state...");
-                refreshState();
-            }
-
-            // Load all .kite file contents
-            var source = new StringBuilder();
-            for (var file : kiteFiles) {
-                source.append(Files.readString(file));
-                source.append("\n");
-            }
-
-            // Use first file path for tracking (when single file) or environment path (when multiple)
-            var filePath = kiteFiles.size() == 1
-                    ? kiteFiles.get(0).toString()
-                    : environmentsDir + "/" + environment;
-
-            // Build Engine with kitefile, environment, and credentials
-            var engineBuilder = Engine.builder()
-                    .withKitefile(kitefile)
-                    .withEnvironment(environment);
-
-            // Pass database credentials from state configuration
-            if ("postgresql".equals(stateConfig.getType())) {
-                var projectName = getProjectName();
-                engineBuilder.withDatabaseCredentials(
-                        stateConfig.getUrl(),
-                        stateConfig.getUsername(),
-                        stateConfig.getEffectivePassword(projectName, environment)
-                );
-            }
-
-            try (var engine = engineBuilder.build()) {
-                var resources = engine.parse(source.toString(), filePath);
-                var plan = engine.plan(resources);
-
-                if (jsonOutput) {
-                    printJsonPlan(engine, plan);
-                } else {
-                    printPlan(engine, plan);
-                }
-
-                if (outputFile != null) {
-                    // TODO: Serialize plan to file
-                    Console.println("\nPlan saved to: " + outputFile);
-                }
-            }
-
-            Console.println("\nTo apply this plan, run: kite apply --env " + environment);
-
-            return 0;
-
-        } catch (Exception e) {
-            log.error("Failed to create plan", e);
-            Console.error(e.getMessage());
+        // Check state configuration for this environment
+        var stateConfig = getStateConfiguration();
+        if (stateConfig == null) {
             return 1;
         }
+
+        // Determine which file(s) to plan
+        var kiteFiles = determineKiteFiles(environmentsDir);
+        Console.println("Planning: " + kiteFiles.size() + " file(s)");
+        Console.println();
+
+        if (refresh) {
+            Console.println("Refreshing state...");
+            refreshState();
+        }
+
+        // Load all .kite file contents
+        var source = new StringBuilder();
+        for (var file : kiteFiles) {
+            source.append(Files.readString(file));
+            source.append("\n");
+        }
+
+        // Use first file path for tracking (when single file) or environment path (when multiple)
+        var filePath = kiteFiles.size() == 1
+                ? kiteFiles.get(0).toString()
+                : environmentsDir + "/" + environment;
+
+        // Build Engine with kitefile, environment, and credentials
+        var engineBuilder = Engine.builder()
+                .withKitefile(kitefile)
+                .withEnvironment(environment);
+
+        // Pass database credentials from state configuration
+        if ("postgresql".equals(stateConfig.getType())) {
+            var projectName = getProjectName();
+            engineBuilder.withDatabaseCredentials(
+                    stateConfig.getUrl(),
+                    stateConfig.getUsername(),
+                    stateConfig.getEffectivePassword(projectName, environment)
+            );
+        }
+
+        // Any exceptions from here will be handled by KiteExceptionHandler
+        // which shows user-friendly messages and only shows stack traces when KITE_LOGGING=debug
+        try (var engine = engineBuilder.build()) {
+            var resources = engine.parse(source.toString(), filePath);
+            var plan = engine.plan(resources);
+
+            if (jsonOutput) {
+                printJsonPlan(engine, plan);
+            } else {
+                printPlan(engine, plan);
+            }
+
+            if (outputFile != null) {
+                // TODO: Serialize plan to file
+                Console.println("\nPlan saved to: " + outputFile);
+            }
+        }
+
+        Console.println("\nTo apply this plan, run: kite apply --env " + environment);
+
+        return 0;
     }
 
     /**

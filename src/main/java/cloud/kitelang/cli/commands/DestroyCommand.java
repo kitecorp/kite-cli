@@ -113,7 +113,7 @@ public class DestroyCommand implements Callable<Integer> {
     private Plan plan;
 
     @Override
-    public Integer call() {
+    public Integer call() throws Exception {
         try {
             log.debug("Preparing to destroy infrastructure...");
             log.debug("Environment: {}", environment);
@@ -209,12 +209,10 @@ public class DestroyCommand implements Callable<Integer> {
             }
 
             // Execute destruction
+            // Any exceptions from here will be handled by KiteExceptionHandler
+            // which shows user-friendly messages and only shows stack traces when KITE_LOGGING=debug
             return executeDestruction();
 
-        } catch (Exception e) {
-            log.error("Destruction failed", e);
-            Console.error(e.getMessage());
-            return 1;
         } finally {
             if (engine != null) {
                 engine.close();

@@ -87,101 +87,96 @@ public class ApplyCommand implements Callable<Integer> {
     private boolean dryRun;
 
     @Override
-    public Integer call() {
-        try {
-            log.info("Applying infrastructure changes...");
-            log.info("Environment: {}", environment);
-            log.info("Provider: {}", provider);
+    public Integer call() throws Exception {
+        log.info("Applying infrastructure changes...");
+        log.info("Environment: {}", environment);
+        log.info("Provider: {}", provider);
 
-            // Load kitefile.yml for provider and project configuration
-            var kitefile = loadKitefile();
-            var environmentsDir = kitefile.config().environmentsDir();
+        // Load kitefile.yml for provider and project configuration
+        var kitefile = loadKitefile();
+        var environmentsDir = kitefile.config().environmentsDir();
 
-            // Check state configuration for this environment
-            var stateConfig = getStateConfiguration();
-            if (stateConfig == null) {
-                return 1;
-            }
-
-            // Determine what files to apply
-            var kiteFiles = determineKiteFiles(environmentsDir);
-            Console.println("Applying: " + kiteFiles.size() + " file(s)");
-
-            if (dryRun) {
-                Console.println("\nDRY RUN: No changes will be made");
-                Console.println("Run 'kite plan --env " + environment + "' to see detailed changes");
-                return 0;
-            }
-
-            // Load all .kite file contents
-            var source = new StringBuilder();
-            for (var file : kiteFiles) {
-                source.append(Files.readString(file));
-                source.append("\n");
-            }
-
-            // Use first file path for tracking (when single file) or environment path (when multiple)
-            var filePath = kiteFiles.size() == 1
-                    ? kiteFiles.get(0).toString()
-                    : environmentsDir + "/" + environment;
-
-            // Build Engine with kitefile, environment, and credentials
-            var engineBuilder = Engine.builder()
-                    .withKitefile(kitefile)
-                    .withEnvironment(environment);
-
-            // Pass database credentials from state configuration
-            if ("postgresql".equals(stateConfig.getType())) {
-                var projectName = getProjectName();
-                engineBuilder.withDatabaseCredentials(
-                        stateConfig.getUrl(),
-                        stateConfig.getUsername(),
-                        stateConfig.getEffectivePassword(projectName, environment)
-                );
-            }
-
-            try (var engine = engineBuilder.build()) {
-                var resources = engine.parse(source.toString(), filePath);
-                var plan = engine.plan(resources);
-
-                // Show plan details and summary
-                var summary = engine.getPlanSummary(plan);
-                Console.println();
-                engine.printPlanDetails(plan);
-                Console.println();
-                engine.printPlanSummary(plan);
-
-                // Request confirmation unless auto-approve
-                if (!autoApprove && summary.hasChanges()) {
-                    try (var prompt = InteractivePrompt.create()) {
-                        if (prompt != null) {
-                            var confirmed = prompt.confirm("Do you want to perform these actions?", false);
-                            if (!confirmed) {
-                                Console.println("Apply cancelled.");
-                                return 0;
-                            }
-                        } else {
-                            log.warn("No interactive terminal available, proceeding without confirmation");
-                        }
-                    }
-                }
-
-                // Apply the plan
-                Console.println("\nApplying changes...");
-                engine.apply(plan);
-
-                // Print outputs
-                engine.printOutputs();
-            }
-
-            Console.println("\n✓ Apply completed successfully");
-            return 0;
-
-        } catch (Exception e) {
-            log.error("Failed to apply changes", e);
-            Console.error(e.getMessage());
+        // Check state configuration for this environment
+        var stateConfig = getStateConfiguration();
+        if (stateConfig == null) {
             return 1;
         }
+
+        // Determine what files to apply
+        var kiteFiles = determineKiteFiles(environmentsDir);
+        Console.println("Applying: " + kiteFiles.size() + " file(s)");
+
+        if (dryRun) {
+            Console.println("\nDRY RUN: No changes will be made");
+            Console.println("Run 'kite plan --env " + environment + "' to see detailed changes");
+            return 0;
+        }
+
+        // Load all .kite file contents
+        var source = new StringBuilder();
+        for (var file : kiteFiles) {
+            source.append(Files.readString(file));
+            source.append("\n");
+        }
+
+        // Use first file path for tracking (when single file) or environment path (when multiple)
+        var filePath = kiteFiles.size() == 1
+                ? kiteFiles.get(0).toString()
+                : environmentsDir + "/" + environment;
+
+        // Build Engine with kitefile, environment, and credentials
+        var engineBuilder = Engine.builder()
+                .withKitefile(kitefile)
+                .withEnvironment(environment);
+
+        // Pass database credentials from state configuration
+        if ("postgresql".equals(stateConfig.getType())) {
+            var projectName = getProjectName();
+            engineBuilder.withDatabaseCredentials(
+                    stateConfig.getUrl(),
+                    stateConfig.getUsername(),
+                    stateConfig.getEffectivePassword(projectName, environment)
+            );
+        }
+
+        // Any exceptions from here will be handled by KiteExceptionHandler
+        // which shows user-friendly messages and only shows stack traces when KITE_LOGGING=debug
+        try (var engine = engineBuilder.build()) {
+            var resources = engine.parse(source.toString(), filePath);
+            var plan = engine.plan(resources);
+
+            // Show plan details and summary
+            var summary = engine.getPlanSummary(plan);
+            Console.println();
+            engine.printPlanDetails(plan);
+            Console.println();
+            engine.printPlanSummary(plan);
+
+            // Request confirmation unless auto-approve
+            if (!autoApprove && summary.hasChanges()) {
+                try (var prompt = InteractivePrompt.create()) {
+                    if (prompt != null) {
+                        var confirmed = prompt.confirm("Do you want to perform these actions?", false);
+                        if (!confirmed) {
+                            Console.println("Apply cancelled.");
+                            return 0;
+                        }
+                    } else {
+                        log.warn("No interactive terminal available, proceeding without confirmation");
+                    }
+                }
+            }
+
+            // Apply the plan
+            Console.println("\nApplying changes...");
+            engine.apply(plan);
+
+            // Print outputs
+            engine.printOutputs();
+        }
+
+        Console.println("\n✓ Apply completed successfully");
+        return 0;
     }
 
     /**

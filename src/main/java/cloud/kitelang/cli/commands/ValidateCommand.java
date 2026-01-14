@@ -84,54 +84,49 @@ public class ValidateCommand implements Callable<Integer> {
     private String format;
 
     @Override
-    public Integer call() {
-        try {
-            var path = targetPath != null ? targetPath.toPath() : Path.of(".");
+    public Integer call() throws Exception {
+        var path = targetPath != null ? targetPath.toPath() : Path.of(".");
 
-            if (!Files.exists(path)) {
-                Console.error("Path does not exist: " + path);
-                return 1;
-            }
-
-            log.info("Validating .kite files in: {}", path.toAbsolutePath());
-
-            var kiteFiles = findKiteFiles(path);
-
-            if (kiteFiles.isEmpty()) {
-                if (!quiet) {
-                    Console.println("No .kite files found in: " + path);
-                }
-                return 0;
-            }
-
-            if (!quiet) {
-                Console.println("Found " + kiteFiles.size() + " .kite file(s) to validate\n");
-            }
-
-            var errors = new ArrayList<ValidationError>();
-            var warnings = new ArrayList<ValidationError>();
-
-            for (var file : kiteFiles) {
-                validateFile(file, errors, warnings);
-            }
-
-            // Output results
-            printResults(kiteFiles.size(), errors, warnings);
-
-            // Determine exit code
-            if (!errors.isEmpty()) {
-                return 1;
-            }
-            if (strict && !warnings.isEmpty()) {
-                return 1;
-            }
-            return 0;
-
-        } catch (Exception e) {
-            log.error("Validation failed", e);
-            Console.error(e.getMessage());
+        if (!Files.exists(path)) {
+            Console.error("Path does not exist: " + path);
             return 1;
         }
+
+        log.info("Validating .kite files in: {}", path.toAbsolutePath());
+
+        var kiteFiles = findKiteFiles(path);
+
+        if (kiteFiles.isEmpty()) {
+            if (!quiet) {
+                Console.println("No .kite files found in: " + path);
+            }
+            return 0;
+        }
+
+        if (!quiet) {
+            Console.println("Found " + kiteFiles.size() + " .kite file(s) to validate\n");
+        }
+
+        var errors = new ArrayList<ValidationError>();
+        var warnings = new ArrayList<ValidationError>();
+
+        for (var file : kiteFiles) {
+            validateFile(file, errors, warnings);
+        }
+
+        // Output results
+        printResults(kiteFiles.size(), errors, warnings);
+
+        // Determine exit code
+        // Any exceptions from here will be handled by KiteExceptionHandler
+        // which shows user-friendly messages and only shows stack traces when KITE_LOGGING=debug
+        if (!errors.isEmpty()) {
+            return 1;
+        }
+        if (strict && !warnings.isEmpty()) {
+            return 1;
+        }
+        return 0;
     }
 
     /**
