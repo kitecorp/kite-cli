@@ -170,8 +170,8 @@ public class PlanCommand implements Callable<Integer> {
         // Any exceptions from here will be handled by KiteExceptionHandler
         // which shows user-friendly messages and only shows stack traces when KITE_LOGGING=debug
         try (var engine = engineBuilder.build()) {
-            var resources = engine.parse(source.toString(), filePath);
-            var plan = engine.plan(resources);
+            var parseResult = engine.parse(source.toString(), filePath);
+            var plan = engine.plan(parseResult);
 
             if (jsonOutput) {
                 printJsonPlan(engine, plan);
