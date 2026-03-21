@@ -160,11 +160,20 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
     }
 
     /**
-     * Check if debug logging is enabled via KITE_LOGGING env var.
+     * Check if debug logging is enabled.
+     * Respects both KITE_LOGGING env var and kitefile.yml logs.verbosity
+     * (the resolved level is applied to the JUL logger by KiteCLI.configureLogging).
      */
     private boolean isDebugEnabled() {
-        String level = System.getenv("KITE_LOGGING");
-        return level != null && (level.equalsIgnoreCase("DEBUG") || level.equalsIgnoreCase("TRACE"));
+        // First check env var directly (fast path, always authoritative)
+        var envLevel = System.getenv("KITE_LOGGING");
+        if (envLevel != null) {
+            return envLevel.equalsIgnoreCase("DEBUG") || envLevel.equalsIgnoreCase("TRACE");
+        }
+
+        // Fall back to the resolved logger level (set from kitefile.yml by configureLogging)
+        var loggerLevel = java.util.logging.Logger.getLogger("cloud.kitelang").getLevel();
+        return loggerLevel != null && loggerLevel.intValue() <= java.util.logging.Level.FINE.intValue();
     }
 
     /**

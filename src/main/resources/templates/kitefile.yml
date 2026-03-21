@@ -7,7 +7,7 @@ dependencies:
 
 # Per-environment configuration
 environments:
-  # dir: environments  # Custom directory for .kite files (default: environments)
+  dir: environments  # Custom directory for .kite files (default: environments)
   names:
 {{environments}}
 
