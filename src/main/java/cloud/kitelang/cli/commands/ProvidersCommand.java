@@ -924,6 +924,8 @@ public class ProvidersCommand implements Callable<Integer> {
 
                 if (portFiles.isEmpty()) {
                     Console.println("No running providers");
+                    // Still clean stale files (e.g., orphaned .activity files)
+                    cleanRunDirectory();
                     return 0;
                 }
 
@@ -935,11 +937,37 @@ public class ProvidersCommand implements Callable<Integer> {
                     }
                 }
 
+                // Clean any remaining stale files in the run directory.
+                // Individual stopProvider calls clean their own .port/.activity files,
+                // but stale files from crashed providers may linger and cause
+                // "UNAVAILABLE: io exception" errors on subsequent runs.
+                cleanRunDirectory();
+
                 Console.println("Stopped " + stopped + " provider(s)");
                 return 0;
             } catch (IOException e) {
                 Console.error("Failed to list running providers: " + e.getMessage());
                 return 1;
+            }
+        }
+
+        /**
+         * Remove all files from the run directory to eliminate stale provider state.
+         * This prevents "UNAVAILABLE: io exception" errors caused by the engine
+         * trying to connect to dead provider processes via leftover port/activity files.
+         */
+        private void cleanRunDirectory() {
+            try (var files = Files.list(RUN_DIR)) {
+                files.forEach(file -> {
+                    try {
+                        Files.deleteIfExists(file);
+                    } catch (IOException e) {
+                        log.debug("Failed to delete stale run file {}: {}", file, e.getMessage());
+                    }
+                });
+                log.debug("Cleaned run directory: {}", RUN_DIR);
+            } catch (IOException e) {
+                log.debug("Failed to clean run directory: {}", e.getMessage());
             }
         }
 
