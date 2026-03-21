@@ -5,7 +5,7 @@ plugins {
     id 'com.gradleup.shadow' version '9.3.1'
     id 'maven-publish'
     id 'signing'
-    id 'org.jreleaser' version '1.22.0'  // For Maven Central via Central Portal
+    id 'org.jreleaser' version '1.23.0'  // For Maven Central via Central Portal
 }
 
 group = 'cloud.kitelang'
