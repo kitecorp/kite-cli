@@ -96,7 +96,7 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
 
     /**
      * Check if exception is a user-facing error that doesn't need a stack trace.
-     * These are errors caused by user input, not bugs in the code.
+     * These are errors caused by user input or cloud provider rejections, not bugs in the code.
      */
     private boolean isUserFacingError(Throwable ex) {
         if (ex == null) return false;
@@ -115,6 +115,11 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
 
         // Semantic errors are user-facing
         if (className.startsWith("cloud.kitelang.semantics.")) {
+            return true;
+        }
+
+        // Provider errors are user-facing (cloud API rejections, invalid configs, etc.)
+        if (className.contains("ProviderException")) {
             return true;
         }
 
