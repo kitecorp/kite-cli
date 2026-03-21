@@ -70,12 +70,12 @@ public class EnvCommand implements Callable<Integer> {
         if (kitefilePath != null) {
             try {
                 var kitefile = KiteInjector.createkitefile();
-                var envConfigs = kitefile.config().environments().names();
+                var envNames = kitefile.config().environmentNames();
 
-                if (!envConfigs.isEmpty()) {
+                if (!envNames.isEmpty()) {
                     Console.println();
                     Console.println("Available environments:");
-                    for (var env : envConfigs.keySet()) {
+                    for (var env : envNames) {
                         var marker = env.equals(currentEnv) ? " (current)" : "";
                         Console.println("  " + env + marker);
                     }
@@ -121,7 +121,7 @@ public class EnvCommand implements Callable<Integer> {
             Console.println();
             Console.println("Create it by adding to kitefile.yml:");
             Console.println("  environments:");
-            Console.println("    " + environment + ":");
+            Console.println("    - name: " + environment);
             Console.println("      credentials:");
             Console.println("        - type: aws");
             Console.println("          profile: " + environment);
@@ -148,7 +148,7 @@ public class EnvCommand implements Callable<Integer> {
         if (kitefilePath != null) {
             try {
                 var kitefile = KiteInjector.createkitefile();
-                if (kitefile.config().environments().names().containsKey(env)) {
+                if (kitefile.config().hasEnvironment(env)) {
                     return true;
                 }
             } catch (Exception e) {

@@ -94,7 +94,7 @@ public class ApplyCommand implements Callable<Integer> {
 
         // Load kitefile.yml for provider and project configuration
         var kitefile = loadKitefile();
-        var environmentsDir = kitefile.config().environmentsDir();
+        var envDir = kitefile.config().getEnvironmentDir(environment);
 
         // Check state configuration for this environment
         var stateConfig = getStateConfiguration();
@@ -103,7 +103,7 @@ public class ApplyCommand implements Callable<Integer> {
         }
 
         // Determine what files to apply
-        var kiteFiles = determineKiteFiles(environmentsDir);
+        var kiteFiles = determineKiteFiles(envDir);
         Console.println("Applying: " + kiteFiles.size() + " file(s)");
 
         if (dryRun) {
@@ -122,7 +122,7 @@ public class ApplyCommand implements Callable<Integer> {
         // Use first file path for tracking (when single file) or environment path (when multiple)
         var filePath = kiteFiles.size() == 1
                 ? kiteFiles.get(0).toString()
-                : environmentsDir + "/" + environment;
+                : envDir;
 
         // Build Engine with kitefile, environment, and credentials
         var engineBuilder = Engine.builder()
@@ -183,9 +183,9 @@ public class ApplyCommand implements Callable<Integer> {
      * Determines the .kite files to apply based on options.
      * Priority: --file override > --stack > all stacks in environment
      *
-     * @param environmentsDir Base directory for environments (from kitefile.yml)
+     * @param envDir Directory for the target environment (from kitefile.yml or default)
      */
-    private List<Path> determineKiteFiles(String environmentsDir) throws IOException {
+    private List<Path> determineKiteFiles(String envDir) throws IOException {
         // If explicit file override, use that
         if (overrideFile != null) {
             if (!overrideFile.exists()) {
@@ -196,7 +196,7 @@ public class ApplyCommand implements Callable<Integer> {
 
         // If specific stack requested
         if (stack != null) {
-            var stackFile = Path.of(environmentsDir, environment, stack + ".kite");
+            var stackFile = Path.of(envDir, stack + ".kite");
             if (!Files.exists(stackFile)) {
                 throw new IOException("Stack not found: " + stackFile);
             }
@@ -204,14 +204,14 @@ public class ApplyCommand implements Callable<Integer> {
         }
 
         // Default: all stacks in the environment
-        var envDir = Path.of(environmentsDir, environment);
-        if (!Files.exists(envDir)) {
-            throw new IOException("Environment not found: " + envDir);
+        var envPath = Path.of(envDir);
+        if (!Files.exists(envPath)) {
+            throw new IOException("Environment not found: " + envPath);
         }
 
-        var stacks = findStackFiles(envDir);
+        var stacks = findStackFiles(envPath);
         if (stacks.isEmpty()) {
-            throw new IOException("No .kite files found in: " + envDir);
+            throw new IOException("No .kite files found in: " + envPath);
         }
 
         return stacks;

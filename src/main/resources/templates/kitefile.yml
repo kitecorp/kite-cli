@@ -7,8 +7,6 @@ dependencies:
 
 # Per-environment configuration
 environments:
-  dir: environments  # Custom directory for .kite files (default: environments)
-  names:
 {{environments}}
 
 # Logging configuration
@@ -36,27 +34,26 @@ environments:
 #
 # Environments with custom directory:
 #   environments:
-#     dir: src/infra               # Custom path (default: environments)
-#     names:
-#       dev:
-#         credentials:
-#           - type: aws
-#             profile: dev-sandbox
-#             region: us-east-1
-#           - type: aws
-#             alias: west           # Multiple configs of same provider
-#             profile: dev-sandbox
-#             region: us-west-2
+#     - name: dev
+#       dir: src/infra/dev           # Custom path (default: environments/<name>)
+#       credentials:
+#         - type: aws
+#           profile: dev-sandbox
+#           region: us-east-1
+#         - type: aws
+#           alias: west              # Multiple configs of same provider
+#           profile: dev-sandbox
+#           region: us-west-2
 #
-#       prod:
-#         dependencies:             # Override provider version for this env
-#           - name: aws
-#             version: 1.1.0        # Use older stable version in prod
-#         credentials:
-#           - type: aws
-#             profile: prod-account
-#             region: us-east-1
-#             role_arn: arn:aws:iam::123456789:role/DeployRole
+#     - name: prod
+#       dependencies:                # Override provider version for this env
+#         - name: aws
+#           version: 1.1.0           # Use older stable version in prod
+#       credentials:
+#         - type: aws
+#           profile: prod-account
+#           region: us-east-1
+#           role_arn: arn:aws:iam::123456789:role/DeployRole
 #
 # State backend is configured in ~/.kite/config.yml (secrets not in version control)
 # Configure with: kite config state -e <environment>
