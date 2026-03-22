@@ -7,6 +7,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.logging.Level;
@@ -35,14 +36,13 @@ import java.util.logging.Logger;
                 DoctorCommand.class,
                 VersionCommand.class,
                 UpgradeCommand.class,
-                CompletionCommand.class,
-                CommandLine.HelpCommand.class
+                CompletionCommand.class
         }
 )
 @Slf4j
 public class KiteCLI implements Runnable {
 
-    @Option(names = {"-h", "--help"}, usageHelp = true, description = "Show this help message and exit")
+    @Option(names = {"-h", "--help"}, description = "Show this help message and exit")
     private boolean helpRequested;
 
     @Option(names = {"-v", "--version"}, versionHelp = true, description = "Print version information and exit")
@@ -50,8 +50,8 @@ public class KiteCLI implements Runnable {
 
     @Override
     public void run() {
-        // When no subcommand is specified, show help
-        CommandLine.usage(this, System.out);
+        // Show custom bun-style help (no subcommand or -h flag)
+        KiteUsageHelp.render(new PrintWriter(System.out, true));
     }
 
     public static void main(String... args) {
