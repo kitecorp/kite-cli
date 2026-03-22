@@ -57,6 +57,7 @@ public class PlanCommand implements Callable<Integer> {
 
     @Option(
         names = {"-e", "--environment"},
+        paramLabel = "env",
         description = "Target environment (dev, staging, prod)",
         defaultValue = "dev"
     )
@@ -64,6 +65,7 @@ public class PlanCommand implements Callable<Integer> {
 
     @Option(
         names = {"-p", "--provider"},
+        paramLabel = "provider",
         description = "Target cloud provider (aws, gcp, azure, or 'all')",
         defaultValue = "all"
     )
@@ -71,18 +73,21 @@ public class PlanCommand implements Callable<Integer> {
 
     @Option(
         names = {"-s", "--stack"},
+        paramLabel = "stack",
         description = "Specific stack to plan (e.g., Backend, Frontend). If omitted, plans all stacks in the environment."
     )
     private String stack;
 
     @Option(
         names = {"-f", "--file"},
+        paramLabel = "file",
         description = "Override: plan a specific .kite file instead of environment stacks"
     )
     private File overrideFile;
 
     @Option(
         names = {"-o", "--out"},
+        paramLabel = "file",
         description = "Save plan to file for later apply"
     )
     private File outputFile;
@@ -97,6 +102,7 @@ public class PlanCommand implements Callable<Integer> {
 
     @Option(
         names = {"--target"},
+        paramLabel = "name",
         description = "Plan only for specific resource(s)",
         split = ","
     )

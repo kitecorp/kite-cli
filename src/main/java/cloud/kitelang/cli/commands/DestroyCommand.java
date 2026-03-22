@@ -53,6 +53,7 @@ public class DestroyCommand implements Callable<Integer> {
 
     @Option(
         names = {"-e", "--environment"},
+        paramLabel = "env",
         description = "Target environment to destroy (dev, staging, prod)",
         required = true
     )
@@ -60,6 +61,7 @@ public class DestroyCommand implements Callable<Integer> {
 
     @Option(
         names = {"-p", "--provider"},
+        paramLabel = "provider",
         description = "Target cloud provider (aws, gcp, azure, or 'all')",
         defaultValue = "all"
     )
@@ -67,12 +69,14 @@ public class DestroyCommand implements Callable<Integer> {
 
     @Option(
         names = {"-s", "--stack"},
+        paramLabel = "stack",
         description = "Specific stack to destroy (e.g., Backend, Frontend)"
     )
     private String stack;
 
     @Option(
         names = {"--target"},
+        paramLabel = "name",
         description = "Destroy only specific resource(s)",
         split = ","
     )
@@ -98,6 +102,7 @@ public class DestroyCommand implements Callable<Integer> {
 
     @Option(
         names = {"--parallelism"},
+        paramLabel = "n",
         description = "Limit the number of concurrent destroy operations",
         defaultValue = "10"
     )

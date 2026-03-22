@@ -46,7 +46,7 @@ public class ApplyCommand implements Callable<Integer> {
 
     @Option(
             names = {"-e", "--env"},
-            paramLabel = "ENV",
+            paramLabel = "env",
             description = "Target environment (default: dev)",
             defaultValue = "dev"
     )
@@ -54,7 +54,7 @@ public class ApplyCommand implements Callable<Integer> {
 
     @Option(
             names = {"-p", "--provider"},
-            paramLabel = "PROVIDER",
+            paramLabel = "provider",
             description = "Cloud provider: aws,gcp,azure,all (default: all)",
             defaultValue = "all"
     )
@@ -62,14 +62,14 @@ public class ApplyCommand implements Callable<Integer> {
 
     @Option(
             names = {"-s", "--stack"},
-            paramLabel = "STACK",
+            paramLabel = "stack",
             description = "Specific stack to apply (e.g., Backend, Frontend). If omitted, applies all stacks."
     )
     private String stack;
 
     @Option(
             names = {"-f", "--file"},
-            paramLabel = "FILE",
+            paramLabel = "file",
             description = "Override: apply a specific .kite file instead of environment stacks"
     )
     private File overrideFile;

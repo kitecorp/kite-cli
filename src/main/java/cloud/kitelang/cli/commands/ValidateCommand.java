@@ -52,6 +52,7 @@ public class ValidateCommand implements Callable<Integer> {
 
     @Parameters(
         index = "0",
+        paramLabel = "path",
         description = "Path to validate (file or directory, defaults to current directory)",
         arity = "0..1"
     )
@@ -78,6 +79,7 @@ public class ValidateCommand implements Callable<Integer> {
 
     @Option(
         names = {"--format"},
+        paramLabel = "fmt",
         description = "Output format: text, json",
         defaultValue = "text"
     )

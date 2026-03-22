@@ -29,7 +29,7 @@ public class UpgradeCommand implements Callable<Integer> {
 
     @Parameters(
             index = "0",
-            paramLabel = "VERSION",
+            paramLabel = "version",
             description = "Version to upgrade to (default: latest)",
             arity = "0..1",
             defaultValue = "latest"

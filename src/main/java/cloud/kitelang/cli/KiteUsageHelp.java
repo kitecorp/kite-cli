@@ -95,7 +95,7 @@ public final class KiteUsageHelp {
         out.println();
 
         // Footer
-        out.println("Learn more about Kite:           " + CYAN + "https://kite.cloud/docs" + RESET);
+        out.println("Learn more about Kite:           " + CYAN + "https://kitelang.cloud/docs" + RESET);
 
         out.flush();
     }

@@ -35,7 +35,7 @@ public class EnvCommand implements Callable<Integer> {
 
     @Parameters(
             index = "0",
-            paramLabel = "ENVIRONMENT",
+            paramLabel = "environment",
             description = "Environment to switch to (dev, staging, prod, etc.)",
             arity = "0..1"
     )

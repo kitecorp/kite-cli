@@ -87,6 +87,9 @@ public class KiteCLI implements Runnable {
                 // POSIX clustering: -hv instead of -h -v
                 .setPosixClusteredShortOptionsAllowed(true);
 
+        // Apply bun-style headings to all subcommands
+        KiteSubcommandHelp.apply(cmd);
+
         var exitCode = cmd.execute(args);
         System.exit(exitCode);
     }

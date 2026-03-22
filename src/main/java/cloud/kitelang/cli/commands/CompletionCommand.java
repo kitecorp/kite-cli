@@ -48,6 +48,7 @@ public class CompletionCommand implements Callable<Integer> {
 
     @Parameters(
         index = "0",
+        paramLabel = "shell",
         description = "Shell type: bash, zsh, or fish",
         arity = "1"
     )
@@ -55,6 +56,7 @@ public class CompletionCommand implements Callable<Integer> {
 
     @Option(
         names = {"-n", "--name"},
+        paramLabel = "name",
         description = "Name of the command (default: kite)",
         defaultValue = "kite"
     )

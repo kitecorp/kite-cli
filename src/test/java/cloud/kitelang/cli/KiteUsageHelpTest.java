@@ -107,7 +107,7 @@ class KiteUsageHelpTest {
         var output = renderHelp();
 
         assertTrue(output.contains("Learn more about Kite"), "Should have footer");
-        assertTrue(output.contains("https://kite.cloud/docs"), "Should have docs link");
+        assertTrue(output.contains("https://kitelang.cloud/docs"), "Should have docs link");
     }
 
     @Test

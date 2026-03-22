@@ -51,7 +51,7 @@ public class NewCommand implements Callable<Integer> {
 
     @Parameters(
             index = "0",
-            paramLabel = "NAME",
+            paramLabel = "name",
             description = "Project name",
             arity = "0..1"
     )
@@ -59,14 +59,14 @@ public class NewCommand implements Callable<Integer> {
 
     @Option(
             names = {"-d", "--directory"},
-            paramLabel = "DIR",
+            paramLabel = "dir",
             description = "Target directory (default: ./<NAME>)"
     )
     private File targetDirectory;
 
     @Option(
             names = {"-p", "--providers"},
-            paramLabel = "PROVIDERS",
+            paramLabel = "providers",
             arity = "1",
             description = "Cloud providers: aws, gcp, azure",
             split = ","
@@ -75,7 +75,7 @@ public class NewCommand implements Callable<Integer> {
 
     @Option(
             names = {"-e", "--env"},
-            paramLabel = "ENVS",
+            paramLabel = "envs",
             arity = "1",
             description = "Environments (default: dev,staging,prod)",
             split = ","

@@ -55,6 +55,7 @@ public class FmtCommand implements Callable<Integer> {
 
     @Parameters(
         index = "0",
+        paramLabel = "path",
         description = "File or directory to format (defaults to current directory)",
         arity = "0..1"
     )
@@ -88,6 +89,7 @@ public class FmtCommand implements Callable<Integer> {
 
     @Option(
         names = {"--indent"},
+        paramLabel = "n",
         description = "Number of spaces for indentation",
         defaultValue = "4"
     )

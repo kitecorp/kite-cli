@@ -34,24 +34,28 @@ public class StateCommand implements Callable<Integer> {
 
     @Option(
             names = {"-p", "--project"},
+            paramLabel = "name",
             description = "Project name (defaults to current directory name)"
     )
     private String project;
 
     @Option(
             names = {"-e", "--environment"},
+            paramLabel = "env",
             description = "Target environment (dev, staging, prod)"
     )
     private String environment;
 
     @Option(
             names = {"--url"},
+            paramLabel = "url",
             description = "PostgreSQL connection URL"
     )
     private String url;
 
     @Option(
             names = {"--username"},
+            paramLabel = "user",
             description = "PostgreSQL username",
             defaultValue = "postgres"
     )
@@ -59,6 +63,7 @@ public class StateCommand implements Callable<Integer> {
 
     @Option(
             names = {"--password"},
+            paramLabel = "pass",
             description = "PostgreSQL password (stored in config file)",
             interactive = true,
             arity = "0..1"

@@ -188,7 +188,7 @@ public class VersionCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "VERSION",
+                paramLabel = "version",
                 description = "Version to install (e.g., 1.2.0 or 'latest')"
         )
         private String version;
@@ -272,7 +272,7 @@ public class VersionCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "VERSION",
+                paramLabel = "version",
                 description = "Version to switch to"
         )
         private String version;
@@ -309,7 +309,7 @@ public class VersionCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "VERSION",
+                paramLabel = "version",
                 description = "Version to remove"
         )
         private String version;

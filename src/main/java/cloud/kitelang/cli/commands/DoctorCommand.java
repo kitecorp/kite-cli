@@ -42,7 +42,7 @@ public class DoctorCommand implements Callable<Integer> {
     @Option(names = {"--verbose"}, description = "Show all checks, including passed ones")
     private boolean verbose;
 
-    @Option(names = {"-e", "--environment"}, description = "Environment to validate credentials for")
+    @Option(names = {"-e", "--environment"}, paramLabel = "env", description = "Environment to validate credentials for")
     private String environment;
 
     private final List<Check> checks = new ArrayList<>();

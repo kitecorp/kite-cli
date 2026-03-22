@@ -43,6 +43,7 @@ public class OutputCommand implements Callable<Integer> {
 
     @Parameters(
         index = "0",
+        paramLabel = "name",
         description = "Specific output name to display (shows all if omitted)",
         arity = "0..1"
     )
@@ -50,6 +51,7 @@ public class OutputCommand implements Callable<Integer> {
 
     @Option(
         names = {"-e", "--environment"},
+        paramLabel = "env",
         description = "Target environment (dev, staging, prod)",
         defaultValue = "dev"
     )
@@ -57,6 +59,7 @@ public class OutputCommand implements Callable<Integer> {
 
     @Option(
         names = {"-s", "--stack"},
+        paramLabel = "stack",
         description = "Stack name (e.g., Backend, Frontend)"
     )
     private String stack;

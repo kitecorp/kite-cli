@@ -98,7 +98,7 @@ public class ProvidersCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "PROVIDER[@VERSION]",
+                paramLabel = "provider[@version]",
                 description = "Provider name with optional version (e.g., aws@1.0.0). Installs all from kitefile.yml if not specified.",
                 arity = "0..1"
         )
@@ -106,21 +106,21 @@ public class ProvidersCommand implements Callable<Integer> {
 
         @Option(
                 names = {"--git"},
-                paramLabel = "URL",
+                paramLabel = "url",
                 description = "Install from git repository"
         )
         private String gitUrl;
 
         @Option(
                 names = {"--ref"},
-                paramLabel = "REF",
+                paramLabel = "ref",
                 description = "Git ref (branch, tag, or commit)"
         )
         private String gitRef;
 
         @Option(
                 names = {"--path"},
-                paramLabel = "PATH",
+                paramLabel = "path",
                 description = "Subdirectory within the git repository (for monorepos)"
         )
         private String gitPath;
@@ -560,7 +560,7 @@ public class ProvidersCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "PROVIDER[@VERSION]",
+                paramLabel = "provider[@version]",
                 description = "Provider name with optional version (e.g., aws@0.1.5)"
         )
         private String providerName;
@@ -773,7 +773,7 @@ public class ProvidersCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "PROVIDER[@VERSION]",
+                paramLabel = "provider[@version]",
                 description = "Provider name with optional version (e.g., aws@0.1.5)",
                 arity = "0..1"
         )

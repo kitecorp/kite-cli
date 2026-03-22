@@ -78,7 +78,7 @@ public class ConfigCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "KEY",
+                paramLabel = "key",
                 description = "Config key (e.g., defaults.environment)"
         )
         private String key;
@@ -107,14 +107,14 @@ public class ConfigCommand implements Callable<Integer> {
 
         @Parameters(
                 index = "0",
-                paramLabel = "KEY",
+                paramLabel = "key",
                 description = "Config key (e.g., defaults.environment)"
         )
         private String key;
 
         @Parameters(
                 index = "1",
-                paramLabel = "VALUE",
+                paramLabel = "value",
                 description = "Value to set"
         )
         private String value;
