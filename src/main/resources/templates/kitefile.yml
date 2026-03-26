@@ -1,6 +1,10 @@
 # Kite Configuration
 # Project: {{projectName}}
 
+# Default cloud provider for standard library types (Server, Network, Bucket, etc.)
+# When using `resource Server backend { ... }` without @provider, this provider handles it.
+defaultProvider: {{defaultProvider}}
+
 # Provider plugins to install (global default for all environments)
 dependencies:
 {{dependencies}}
@@ -21,6 +25,10 @@ environments:
 # ─────────────────────────────────────────────────────────────────────────────
 # Examples
 # ─────────────────────────────────────────────────────────────────────────────
+#
+# Default provider for standard types:
+#   defaultProvider: aws            # Server → Ec2Instance, Network → Vpc, etc.
+#   defaultProvider: azure          # Server → VirtualMachine, Network → Vnet, etc.
 #
 # Dependencies (provider plugins):
 #   dependencies:

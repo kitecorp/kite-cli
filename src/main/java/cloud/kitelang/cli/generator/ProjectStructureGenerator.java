@@ -31,6 +31,7 @@ public class ProjectStructureGenerator {
 
         var variables = new HashMap<String, String>();
         variables.put("projectName", projectName);
+        variables.put("defaultProvider", providers[0]);
         variables.put("dependencies", generateDependenciesYaml(providers));
         variables.put("environments", generateEnvironmentsYaml(environments, providers, environmentCredentials));
 
