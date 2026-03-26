@@ -1,5 +1,3 @@
-# Kite CLI Features
-
 This document tracks implemented features in the Kite CLI.
 
 ## Commands
