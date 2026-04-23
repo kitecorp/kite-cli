@@ -40,6 +40,48 @@ environments:
 #       git: github.com/myorg/provider
 #       ref: v1.0.0                 # Build from source
 #
+# Terraform providers (3000+ providers via the bridge):
+#   Use the tf/ prefix to access any Terraform provider from registry.terraform.io.
+#   Kite automatically downloads, launches, and translates the provider.
+#
+#   dependencies:
+#     - name: tf/aws                  # Terraform AWS provider
+#       version: "~> 5.0"
+#     - name: tf/datadog              # Monitoring
+#       version: "~> 3.0"
+#     - name: tf/cloudflare           # DNS & CDN
+#       version: "~> 4.0"
+#     - name: aws                     # Native Kite provider (can coexist)
+#       version: 1.2.0
+#
+#   Usage in .kite files:
+#
+#     import Instance, SecurityGroup from "tf/aws"
+#     import Monitor from "tf/datadog"
+#
+#     resource Instance web {
+#       ami = "ami-0123456789"
+#       instanceType = "t3.micro"     # camelCase (TF: instance_type)
+#       tags = { Name: "web" }
+#     }
+#
+#     # Data source lookup (TF data sources → @existing)
+#     @existing
+#     resource Ami latest {
+#       mostRecent = true
+#       filter = { name: "name", values: ["amzn2-*"] }
+#     }
+#
+#   Naming conventions:
+#     - Types: aws_instance → Instance (strip provider prefix, PascalCase)
+#     - Properties: instance_type → instanceType (camelCase)
+#     - Imports: import * from "tf/aws" (tf/ prefix)
+#
+#   Version constraints (same as Terraform):
+#     "~> 5.0"       # >= 5.0.0, < 6.0.0
+#     ">= 5.0"       # Any version >= 5.0.0
+#     "5.82.0"        # Exact version
+#
 # Environments with custom directory:
 #   environments:
 #     - name: dev
