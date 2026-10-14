@@ -1,7 +1,8 @@
 package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.console.Console;
-import cloud.kitelang.cli.util.ProgressBar;
+import cloud.kitelang.cli.util.MultiProgress;
+import cloud.kitelang.cli.util.ParallelInstall;
 import cloud.kitelang.engine.distribution.ProviderInstaller;
 import cloud.kitelang.packages.install.PackageSpec;
 import cloud.kitelang.engine.kitefile.KiteInjector;
@@ -17,6 +18,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -212,17 +215,14 @@ public class ProvidersCommand implements Callable<Integer> {
 
             var spec = specBuilder.build();
 
-            // Setup progress bar
-            var progress = new ProgressBar("  " + name);
-            installer.withProgress(progress);
-
+            var progress = new MultiProgress(List.of(name), Console::print, Console.isInteractive());
             try {
-                var path = installer.install(spec);
-                progress.complete("✓ Installed " + name + " to " + path);
+                var path = installer.install(spec, progress.listener(name));
+                progress.done(name);
+                Console.println("Installed " + name + " to " + path);
                 return 0;
             } catch (Exception e) {
-                progress.clear();
-                Console.error("Failed to install " + name + ": " + e.getMessage());
+                progress.failed(name, e.getMessage());
                 return 1;
             }
         }
@@ -255,11 +255,8 @@ public class ProvidersCommand implements Callable<Integer> {
                 return 0;
             }
 
-            Console.println("Installing " + config.dependencies().size() + " provider(s)...");
-            Console.println();
-
-            int installed = 0;
-            int failed = 0;
+            int alreadyInstalled = 0;
+            var toInstall = new ArrayList<PackageSpec>();
 
             for (var dep : config.dependencies()) {
                 // Normalize version (strip 'v' prefix if present)
@@ -295,24 +292,22 @@ public class ProvidersCommand implements Callable<Integer> {
 
                 if (installer.isInstalled(spec)) {
                     Console.println("  ✓ " + dep.name() + "@" + displayVersion + " (already installed)");
-                    installed++;
+                    alreadyInstalled++;
                     continue;
                 }
-
-                // Setup progress bar
-                var progress = new ProgressBar("  " + dep.name());
-                installer.withProgress(progress);
-
-                try {
-                    installer.install(spec);
-                    progress.complete("  ✓ " + dep.name() + "@" + displayVersion);
-                    installed++;
-                } catch (Exception e) {
-                    progress.clear();
-                    Console.println("  ✗ " + dep.name() + "@" + displayVersion + " - " + e.getMessage());
-                    failed++;
-                }
+                toInstall.add(spec);
             }
+
+            int failed = 0;
+            if (!toInstall.isEmpty()) {
+                Console.println("Installing " + toInstall.size() + " provider(s)...");
+                Console.println();
+                // All downloads run at once, each redrawing its own line
+                var names = toInstall.stream().map(PackageSpec::getName).toList();
+                var progress = new MultiProgress(names, Console::print, Console.isInteractive());
+                failed = ParallelInstall.run(toInstall, installer::install, progress).size();
+            }
+            int installed = alreadyInstalled + toInstall.size() - failed;
 
             Console.println();
             if (failed == 0) {

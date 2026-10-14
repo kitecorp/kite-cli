@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -482,6 +483,7 @@ public class VersionCommand implements Callable<Integer> {
 
         try {
             var client = HttpClient.newBuilder()
+                    .executor(Executors.newVirtualThreadPerTaskExecutor())
                     .connectTimeout(HTTP_TIMEOUT)
                     .build();
 
@@ -523,6 +525,7 @@ public class VersionCommand implements Callable<Integer> {
     static String fetchLatestVersion() {
         try {
             var client = HttpClient.newBuilder()
+                    .executor(Executors.newVirtualThreadPerTaskExecutor())
                     .connectTimeout(HTTP_TIMEOUT)
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .build();
