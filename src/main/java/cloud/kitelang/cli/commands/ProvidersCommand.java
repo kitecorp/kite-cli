@@ -3,7 +3,7 @@ package cloud.kitelang.cli.commands;
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.util.ProgressBar;
 import cloud.kitelang.engine.distribution.ProviderInstaller;
-import cloud.kitelang.engine.distribution.ProviderSpec;
+import cloud.kitelang.packages.install.PackageSpec;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
 import cloud.kitelang.engine.plugin.grpc.PluginManifest;
@@ -175,7 +175,7 @@ public class ProvidersCommand implements Callable<Integer> {
 
             Console.println("Installing provider: " + name + "@" + version);
 
-            var specBuilder = ProviderSpec.builder().name(name);
+            var specBuilder = PackageSpec.builder().name(name);
 
             // Determine git URL - explicit, official provider, or none
             String effectiveGitUrl = gitUrl;
@@ -189,7 +189,7 @@ public class ProvidersCommand implements Callable<Integer> {
 
             if (effectiveGitUrl != null) {
                 // Parse GitHub /tree/branch/path URLs automatically
-                var parsed = ProviderSpec.parseGitHubUrl(name, effectiveGitUrl);
+                var parsed = PackageSpec.parseGitHubUrl(name, effectiveGitUrl);
                 specBuilder.git(effectiveGitUrl);
 
                 // CLI options override parsed values
@@ -275,14 +275,14 @@ public class ProvidersCommand implements Callable<Integer> {
                     gitUrl = getOfficialProviderUrl(dep.name());
                 }
 
-                var specBuilder = ProviderSpec.builder()
+                var specBuilder = PackageSpec.builder()
                         .name(dep.name())
                         .version(version)
                         .git(gitUrl);
 
                 // Parse GitHub URLs automatically to extract ref and path
                 if (gitUrl != null) {
-                    var parsed = ProviderSpec.parseGitHubUrl(dep.name(), gitUrl);
+                    var parsed = PackageSpec.parseGitHubUrl(dep.name(), gitUrl);
                     // Use explicit ref from kitefile, otherwise use parsed ref
                     specBuilder.ref(dep.ref() != null ? dep.ref() : parsed.getRef());
                     specBuilder.path(dep.path() != null ? dep.path() : parsed.getPath());

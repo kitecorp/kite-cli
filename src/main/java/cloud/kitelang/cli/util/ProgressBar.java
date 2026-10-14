@@ -1,6 +1,6 @@
 package cloud.kitelang.cli.util;
 
-import cloud.kitelang.engine.distribution.DownloadProgress;
+import cloud.kitelang.packages.install.DownloadProgress;
 
 /**
  * Simple console progress bar for downloads.
