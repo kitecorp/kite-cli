@@ -13,7 +13,7 @@ class MultiProgressTest {
 
     @Test
     void lines_showEachDownloadsOwnProgress() {
-        var progress = new MultiProgress(List.of("aws", "gcp", "azure"), text -> { }, true);
+        var progress = new MultiProgress(List.of("aws", "gcp", "azure"), text -> { }, true, 120, 40);
 
         progress.listener("aws").onProgress(12_700_000, 19_800_000, 64);
         progress.done("gcp");
@@ -28,7 +28,7 @@ class MultiProgressTest {
     @Test
     void live_redrawsEveryRowInPlace() {
         var out = new StringBuilder();
-        var progress = new MultiProgress(List.of("aws", "gcp", "azure"), out::append, true);
+        var progress = new MultiProgress(List.of("aws", "gcp", "azure"), out::append, true, 120, 40);
 
         progress.listener("aws").onProgress(512, 1024, 50);
         out.setLength(0);
@@ -43,12 +43,43 @@ class MultiProgressTest {
     @Test
     void notLive_printsOnlyEachFinishedRowOnce() {
         var out = new StringBuilder();
-        var progress = new MultiProgress(List.of("aws", "gcp"), out::append, false);
+        var progress = new MultiProgress(List.of("aws", "gcp"), out::append, false, 120, 40);
 
         progress.listener("aws").onProgress(512, 1024, 50);
         progress.done("aws");
         progress.failed("gcp", "HTTP 404");
 
         assertEquals("  aws  [████████████████] done ✓\n  gcp  failed ✗ HTTP 404\n", out.toString());
+    }
+
+    @Test
+    void live_cutsALineToTheTerminalWidthSoItNeverWraps() {
+        var progress = new MultiProgress(List.of("aws"), text -> { }, true, 40, 40);
+
+        progress.installListener("aws").failed(new Exception("Failed to install aws from git: github.com/kitecorp/kite-providers/aws"));
+
+        // 40 columns: 39 visible characters, the last one the ellipsis
+        assertEquals(List.of("  aws  failed ✗ Failed to install aws …"), progress.lines());
+    }
+
+    @Test
+    void moreRowsThanTheTerminalIsTall_printsOnlyFinalLines() {
+        var out = new StringBuilder();
+        var progress = new MultiProgress(List.of("aws", "gcp", "azure"), out::append, true, 120, 3);
+
+        progress.listener("aws").onProgress(512, 1024, 50);
+
+        assertEquals("", out.toString());
+    }
+
+    @Test
+    void failures_keepTheWholeReasonOnOneLine() {
+        var progress = new MultiProgress(List.of("aws", "gcp"), text -> { }, true, 40, 40);
+
+        progress.installListener("aws").installed(java.nio.file.Path.of("/providers/aws/v0.2.0"));
+        progress.installListener("gcp").failed(new Exception("GitHub API returned 403\nAPI rate limit exceeded"));
+
+        assertEquals(List.of("gcp: GitHub API returned 403 API rate limit exceeded"), progress.failures());
+        assertEquals("  aws  [████████████████] done ✓", progress.lines().getFirst());
     }
 }

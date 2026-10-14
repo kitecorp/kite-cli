@@ -207,6 +207,16 @@ public final class Console {
                 && terminal.getWidth() > 0;
     }
 
+    /** Terminal columns, or 80 when there is no terminal to ask. */
+    public static int width() {
+        return terminal != null && terminal.getWidth() > 0 ? terminal.getWidth() : 80;
+    }
+
+    /** Terminal rows, or 24 when there is no terminal to ask. */
+    public static int height() {
+        return terminal != null && terminal.getHeight() > 0 ? terminal.getHeight() : 24;
+    }
+
     /**
      * Prints lines surrounded by a box using Unicode box-drawing characters.
      *

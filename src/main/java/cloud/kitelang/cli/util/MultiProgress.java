@@ -1,7 +1,10 @@
 package cloud.kitelang.cli.util;
 
 import cloud.kitelang.packages.install.DownloadProgress;
+import cloud.kitelang.packages.install.InstallListener;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -10,9 +13,11 @@ import java.util.function.Consumer;
 
 /**
  * One progress line per download, for installs that run in parallel. On an
- * interactive terminal every line is redrawn in place after each update; on one
- * that cannot move the cursor (a dumb terminal, output piped to a file) only each
- * row's final line is printed, once.
+ * interactive terminal every line is redrawn in place after each update. Redrawing
+ * moves the cursor up one line per row, so it only works when every row is exactly
+ * one screen line: lines are cut to the terminal width, and when there are more rows
+ * than the terminal is tall, or the terminal cannot move the cursor (a dumb terminal,
+ * output piped to a file), only each row's final line is printed, once.
  *
  * <p>Downloads report from their own threads, so every update is synchronized.</p>
  */
@@ -24,17 +29,23 @@ public final class MultiProgress {
 
     private final Consumer<String> out;
     private final boolean live;
+    private final int maxLineLength;
     private final int nameWidth;
     private final Map<String, String> rows = new LinkedHashMap<>();
+    private final List<String> failures = new ArrayList<>();
     private boolean drawn;
 
     /**
-     * @param out  receives raw terminal text; in the CLI this is {@code Console::print}
-     * @param live whether the terminal can move the cursor ({@code Console.isInteractive()})
+     * @param out         receives raw terminal text; in the CLI this is {@code Console::print}
+     * @param interactive whether the terminal can move the cursor ({@code Console.isInteractive()})
+     * @param width       terminal columns
+     * @param height      terminal rows
      */
-    public MultiProgress(List<String> names, Consumer<String> out, boolean live) {
+    public MultiProgress(List<String> names, Consumer<String> out, boolean interactive, int width, int height) {
         this.out = out;
-        this.live = live;
+        this.live = interactive && names.size() < height;
+        // One column short of the width: a line that fills it exactly wraps on some terminals
+        this.maxLineLength = Math.max(10, width - 1);
         this.nameWidth = names.stream().mapToInt(String::length).max().orElse(0);
         for (var name : names) {
             rows.put(name, prefix(name) + "[" + "░".repeat(BAR_WIDTH) + "]   0%");
@@ -51,7 +62,35 @@ public final class MultiProgress {
     }
 
     public synchronized void failed(String name, String reason) {
-        finish(name, prefix(name) + "failed ✗ " + reason);
+        var oneLine = reason == null ? "unknown error" : reason.replaceAll("\\s*\\R\\s*", " ");
+        failures.add(name + ": " + oneLine);
+        finish(name, prefix(name) + "failed ✗ " + oneLine);
+    }
+
+    /** A listener for one package of a parallel install: its progress, then done or failed. */
+    public InstallListener installListener(String name) {
+        var progress = listener(name);
+        return new InstallListener() {
+            @Override
+            public void onProgress(long bytesRead, long totalBytes, int percentComplete) {
+                progress.onProgress(bytesRead, totalBytes, percentComplete);
+            }
+
+            @Override
+            public void installed(Path packageDir) {
+                done(name);
+            }
+
+            @Override
+            public void failed(Throwable error) {
+                MultiProgress.this.failed(name, error.getMessage());
+            }
+        };
+    }
+
+    /** Every failure with its whole reason, for printing once the live lines are finished. */
+    public synchronized List<String> failures() {
+        return List.copyOf(failures);
     }
 
     /** The current text of every line, in the order the names were given. */
@@ -60,19 +99,24 @@ public final class MultiProgress {
     }
 
     private synchronized void update(String name, String line) {
-        rows.put(name, line);
+        rows.put(name, fit(line));
         if (live) {
             redraw();
         }
     }
 
     private void finish(String name, String line) {
-        rows.put(name, line);
+        var fitted = fit(line);
+        rows.put(name, fitted);
         if (live) {
             redraw();
         } else {
-            out.accept(line + "\n");
+            out.accept(fitted + "\n");
         }
+    }
+
+    private String fit(String line) {
+        return line.length() <= maxLineLength ? line : line.substring(0, maxLineLength - 1) + "…";
     }
 
     private void redraw() {

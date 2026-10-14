@@ -2,8 +2,8 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.util.MultiProgress;
-import cloud.kitelang.cli.util.ParallelInstall;
 import cloud.kitelang.engine.distribution.ProviderInstaller;
+import cloud.kitelang.packages.install.PackageInstallException;
 import cloud.kitelang.packages.install.PackageSpec;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
@@ -215,7 +215,8 @@ public class ProvidersCommand implements Callable<Integer> {
 
             var spec = specBuilder.build();
 
-            var progress = new MultiProgress(List.of(name), Console::print, Console.isInteractive());
+            var progress = new MultiProgress(List.of(name), Console::print, Console.isInteractive(),
+                    Console.width(), Console.height());
             try {
                 var path = installer.install(spec, progress.listener(name));
                 progress.done(name);
@@ -304,8 +305,18 @@ public class ProvidersCommand implements Callable<Integer> {
                 Console.println();
                 // All downloads run at once, each redrawing its own line
                 var names = toInstall.stream().map(PackageSpec::getName).toList();
-                var progress = new MultiProgress(names, Console::print, Console.isInteractive());
-                failed = ParallelInstall.run(toInstall, installer::install, progress).size();
+                var progress = new MultiProgress(names, Console::print, Console.isInteractive(),
+                        Console.width(), Console.height());
+                try {
+                    installer.installAll(toInstall, spec -> progress.installListener(spec.getName()));
+                } catch (PackageInstallException e) {
+                    // Each failure already marked its own line; the whole reasons follow the bars
+                    Console.println();
+                    for (var failure : progress.failures()) {
+                        Console.error(failure);
+                    }
+                }
+                failed = progress.failures().size();
             }
             int installed = alreadyInstalled + toInstall.size() - failed;
 
