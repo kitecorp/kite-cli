@@ -2,6 +2,7 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.util.JacksonMappers;
+import cloud.kitelang.packages.install.Platform;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -582,7 +583,7 @@ public class VersionCommand implements Callable<Integer> {
      * Run the install script to download and install a version.
      */
     static int runInstallScript(String version) throws Exception {
-        var os = getOS();
+        var os = Platform.current().os();
 
         if ("windows".equals(os)) {
             return runWindowsInstallScript(version);
@@ -662,13 +663,5 @@ public class VersionCommand implements Callable<Integer> {
         }
 
         return process.exitValue();
-    }
-
-    private static String getOS() {
-        var os = System.getProperty("os.name").toLowerCase();
-        if (os.contains("mac") || os.contains("darwin")) return "darwin";
-        if (os.contains("win")) return "windows";
-        if (os.contains("linux")) return "linux";
-        return os;
     }
 }
