@@ -3,8 +3,10 @@ package cloud.kitelang.cli.commands;
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.util.MultiProgress;
 import cloud.kitelang.engine.distribution.ProviderInstaller;
+import cloud.kitelang.packages.install.OfficialProviders;
 import cloud.kitelang.packages.install.PackageInstallException;
 import cloud.kitelang.packages.install.PackageSpec;
+import cloud.kitelang.engine.kitefile.Dependency;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
 import cloud.kitelang.engine.plugin.grpc.PluginManifest;
@@ -21,6 +23,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.function.Predicate;
 
 /**
  * Manage Kite providers - install, list, and update.
@@ -171,7 +174,7 @@ public class ProvidersCommand implements Callable<Integer> {
             if (nameWithVersion.contains("@")) {
                 var parts = nameWithVersion.split("@", 2);
                 name = parts[0];
-                version = normalizeVersion(parts[1]);
+                version = PackageSpec.normalizeVersion(parts[1]);
             } else {
                 name = nameWithVersion;
             }
@@ -184,7 +187,7 @@ public class ProvidersCommand implements Callable<Integer> {
             String effectiveGitUrl = gitUrl;
             if (effectiveGitUrl == null) {
                 // Check if it's an official provider
-                effectiveGitUrl = getOfficialProviderUrl(name);
+                effectiveGitUrl = OfficialProviders.gitUrl(name).orElse(null);
             }
 
             // Always set version for proper directory naming
@@ -228,15 +231,31 @@ public class ProvidersCommand implements Callable<Integer> {
             }
         }
 
+        /** What {@code kite providers install} does with each kitefile provider. */
+        record KitefileInstallPlan(List<String> alreadyInstalled, List<PackageSpec> toInstall, List<String> missingGit) {
+        }
+
         /**
-         * Get the official provider URL for well-known providers.
-         * Returns null for unknown providers.
+         * Sorts the kitefile's providers into those already installed (as {@code name@version}),
+         * those to install, and refusals for those that have nothing to install from.
          */
-        private String getOfficialProviderUrl(String name) {
-            return switch (name.toLowerCase()) {
-                case "aws", "azure", "gcp", "files" -> "github.com/kitecorp/kite-providers/" + name;
-                default -> null;
-            };
+        static KitefileInstallPlan planKitefileInstall(List<Dependency> dependencies, Predicate<PackageSpec> isInstalled) {
+            var alreadyInstalled = new ArrayList<String>();
+            var toInstall = new ArrayList<PackageSpec>();
+            var missingGit = new ArrayList<String>();
+            for (var dep : dependencies) {
+                var spec = dep.toPackageSpec();
+                if (isInstalled.test(spec)) {
+                    var displayVersion = spec.getVersion() != null ? spec.getVersion()
+                            : spec.getRef() != null ? spec.getRef() : "latest";
+                    alreadyInstalled.add(dep.name() + "@" + displayVersion);
+                } else if (spec.isGitPackage()) {
+                    toInstall.add(spec);
+                } else {
+                    missingGit.add(dep.missingGitMessage());
+                }
+            }
+            return new KitefileInstallPlan(alreadyInstalled, toInstall, missingGit);
         }
 
         private Integer installFromKitefile(ProviderInstaller installer) throws Exception {
@@ -256,50 +275,17 @@ public class ProvidersCommand implements Callable<Integer> {
                 return 0;
             }
 
-            int alreadyInstalled = 0;
-            var toInstall = new ArrayList<PackageSpec>();
-
-            for (var dep : config.dependencies()) {
-                // Normalize version (strip 'v' prefix if present)
-                String version = normalizeVersion(dep.version());
-
-                // Determine display version (version, ref, or "latest")
-                String displayVersion = version != null ? version
-                        : dep.ref() != null ? dep.ref() : "latest";
-
-                // Resolve official provider URLs if no git specified
-                String gitUrl = dep.git();
-                if (gitUrl == null) {
-                    gitUrl = getOfficialProviderUrl(dep.name());
-                }
-
-                var specBuilder = PackageSpec.builder()
-                        .name(dep.name())
-                        .version(version)
-                        .git(gitUrl);
-
-                // Parse GitHub URLs automatically to extract ref and path
-                if (gitUrl != null) {
-                    var parsed = PackageSpec.parseGitHubUrl(dep.name(), gitUrl);
-                    // Use explicit ref from kitefile, otherwise use parsed ref
-                    specBuilder.ref(dep.ref() != null ? dep.ref() : parsed.getRef());
-                    specBuilder.path(dep.path() != null ? dep.path() : parsed.getPath());
-                } else {
-                    specBuilder.ref(dep.ref());
-                    specBuilder.path(dep.path());
-                }
-
-                var spec = specBuilder.build();
-
-                if (installer.isInstalled(spec)) {
-                    Console.println("  ✓ " + dep.name() + "@" + displayVersion + " (already installed)");
-                    alreadyInstalled++;
-                    continue;
-                }
-                toInstall.add(spec);
+            var plan = planKitefileInstall(config.dependencies(), installer::isInstalled);
+            for (var name : plan.alreadyInstalled()) {
+                Console.println("  ✓ " + name + " (already installed)");
             }
+            for (var refusal : plan.missingGit()) {
+                Console.error(refusal);
+            }
+            var toInstall = plan.toInstall();
+            int alreadyInstalled = plan.alreadyInstalled().size();
 
-            int failed = 0;
+            int installFailures = 0;
             if (!toInstall.isEmpty()) {
                 Console.println("Installing " + toInstall.size() + " provider(s)...");
                 Console.println();
@@ -316,9 +302,10 @@ public class ProvidersCommand implements Callable<Integer> {
                         Console.error(failure);
                     }
                 }
-                failed = progress.failures().size();
+                installFailures = progress.failures().size();
             }
-            int installed = alreadyInstalled + toInstall.size() - failed;
+            int installed = alreadyInstalled + toInstall.size() - installFailures;
+            int failed = installFailures + plan.missingGit().size();
 
             Console.println();
             if (failed == 0) {
@@ -328,19 +315,6 @@ public class ProvidersCommand implements Callable<Integer> {
             }
 
             return failed > 0 ? 1 : 0;
-        }
-
-        /**
-         * Normalize version to always have 'v' prefix for semantic versions.
-         * Treats "main" as "latest" since kitefile.yml commonly uses "main" to mean latest release.
-         * Accepts: 0.1.3 -> v0.1.3, v0.1.3 -> v0.1.3, main -> latest
-         * The installed folder is the bare version (~/.kite/providers/aws/0.1.3), see PackageSpec.versionDirectory
-         */
-        private String normalizeVersion(String version) {
-            if (version == null || "latest".equals(version)) return version;
-            // "main" in kitefile.yml means "latest release", not the main branch
-            if ("main".equals(version)) return "latest";
-            return version.startsWith("v") ? version : "v" + version;
         }
     }
 
@@ -581,7 +555,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 if (providerName.contains("@")) {
                     var parts = providerName.split("@", 2);
                     name = parts[0];
-                    version = normalizeVersion(parts[1]);
+                    version = PackageSpec.normalizeVersion(parts[1]);
                 } else {
                     name = providerName;
                 }
@@ -633,12 +607,6 @@ public class ProvidersCommand implements Callable<Integer> {
                 log.debug("Start failed", e);
                 return 1;
             }
-        }
-
-        private String normalizeVersion(String version) {
-            if (version == null || "latest".equals(version)) return version;
-            if ("main".equals(version)) return "latest";
-            return version.startsWith("v") ? version : "v" + version;
         }
 
         private record ResolvedProvider(Path executable, String version) {}
@@ -800,7 +768,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 if (providerName.contains("@")) {
                     var parts = providerName.split("@", 2);
                     name = parts[0];
-                    version = normalizeVersion(parts[1]);
+                    version = PackageSpec.normalizeVersion(parts[1]);
                 } else {
                     name = providerName;
                 }
@@ -961,12 +929,6 @@ public class ProvidersCommand implements Callable<Integer> {
             } catch (IOException e) {
                 log.debug("Failed to clean run directory: {}", e.getMessage());
             }
-        }
-
-        private String normalizeVersion(String version) {
-            if (version == null || "latest".equals(version)) return version;
-            if ("main".equals(version)) return "latest";
-            return version.startsWith("v") ? version : "v" + version;
         }
     }
 
