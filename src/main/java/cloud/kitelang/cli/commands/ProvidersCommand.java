@@ -654,12 +654,9 @@ public class ProvidersCommand implements Callable<Integer> {
                 return null;
             }
 
-            // For specific version, look in that version directory
+            // For specific version, look in that version directory (the same name every install uses)
             if (!"latest".equals(version)) {
-                Path versionDir = providersDir.resolve(name + "-" + version);
-                if (!Files.exists(versionDir)) {
-                    versionDir = providersDir.resolve(version);
-                }
+                Path versionDir = providersDir.resolve(PackageSpec.versionDirectory(name, version));
                 var exec = findExecutable(versionDir);
                 return exec != null ? new ResolvedProvider(exec, version) : null;
             }
