@@ -399,7 +399,7 @@ kite doctor --fix                     # Attempt to fix issues automatically
 ```
 
 **Checks performed:**
-- Java version (21+ required)
+- Java that providers run on (JAVA_HOME, then PATH): 25 or newer
 - Global configuration (~/.kite/config.yml)
 - Project files (kitefile.yml, environments/)
 - Installed providers

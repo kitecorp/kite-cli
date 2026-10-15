@@ -5,6 +5,7 @@ import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.validation.CredentialValidatorRegistry;
 import cloud.kitelang.engine.kitefile.Dependencies.Credential;
 import cloud.kitelang.engine.kitefile.KiteInjector;
+import cloud.kitelang.packages.install.JavaRuntime;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -14,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.concurrent.Callable;
 
 /**
@@ -91,18 +93,35 @@ public class DoctorCommand implements Callable<Integer> {
         }
     }
 
+    /** JVM providers are built for Java 25 (kitecorp/kite#80). */
+    private static final int PROVIDER_MIN_JAVA = 25;
+
+    record JavaCheck(boolean passed, String message) {
+    }
+
+    /**
+     * Judges the java that providers run on: their bin/provider launcher uses JAVA_HOME,
+     * then PATH. The CLI's own runtime does not matter, since providers are separate processes.
+     */
+    static JavaCheck checkJava(OptionalInt major) {
+        if (major.isEmpty()) {
+            return new JavaCheck(false, "No java found on JAVA_HOME or PATH; providers need Java " + PROVIDER_MIN_JAVA + " or newer");
+        }
+        if (major.getAsInt() < PROVIDER_MIN_JAVA) {
+            return new JavaCheck(false, "Java " + major.getAsInt() + " found on JAVA_HOME or PATH; providers need Java "
+                    + PROVIDER_MIN_JAVA + " or newer");
+        }
+        return new JavaCheck(true, "Java " + major.getAsInt() + " (used to run providers)");
+    }
+
     private void checkJavaVersion() {
         printCheck("Java version");
 
-        var version = Runtime.version();
-        var major = version.feature();
-
-        if (major >= 21) {
-            printPassed("Java " + version);
-        } else if (major >= 17) {
-            printWarning("Java " + version + " (21+ recommended for best performance)");
+        var check = checkJava(JavaRuntime.majorVersion());
+        if (check.passed()) {
+            printPassed(check.message());
         } else {
-            printFailed("Java " + version + " (21+ required)");
+            printFailed(check.message());
         }
     }
 
