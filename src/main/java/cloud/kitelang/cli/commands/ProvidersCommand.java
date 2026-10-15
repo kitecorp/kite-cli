@@ -35,9 +35,9 @@ import java.util.function.Predicate;
                 "",
                 "Examples:",
                 "  kite providers install                Install all from kitefile.yml",
-                "  kite providers install name            Install latest AWS provider",
-                "  kite providers install name@1.0.0      Install specific version",
-                "  kite providers install name --local    Install to project (.kite/providers)",
+                "  kite providers install aws             Install the latest release of an official provider",
+                "  kite providers install aws@0.3.0       Install one release of it",
+                "  kite providers install aws --local     Install to project (.kite/providers)",
                 "  kite providers install myp --git github.com/org/provider",
                 "  kite providers install myp --git github.com/org/repo/tree/dev/aws",
                 "  kite providers list                   List global providers",
@@ -68,9 +68,9 @@ public class ProvidersCommand implements Callable<Integer> {
         Console.println();
         Console.println("Examples:");
         Console.println("  kite providers install                              # Install from kitefile.yml");
-        Console.println("  kite providers install name                          # Download from GitHub Releases");
-        Console.println("  kite providers install name --from-source            # Clone and build from source");
-        Console.println("  kite providers install name@1.0.0                    # Install specific version");
+        Console.println("  kite providers install aws                           # Official provider, from GitHub Releases");
+        Console.println("  kite providers install aws --from-source             # Clone and build from source");
+        Console.println("  kite providers install aws@0.3.0                     # Install one release");
         Console.println("  kite providers install myp --git github.com/org/p   # Install from git repo");
         Console.println("  kite providers list                                 # List global providers");
         Console.println("  kite providers list --local                         # List project providers");
@@ -90,12 +90,14 @@ public class ProvidersCommand implements Callable<Integer> {
                     "",
                     "Examples:",
                     "  kite providers install                Install all from kitefile.yml",
-                    "  kite providers install name            Install latest (from GitHub Releases)",
-                    "  kite providers install name@1.0.0      Install specific version",
+                    "  kite providers install aws             Install the latest release of an official provider",
+                    "  kite providers install aws@0.3.0       Install one release of it",
                     "  kite providers install myp --git github.com/org/provider",
                     "  kite providers install myp --git github.com/org/repo/aws",
-                    "  kite providers install name --from-source   Clone and build from source",
-                    "  kite providers install name --local    Install to .kite/providers"
+                    "  kite providers install aws --from-source   Clone and build from source",
+                    "  kite providers install aws --local     Install to .kite/providers",
+                    "",
+                    "Without --git, only the official providers (aws, azure, files, gcp) install by name."
             },
             mixinStandardHelpOptions = true
     )
@@ -176,42 +178,22 @@ public class ProvidersCommand implements Callable<Integer> {
          */
         static PackageSpec specForName(String nameWithVersion, String gitUrl, String gitRef, String gitPath)
                 throws PackageInstallException {
-            String name;
-            String version = "latest";
-            if (nameWithVersion.contains("@")) {
-                var parts = nameWithVersion.split("@", 2);
-                name = parts[0];
-                version = PackageSpec.normalizeVersion(parts[1]);
-            } else {
-                name = nameWithVersion;
-            }
-
-            // Always set version for proper directory naming
-            var specBuilder = PackageSpec.builder().name(name).version(version);
-            var effectiveGitUrl = gitUrl != null ? gitUrl : OfficialProviders.gitUrl(name).orElse(null);
-            if (effectiveGitUrl == null) {
+            var parts = nameWithVersion.split("@", 2);
+            var name = parts[0];
+            // Always a version, for the version directory's name
+            var version = parts.length > 1 ? parts[1] : "latest";
+            // The same spec a kitefile entry with these settings gives
+            var spec = new Dependency(name, version, gitUrl, gitRef, gitPath, null).toPackageSpec();
+            if (!spec.isGitPackage()) {
                 throw new PackageInstallException("Provider " + name + " has no git setting. Pass --git <repository URL>,"
                         + " or add git: <repository URL> to its entry in kitefile.yml; "
                         + OfficialProviders.nameAndVersionRule() + ".");
             }
-
-            // Parse GitHub /tree/branch/path URLs automatically; CLI options override parsed values
-            var parsed = PackageSpec.parseGitHubUrl(name, effectiveGitUrl);
-            specBuilder.git(effectiveGitUrl);
-            if (gitRef != null) {
-                specBuilder.ref(gitRef);
-            } else if (parsed.getRef() != null) {
-                specBuilder.ref(parsed.getRef());
-            } else if (!"latest".equals(version)) {
-                // The version is normalized to start with 'v': aws@0.1.0 installs the tag aws-v0.1.0
-                specBuilder.ref(name + "-" + version);
+            if (spec.getRef() == null && !"latest".equals(spec.getVersion())) {
+                // aws@0.1.0 (made v0.1.0 above) installs the release tagged aws-v0.1.0
+                return spec.toBuilder().ref(name + "-" + spec.getVersion()).build();
             }
-            if (gitPath != null) {
-                specBuilder.path(gitPath);
-            } else if (parsed.getPath() != null) {
-                specBuilder.path(parsed.getPath());
-            }
-            return specBuilder.build();
+            return spec;
         }
 
         private Integer installProvider(ProviderInstaller installer, String nameWithVersion) throws PackageInstallException {
@@ -245,6 +227,10 @@ public class ProvidersCommand implements Callable<Integer> {
             var toInstall = new ArrayList<PackageSpec>();
             var missingGit = new ArrayList<String>();
             for (var dep : dependencies) {
+                // The engine loads Terraform providers through the bridge; they are not installed here
+                if (dep.isTerraformProvider()) {
+                    continue;
+                }
                 var spec = dep.toPackageSpec();
                 if (isInstalled.test(spec)) {
                     var displayVersion = spec.getVersion() != null ? spec.getVersion()

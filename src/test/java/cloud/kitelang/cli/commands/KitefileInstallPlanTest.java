@@ -16,6 +16,8 @@ class KitefileInstallPlanTest {
         var plan = ProvidersCommand.InstallCommand.planKitefileInstall(List.of(
                         new Dependency("aws", "0.3.0"),
                         new Dependency("custom", "1.0.0"),
+                        // The Terraform bridge loads these; they are not installed as providers
+                        new Dependency("tf/aws", "~> 5.0"),
                         new Dependency("gcp", "0.2.0")),
                 spec -> spec.getName().equals("gcp"));
 
