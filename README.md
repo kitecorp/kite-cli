@@ -429,7 +429,7 @@ kite providers list --global             # List global providers
 **Subcommands:**
 | Command | Description |
 |---------|-------------|
-| `install [PROVIDER[@VERSION]]` | Install providers from registry or git |
+| `install [PROVIDER[@VERSION]]` | Install providers from GitHub releases or git |
 | `list` | List installed providers |
 
 **Install Options:**

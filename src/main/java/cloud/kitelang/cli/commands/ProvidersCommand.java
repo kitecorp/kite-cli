@@ -85,7 +85,7 @@ public class ProvidersCommand implements Callable<Integer> {
      */
     @Command(
             name = "install",
-            description = "Install providers from registry or git",
+            description = "Install providers from GitHub releases or git",
             footer = {
                     "",
                     "Examples:",
@@ -166,11 +166,18 @@ public class ProvidersCommand implements Callable<Integer> {
             }
         }
 
-        private Integer installProvider(ProviderInstaller installer, String nameWithVersion) {
-            // Parse name@version format
+        /**
+         * The package {@code kite providers install <name>[@<version>]} installs: from the
+         * {@code --git} repository, or from the official provider's releases.
+         * The {@code --ref} and {@code --path} options win over a ref and path in the URL; without
+         * either, a pinned version installs the release tagged {@code <name>-v<version>}.
+         *
+         * @throws PackageInstallException for a provider that is not official and has no {@code --git}
+         */
+        static PackageSpec specForName(String nameWithVersion, String gitUrl, String gitRef, String gitPath)
+                throws PackageInstallException {
             String name;
             String version = "latest";
-
             if (nameWithVersion.contains("@")) {
                 var parts = nameWithVersion.split("@", 2);
                 name = parts[0];
@@ -179,44 +186,38 @@ public class ProvidersCommand implements Callable<Integer> {
                 name = nameWithVersion;
             }
 
-            Console.println("Installing provider: " + name + "@" + version);
-
-            var specBuilder = PackageSpec.builder().name(name);
-
-            // Determine git URL - explicit, official provider, or none
-            String effectiveGitUrl = gitUrl;
-            if (effectiveGitUrl == null) {
-                // Check if it's an official provider
-                effectiveGitUrl = OfficialProviders.gitUrl(name).orElse(null);
-            }
-
             // Always set version for proper directory naming
-            specBuilder.version(version);
-
-            if (effectiveGitUrl != null) {
-                // Parse GitHub /tree/branch/path URLs automatically
-                var parsed = PackageSpec.parseGitHubUrl(name, effectiveGitUrl);
-                specBuilder.git(effectiveGitUrl);
-
-                // CLI options override parsed values
-                if (gitRef != null) {
-                    specBuilder.ref(gitRef);
-                } else if (parsed.getRef() != null) {
-                    specBuilder.ref(parsed.getRef());
-                } else if (!"latest".equals(version)) {
-                    // Use version as tag (e.g., aws@0.1.0 -> aws-v0.1.0)
-                    // Version is already normalized to have 'v' prefix
-                    specBuilder.ref(name + "-" + version);
-                }
-
-                if (gitPath != null) {
-                    specBuilder.path(gitPath);
-                } else if (parsed.getPath() != null) {
-                    specBuilder.path(parsed.getPath());
-                }
+            var specBuilder = PackageSpec.builder().name(name).version(version);
+            var effectiveGitUrl = gitUrl != null ? gitUrl : OfficialProviders.gitUrl(name).orElse(null);
+            if (effectiveGitUrl == null) {
+                throw new PackageInstallException("Provider " + name + " has no git setting. Pass --git <repository URL>,"
+                        + " or add git: <repository URL> to its entry in kitefile.yml; "
+                        + OfficialProviders.nameAndVersionRule() + ".");
             }
 
-            var spec = specBuilder.build();
+            // Parse GitHub /tree/branch/path URLs automatically; CLI options override parsed values
+            var parsed = PackageSpec.parseGitHubUrl(name, effectiveGitUrl);
+            specBuilder.git(effectiveGitUrl);
+            if (gitRef != null) {
+                specBuilder.ref(gitRef);
+            } else if (parsed.getRef() != null) {
+                specBuilder.ref(parsed.getRef());
+            } else if (!"latest".equals(version)) {
+                // The version is normalized to start with 'v': aws@0.1.0 installs the tag aws-v0.1.0
+                specBuilder.ref(name + "-" + version);
+            }
+            if (gitPath != null) {
+                specBuilder.path(gitPath);
+            } else if (parsed.getPath() != null) {
+                specBuilder.path(parsed.getPath());
+            }
+            return specBuilder.build();
+        }
+
+        private Integer installProvider(ProviderInstaller installer, String nameWithVersion) throws PackageInstallException {
+            var spec = specForName(nameWithVersion, gitUrl, gitRef, gitPath);
+            var name = spec.getName();
+            Console.println("Installing provider: " + name + "@" + spec.getVersion());
 
             var progress = new MultiProgress(List.of(name), Console::print, Console.isInteractive(),
                     Console.width(), Console.height());
