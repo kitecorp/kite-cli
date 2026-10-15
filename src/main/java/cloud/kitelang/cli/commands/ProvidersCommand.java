@@ -6,6 +6,7 @@ import cloud.kitelang.engine.distribution.ProviderInstaller;
 import cloud.kitelang.packages.install.OfficialProviders;
 import cloud.kitelang.packages.install.PackageInstallException;
 import cloud.kitelang.packages.install.PackageSpec;
+import cloud.kitelang.packages.process.RunDir;
 import cloud.kitelang.engine.kitefile.Dependency;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
@@ -523,8 +524,6 @@ public class ProvidersCommand implements Callable<Integer> {
     @Slf4j
     public static class StartCommand implements Callable<Integer> {
 
-        private static final Path RUN_DIR = Path.of(System.getProperty("user.home"), ".kite", "run");
-
         @Parameters(
                 index = "0",
                 paramLabel = "provider[@version]",
@@ -720,8 +719,6 @@ public class ProvidersCommand implements Callable<Integer> {
     @Slf4j
     public static class StopCommand implements Callable<Integer> {
 
-        private static final Path RUN_DIR = Path.of(System.getProperty("user.home"), ".kite", "run");
-
         @Parameters(
                 index = "0",
                 paramLabel = "provider[@version]",
@@ -858,64 +855,28 @@ public class ProvidersCommand implements Callable<Integer> {
             }
         }
 
-        private Integer stopAllProviders() {
-            if (!Files.exists(RUN_DIR)) {
-                Console.println("No running providers");
-                return 0;
-            }
-
-            try (var stream = Files.list(RUN_DIR)) {
-                var portFiles = stream
-                        .filter(p -> p.toString().endsWith(".port"))
-                        .toList();
-
-                if (portFiles.isEmpty()) {
-                    Console.println("No running providers");
-                    // Still clean stale files (e.g., orphaned .activity files)
-                    cleanRunDirectory();
-                    return 0;
-                }
-
-                int stopped = 0;
-                for (var portFile : portFiles) {
-                    String pluginId = portFile.getFileName().toString().replace(".port", "");
-                    if (stopProvider(pluginId) == 0) {
-                        stopped++;
-                    }
-                }
-
-                // Clean any remaining stale files in the run directory.
-                // Individual stopProvider calls clean their own .port/.activity files,
-                // but stale files from crashed providers may linger and cause
-                // "UNAVAILABLE: io exception" errors on subsequent runs.
-                cleanRunDirectory();
-
-                Console.println("Stopped " + stopped + " provider(s)");
-                return 0;
-            } catch (IOException e) {
-                Console.error("Failed to list running providers: " + e.getMessage());
-                return 1;
-            }
-        }
-
         /**
-         * Remove all files from the run directory to eliminate stale provider state.
-         * This prevents "UNAVAILABLE: io exception" errors caused by the engine
-         * trying to connect to dead provider processes via leftover port/activity files.
+         * Stops every provider recorded in the run directory. The ids come from
+         * {@link RunDir}, which writes them as file names: a Terraform provider loaded
+         * through the bridge, {@code tf/random@3.9.1}, has files named
+         * {@code tf%2Frandom@3.9.1.*}, so a file name is not an id (kitecorp/kite#85).
          */
-        private void cleanRunDirectory() {
-            try (var files = Files.list(RUN_DIR)) {
-                files.forEach(file -> {
-                    try {
-                        Files.deleteIfExists(file);
-                    } catch (IOException e) {
-                        log.debug("Failed to delete stale run file {}: {}", file, e.getMessage());
-                    }
-                });
-                log.debug("Cleaned run directory: {}", RUN_DIR);
-            } catch (IOException e) {
-                log.debug("Failed to clean run directory: {}", e.getMessage());
+        private Integer stopAllProviders() {
+            var running = new PluginProcessManager().listRunningProviders();
+            int stopped = 0;
+            for (var pluginId : running) {
+                if (stopProvider(pluginId) == 0) {
+                    stopped++;
+                }
             }
+
+            // A provider that did not answer keeps its record; a stale record makes the
+            // next engine run try a dead port first ("UNAVAILABLE: io exception")
+            var runDir = RunDir.defaultDir();
+            runDir.recordedIds().forEach(runDir::cleanup);
+
+            Console.println(running.isEmpty() ? "No running providers" : "Stopped " + stopped + " provider(s)");
+            return 0;
         }
     }
 
