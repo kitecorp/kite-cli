@@ -334,7 +334,7 @@ public class ProvidersCommand implements Callable<Integer> {
          * Normalize version to always have 'v' prefix for semantic versions.
          * Treats "main" as "latest" since kitefile.yml commonly uses "main" to mean latest release.
          * Accepts: 0.1.3 -> v0.1.3, v0.1.3 -> v0.1.3, main -> latest
-         * Matches folder naming: ~/.kite/providers/aws/aws-v0.1.3
+         * The installed folder is the bare version (~/.kite/providers/aws/0.1.3), see PackageSpec.versionDirectory
          */
         private String normalizeVersion(String version) {
             if (version == null || "latest".equals(version)) return version;
@@ -648,6 +648,7 @@ public class ProvidersCommand implements Callable<Integer> {
          * For "latest", finds the highest installed version.
          */
         private ResolvedProvider resolveProvider(String name, String version) throws IOException {
+            new ProviderInstaller(Kitefile.globalProvidersPath()).renameOldStyleVersionDirectories(name);
             Path providersDir = Kitefile.globalProvidersPath().resolve(name);
 
             if (!Files.exists(providersDir)) {
@@ -658,7 +659,8 @@ public class ProvidersCommand implements Callable<Integer> {
             if (!"latest".equals(version)) {
                 Path versionDir = providersDir.resolve(PackageSpec.versionDirectory(name, version));
                 var exec = findExecutable(versionDir);
-                return exec != null ? new ResolvedProvider(exec, version) : null;
+                // The id the engine uses too: provider.json holds the bare version
+                return exec != null ? new ResolvedProvider(exec, PackageSpec.versionDirectory(name, version)) : null;
             }
 
             // For latest, find the highest version
@@ -673,7 +675,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 }
                 var exec = findExecutable(currentVersion);
                 if (exec != null) {
-                    var actualVersion = extractVersion(currentVersion.getFileName().toString(), name);
+                    var actualVersion = PackageSpec.versionDirectory(name, currentVersion.getFileName().toString());
                     return new ResolvedProvider(exec, actualVersion);
                 }
             }
@@ -688,7 +690,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 if (highestVersion.isPresent()) {
                     var exec = findExecutable(highestVersion.get());
                     if (exec != null) {
-                        var actualVersion = extractVersion(highestVersion.get().getFileName().toString(), name);
+                        var actualVersion = PackageSpec.versionDirectory(name, highestVersion.get().getFileName().toString());
                         return new ResolvedProvider(exec, actualVersion);
                     }
                 }
@@ -697,15 +699,6 @@ public class ProvidersCommand implements Callable<Integer> {
             return null;
         }
 
-        /**
-         * Extract version from directory name (e.g., "aws-v0.1.5" -> "v0.1.5")
-         */
-        private String extractVersion(String dirName, String providerName) {
-            if (dirName.startsWith(providerName + "-")) {
-                return dirName.substring(providerName.length() + 1);
-            }
-            return dirName;
-        }
 
         private Path findExecutable(Path versionDir) {
             if (!Files.exists(versionDir)) return null;
@@ -827,8 +820,10 @@ public class ProvidersCommand implements Callable<Integer> {
          */
         private String resolvePluginId(String name, String version) throws IOException {
             if (!"latest".equals(version)) {
-                return name + "@" + version;
+                // The id the engine uses too: provider.json holds the bare version
+                return name + "@" + PackageSpec.versionDirectory(name, version);
             }
+            new ProviderInstaller(Kitefile.globalProvidersPath()).renameOldStyleVersionDirectories(name);
 
             // Find the actual installed version
             Path providersDir = Kitefile.globalProvidersPath().resolve(name);
@@ -845,7 +840,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 } else {
                     versionDir = Files.readString(currentLink).trim();
                 }
-                var actualVersion = extractVersion(versionDir, name);
+                var actualVersion = PackageSpec.versionDirectory(name, versionDir);
                 return name + "@" + actualVersion;
             }
 
@@ -857,7 +852,7 @@ public class ProvidersCommand implements Callable<Integer> {
                         .max((a, b) -> compareVersions(a.getFileName().toString(), b.getFileName().toString()));
 
                 if (highestVersion.isPresent()) {
-                    var actualVersion = extractVersion(highestVersion.get().getFileName().toString(), name);
+                    var actualVersion = PackageSpec.versionDirectory(name, highestVersion.get().getFileName().toString());
                     return name + "@" + actualVersion;
                 }
             }
@@ -865,12 +860,6 @@ public class ProvidersCommand implements Callable<Integer> {
             return name + "@" + version;
         }
 
-        private String extractVersion(String dirName, String providerName) {
-            if (dirName.startsWith(providerName + "-")) {
-                return dirName.substring(providerName.length() + 1);
-            }
-            return dirName;
-        }
 
         private int compareVersions(String v1, String v2) {
             String s1 = v1.replaceFirst("^[^0-9]*", "");
