@@ -82,16 +82,19 @@ class KiteUsageHelpTest {
     }
 
     @Test
-    void renderContainsFlags() {
-        var output = renderHelp();
+    void renderListsEachFlagWithItsShortForm() {
+        // Whole rows, not substrings: "--version" contains "-v" and "--help" contains "-h",
+        // so a contains() check cannot tell whether the short forms are listed at all.
+        var flagRows = withoutAnsi(renderHelp()).lines()
+                .dropWhile(line -> !line.equals("Flags:"))
+                .skip(1)
+                .takeWhile(line -> !line.isBlank())
+                .toList();
 
-        assertAll("Global flags",
-                () -> assertTrue(output.contains("Flags:"), "Should have Flags section"),
-                () -> assertTrue(output.contains("-h"), "Should list -h flag"),
-                () -> assertTrue(output.contains("--help"), "Should list --help flag"),
-                () -> assertTrue(output.contains("-v"), "Should list -v flag"),
-                () -> assertTrue(output.contains("--version"), "Should list --version flag")
-        );
+        assertEquals(List.of(
+                "  -h, --help                     Show this help message and exit",
+                "  -v, --version                  Print version information and exit"
+        ), flagRows);
     }
 
     @Test
@@ -188,5 +191,12 @@ class KiteUsageHelpTest {
         var pw = new PrintWriter(sw);
         KiteUsageHelp.render(pw);
         return sw.toString();
+    }
+
+    /**
+     * Drops ANSI color codes so assertions read the text a user sees.
+     */
+    private static String withoutAnsi(String text) {
+        return text.replaceAll("\u001B\\[[0-9;]*m", "");
     }
 }

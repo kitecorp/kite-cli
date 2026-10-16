@@ -58,6 +58,18 @@ public class KiteCLI implements Runnable {
         // Configure logging from kitefile.yml if present
         configureLogging();
 
+        var exitCode = commandLine().execute(args);
+        System.exit(exitCode);
+    }
+
+    /**
+     * Builds the root command with the parser settings and help styling {@code kite} runs with.
+     * Tests execute arguments through this, so a flag behaves in a test exactly as it does in
+     * the shipped binary (case-insensitive, abbreviated and clustered options included).
+     *
+     * @return the configured root command line
+     */
+    static CommandLine commandLine() {
         var colorScheme = new CommandLine.Help.ColorScheme.Builder()
                 .commands(CommandLine.Help.Ansi.Style.bold, CommandLine.Help.Ansi.Style.fg_cyan)
                 .options(CommandLine.Help.Ansi.Style.fg_cyan)
@@ -90,8 +102,7 @@ public class KiteCLI implements Runnable {
         // Apply bun-style headings to all subcommands
         KiteSubcommandHelp.apply(cmd);
 
-        var exitCode = cmd.execute(args);
-        System.exit(exitCode);
+        return cmd;
     }
 
     /**
