@@ -203,8 +203,16 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
 
         printLongOptionHint(arg, err, cmd);
 
-        // picocli's own suggestions are not printed here; this covers command names that other tools use
-        suggestAlternatives(arg, err);
+        // picocli's own suggestions are not printed here; this covers command names that other tools use.
+        // Only a word in the command's place can be one: not an option, nor a subcommand's argument.
+        if (isCommandWord(arg, cmd)) {
+            suggestAlternatives(arg, err);
+        }
+    }
+
+    /** Whether the argument stands where a command name goes: a plain word the root command did not match. */
+    private static boolean isCommandWord(String arg, CommandLine cmd) {
+        return cmd.getCommandSpec().parent() == null && !arg.startsWith("-");
     }
 
     /** Prints the long option the user most likely meant by a single-dash word, if the command has it. */

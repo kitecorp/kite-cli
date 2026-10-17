@@ -232,6 +232,52 @@ class KiteCLITest {
     }
 
     @Test
+    void mistypedOptionOfASubcommandGetsNoCommandSuggestion() {
+        // -check is fmt's --check typed with one dash, not the "check" that people type for validate
+        var run = execute(withoutRunning(KiteCLI.commandLine()), "fmt", "-check");
+
+        assertAll(
+                () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
+                () -> assertEquals("", run.out(), "stdout"),
+                () -> assertEquals(lines(
+                        "Error: Unknown option: '-check'",
+                        "",
+                        "Hint: Use '--check' for long options",
+                        "",
+                        "Run 'kite --help' for usage information.",
+                        "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @Test
+    void unknownOptionOfTheRootGetsNoCommandSuggestion() {
+        var run = execute(withoutRunning(KiteCLI.commandLine()), "--deploy");
+
+        assertAll(
+                () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
+                () -> assertEquals("", run.out(), "stdout"),
+                () -> assertEquals(lines(
+                        "Error: Unknown option: '--deploy'",
+                        "",
+                        "Run 'kite --help' for usage information.",
+                        "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @Test
+    void unmatchedArgumentOfASubcommandGetsNoCommandSuggestion() {
+        // fmt takes one path, so "deploy" after it is an extra argument of fmt, not a command
+        var run = execute(withoutRunning(KiteCLI.commandLine()), "fmt", "src", "deploy");
+
+        assertAll(
+                () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
+                () -> assertEquals("", run.out(), "stdout"),
+                () -> assertEquals(lines(
+                        "Error: Unmatched argument at index 2: 'deploy'",
+                        "",
+                        "Run 'kite --help' for usage information.",
+                        "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @Test
     void subcommandMissingARequiredOptionPrintsTheUsageHint() {
         // Not an unmatched argument, so the error takes the handler's other path
         var run = execute(withoutRunning(KiteCLI.commandLine()), "destroy");
