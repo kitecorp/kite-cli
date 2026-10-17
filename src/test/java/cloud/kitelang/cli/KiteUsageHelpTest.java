@@ -4,10 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
 import java.util.List;
 
-import static cloud.kitelang.cli.TerminalText.withoutAnsi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -110,14 +108,9 @@ class KiteUsageHelpTest {
         )), blocks.subList(FOOTER, blocks.size()));
     }
 
-    /**
-     * The page as the user sees it, split at its blank lines into blocks of lines, in order. The split
-     * keeps empty pieces, so a doubled blank line shows up as a blank line at the start of a block.
-     */
+    /** The page as the user sees it, split at its blank lines. */
     private static List<List<String>> blocks() {
-        return Arrays.stream(withoutAnsi(renderHelp()).split("\\R\\R", -1))
-                .map(block -> block.lines().toList())
-                .toList();
+        return TerminalText.blocks(renderHelp());
     }
 
     /**

@@ -1,5 +1,8 @@
 package cloud.kitelang.cli;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Reads CLI output the way a user sees it on screen.
  */
@@ -19,13 +22,26 @@ final class TerminalText {
     }
 
     /**
-     * The root help header ends with the build version, which changes every release. Masking it keeps
-     * the rest of the header a literal.
+     * A help header ends with the build version, which changes every release. Masking it keeps the
+     * rest of the header a literal.
      *
-     * @param header the first line of the root help, without ANSI codes
+     * @param header the first line of a help page, without ANSI codes
      * @return the same line with the version in its closing parentheses replaced by {@code <version>}
      */
     static String withVersionMasked(String header) {
         return header.replaceFirst("\\([^()]+\\)$", "(<version>)");
+    }
+
+    /**
+     * Splits a page at its blank lines into blocks of lines, in order, without ANSI codes. The split
+     * keeps empty pieces, so a doubled blank line shows up as a blank line at the start of a block.
+     *
+     * @param page printed text, such as a help page
+     * @return the page's blocks
+     */
+    static List<List<String>> blocks(String page) {
+        return Arrays.stream(withoutAnsi(page).split("\\R\\R", -1))
+                .map(block -> block.lines().toList())
+                .toList();
     }
 }
