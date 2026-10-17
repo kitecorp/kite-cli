@@ -57,10 +57,14 @@ public class ValidateCommand implements Callable<Integer> {
     )
     private File targetPath;
 
+    // On by default. picocli sets a boolean option named without a value to the opposite of its
+    // default, so fallbackValue = "true" keeps it on when named; negatable adds --no-recursive.
     @Option(
         names = {"-r", "--recursive"},
         description = "Recursively validate all .kite files in subdirectories",
-        defaultValue = "true"
+        defaultValue = "true",
+        fallbackValue = "true",
+        negatable = true
     )
     private boolean recursive;
 

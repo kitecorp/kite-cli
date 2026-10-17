@@ -184,7 +184,7 @@ kite validate -q                    # Quiet mode (errors only)
 **Options:**
 | Flag | Description |
 |------|-------------|
-| `-r, --recursive` | Recursively validate subdirectories (default: true) |
+| `-r, --[no-]recursive` | Recursively validate subdirectories (default: true; `--no-recursive` turns it off) |
 | `--strict` | Treat warnings as errors |
 | `-q, --quiet` | Only output errors |
 | `--format` | Output format: text, json |
@@ -215,7 +215,7 @@ kite plan --env dev -o plan.json    # Save plan for later apply
 | `-f, --file` | Override: plan a specific .kite file |
 | `-o, --out` | Save plan to file |
 | `--target` | Plan only specific resource(s) |
-| `--no-refresh` | Skip state refresh before planning |
+| `--[no-]refresh` | Refresh state before planning (default: true; `--no-refresh` skips it) |
 | `--compact` | Show compact diff output |
 | `--json` | Output plan as JSON |
 

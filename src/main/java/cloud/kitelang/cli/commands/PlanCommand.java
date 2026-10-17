@@ -91,10 +91,13 @@ public class PlanCommand implements Callable<Integer> {
     )
     private File outputFile;
 
+    // On by default. picocli sets a boolean option named without a value to the opposite of its
+    // default, so fallbackValue = "true" keeps --refresh on and lets --no-refresh turn it off.
     @Option(
         names = {"--refresh"},
         description = "Refresh state before planning",
         defaultValue = "true",
+        fallbackValue = "true",
         negatable = true
     )
     private boolean refresh;
