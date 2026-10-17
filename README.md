@@ -327,7 +327,7 @@ kite fmt --check || echo "Run 'kite fmt' to fix formatting"
 |------|-------------|
 | `-r, --[no-]recursive` | Recursively format subdirectories (default: true; `--no-recursive` turns it off) |
 | `--check` | Check if files are formatted (exit 1 if not) |
-| `--diff` | Show diff of formatting changes |
+| `--diff` | Show diff of formatting changes, without writing them |
 | `-w, --[no-]write` | Write changes to files (default: true; `--no-write` turns it off) |
 | `--indent` | Number of spaces for indentation (default: 4) |
 

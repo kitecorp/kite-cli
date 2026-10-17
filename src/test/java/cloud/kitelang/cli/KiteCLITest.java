@@ -512,11 +512,11 @@ class KiteCLITest {
     }
 
     /** What one run of {@code kite} printed and returned. */
-    private record Run(int exitCode, String out, String err) {
+    record Run(int exitCode, String out, String err) {
     }
 
     /** Executes the arguments with stdout and stderr captured instead of printed. */
-    private static Run execute(CommandLine cli, String... args) {
+    static Run execute(CommandLine cli, String... args) {
         var out = new StringWriter();
         var err = new StringWriter();
         cli.setOut(new PrintWriter(out)).setErr(new PrintWriter(err));
@@ -527,7 +527,7 @@ class KiteCLITest {
     }
 
     /** The text {@link PrintWriter#println} writes for these lines. */
-    private static String lines(String... lines) {
+    static String lines(String... lines) {
         return String.join(System.lineSeparator(), lines) + System.lineSeparator();
     }
 }

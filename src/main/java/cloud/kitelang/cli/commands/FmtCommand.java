@@ -3,11 +3,14 @@ package cloud.kitelang.cli.commands;
 import cloud.kitelang.cli.console.Console;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -37,7 +40,7 @@ import java.util.stream.Stream;
     footer = {
         "",
         "Examples:",
-        "  kite fmt                              Format all .kite files (recursive)",
+        "  kite fmt                             Format all .kite files (recursive)",
         "  kite fmt resources/database.kite     Format a specific file",
         "  kite fmt components/                 Format a specific directory",
         "  kite fmt --check                     Check formatting (CI mode)",
@@ -49,8 +52,8 @@ import java.util.stream.Stream;
 @Slf4j
 public class FmtCommand implements Callable<Integer> {
 
-    private static final int INDENT_SIZE = 4;
-    private static final String INDENT = " ".repeat(INDENT_SIZE);
+    @Spec
+    private CommandSpec spec;
 
     @Parameters(
         index = "0",
@@ -80,7 +83,7 @@ public class FmtCommand implements Callable<Integer> {
 
     @Option(
         names = {"--diff"},
-        description = "Show diff of formatting changes"
+        description = "Show diff of formatting changes, without writing them"
     )
     private boolean showDiff;
 
@@ -115,11 +118,11 @@ public class FmtCommand implements Callable<Integer> {
             var kiteFiles = findKiteFiles(path);
 
             if (kiteFiles.isEmpty()) {
-                Console.println("No .kite files found in: " + path);
+                out().println("No .kite files found in: " + path);
                 return 0;
             }
 
-            Console.println("Found " + kiteFiles.size() + " .kite file(s)");
+            out().println("Found " + kiteFiles.size() + " .kite file(s)");
 
             var formatted = 0;
             var unchanged = 0;
@@ -140,21 +143,21 @@ public class FmtCommand implements Callable<Integer> {
             }
 
             // Print summary
-            Console.println();
+            out().println();
             if (checkOnly) {
                 if (!needsFormatting.isEmpty()) {
-                    Console.println("Files needing formatting:");
+                    out().println("Files needing formatting:");
                     for (var file : needsFormatting) {
-                        Console.println("  " + file);
+                        out().println("  " + file);
                     }
-                    Console.println();
-                    Console.printf("Check failed: %d file(s) need formatting%n", needsFormatting.size());
+                    out().println();
+                    out().printf("Check failed: %d file(s) need formatting%n", needsFormatting.size());
                     return 1;
                 }
-                Console.println("All files are properly formatted.");
+                out().println("All files are properly formatted.");
             } else {
-                Console.printf("Formatted: %d, Unchanged: %d, Failed: %d%n",
-                    formatted, unchanged, failed);
+                out().printf("%s: %d, Unchanged: %d, Failed: %d%n",
+                    writesFiles() ? "Formatted" : "Would format", formatted, unchanged, failed);
             }
 
             return failed > 0 ? 1 : 0;
@@ -164,6 +167,21 @@ public class FmtCommand implements Callable<Integer> {
             Console.error(e.getMessage());
             return 1;
         }
+    }
+
+    /**
+     * Whether formatted files are written back. --check and --diff only report, as their help says,
+     * and --no-write turns writing off for a plain run.
+     */
+    private boolean writesFiles() {
+        return writeChanges && !checkOnly && !showDiff;
+    }
+
+    /**
+     * The command's output, so a caller that sets one, such as a test, reads what fmt reports.
+     */
+    private PrintWriter out() {
+        return spec.commandLine().getOut();
     }
 
     /**
@@ -205,16 +223,13 @@ public class FmtCommand implements Callable<Integer> {
                 printDiff(file, original, formatted);
             }
 
-            if (checkOnly) {
-                Console.println("  Would format: " + file);
+            if (!writesFiles()) {
+                out().println("  Would format: " + file);
                 return FormatResult.FORMATTED;
             }
 
-            if (writeChanges) {
-                Files.writeString(file, formatted);
-                Console.println("  Formatted: " + file);
-            }
-
+            Files.writeString(file, formatted);
+            out().println("  Formatted: " + file);
             return FormatResult.FORMATTED;
 
         } catch (IOException e) {
@@ -329,8 +344,8 @@ public class FmtCommand implements Callable<Integer> {
      * Prints a diff between original and formatted content.
      */
     private void printDiff(Path file, String original, String formatted) {
-        Console.println("--- " + file);
-        Console.println("+++ " + file + " (formatted)");
+        out().println("--- " + file);
+        out().println("+++ " + file + " (formatted)");
 
         var origLines = original.split("\n");
         var fmtLines = formatted.split("\n");
@@ -342,16 +357,16 @@ public class FmtCommand implements Callable<Integer> {
             var fmtLine = i < fmtLines.length ? fmtLines[i] : "";
 
             if (!origLine.equals(fmtLine)) {
-                Console.println("@@ -" + (i + 1) + " +" + (i + 1) + " @@");
+                out().println("@@ -" + (i + 1) + " +" + (i + 1) + " @@");
                 if (!origLine.isEmpty()) {
-                    Console.println("-" + origLine);
+                    out().println("-" + origLine);
                 }
                 if (!fmtLine.isEmpty()) {
-                    Console.println("+" + fmtLine);
+                    out().println("+" + fmtLine);
                 }
             }
         }
-        Console.println();
+        out().println();
     }
 
     /**
