@@ -82,7 +82,7 @@ public class DestroyCommand implements Callable<Integer> {
     private String[] targets;
 
     @Option(
-        names = {"-y", "--yes", "--approve", "--auto-approve"},
+        names = {"-y", "--yes", "--auto", "--approve", "--auto-approve"},
         description = "Skip interactive approval prompt"
     )
     private boolean autoApprove;

@@ -142,6 +142,11 @@ kite destroy --env dev
 
 ## Commands
 
+Long options start with `--`. A word with one dash is a group of short flags: `-ye dev` and
+`-ey dev` both mean `-y -e dev`. A short flag that takes a value takes it from the next word, never
+from the rest of the group, so `-es dev Backend` means `-e dev -s Backend`, and `-eprod` is an error.
+A value can also follow `=`: `-e=prod`, `--environment=prod`.
+
 ### `kite new [project-name]`
 
 Create a new Kite project. **Interactive mode is the default** - you'll be prompted for project name and providers.
@@ -161,7 +166,7 @@ Aliases: `kite create`
 |------|-------------|
 | `-d, --directory` | Target directory |
 | `-p, --providers` | Cloud providers (comma-separated: aws, gcp, azure, files) |
-| `-e, --env` | Environments to create (default: dev,staging,prod) |
+| `-e, --env, --environment` | Environments to create (default: dev,staging,prod) |
 | `-f, --force` | Overwrite existing files |
 | `-y, --yes` | Skip interactive prompts, use defaults |
 
@@ -236,11 +241,11 @@ kite apply --env dev --dry-run      # Preview without applying
 **Options:**
 | Flag | Description |
 |------|-------------|
-| `-e, --env` | Target environment (default: dev) |
+| `-e, --env, --environment` | Target environment (default: dev) |
 | `-s, --stack` | Specific stack to apply |
 | `-p, --provider` | Target provider: aws, gcp, azure, or all |
 | `-f, --file` | Override: apply a specific .kite file |
-| `-y, --yes` | Skip interactive approval |
+| `-y, --yes, --auto, --approve, --auto-approve` | Skip interactive approval |
 | `--dry-run` | Preview changes without applying |
 
 ### `kite destroy`
@@ -261,7 +266,7 @@ kite destroy --env prod --force     # Required for production
 | `-s, --stack` | Specific stack to destroy |
 | `-p, --provider` | Target provider |
 | `--target` | Destroy only specific resource(s) |
-| `--auto-approve` | Skip confirmation prompt |
+| `-y, --yes, --auto, --approve, --auto-approve` | Skip confirmation prompt |
 | `--force` | Required for destroying production |
 | `--dry-run` | Show what would be destroyed |
 | `--parallelism` | Limit concurrent operations (default: 10) |

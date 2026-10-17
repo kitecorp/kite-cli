@@ -73,7 +73,7 @@ public class NewCommand implements Callable<Integer> {
     private String[] providers;
 
     @Option(
-            names = {"-e", "--env"},
+            names = {"-e", "--env", "--environment"},
             paramLabel = "envs",
             arity = "1",
             description = "Environments (default: dev,staging,prod)",

@@ -4,13 +4,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
+import picocli.CommandLine.Model.OptionSpec;
+import picocli.CommandLine.ParseResult;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static cloud.kitelang.cli.TerminalText.withoutAnsi;
@@ -33,6 +38,9 @@ class KiteCLITest {
 
     /** picocli's exit code for invalid input. */
     private static final int USAGE_EXIT_CODE = 2;
+
+    /** What {@link #withoutRunning} returns in place of running a command, so it differs from any real exit code. */
+    private static final int PARSED_EXIT_CODE = 99;
 
     /**
      * Whole-line patterns for the help and version rows, worded as the root help prints them. Each
@@ -209,16 +217,16 @@ class KiteCLITest {
     }
 
     @Test
-    void singleDashLongOptionSplitIntoShortOptionsHintsAtTheTokenTyped() {
-        // picocli reads -recursive as validate's short option -r followed by "ecursive", and reports
-        // only the part it could not match. The hint must still name the token the user typed.
+    void singleDashLongOptionStartingWithAShortOptionIsReportedAsTyped() {
+        // e is no flag of validate, so -recursive is no group. picocli's own clustering read it as -r
+        // and reported the rest, "-ecursive". Both the error and the hint name the word typed.
         var run = execute(KiteCLI.commandLine(), "validate", "-recursive");
 
         assertAll(
                 () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
                 () -> assertEquals("", run.out(), "stdout"),
                 () -> assertEquals(lines(
-                        "Error: Unknown option: '-ecursive' (while processing option: '-recursive')",
+                        "Error: Unknown option: '-recursive'",
                         "",
                         "Hint: Use '--recursive' for long options",
                         "",
@@ -280,6 +288,160 @@ class KiteCLITest {
                         "",
                         "Run 'kite --help' for usage information.",
                         "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @ParameterizedTest(name = "kite {0}")
+    @MethodSource("autoApproveSpellings")
+    void everyAutoApproveSpellingTurnsOnAutoApproveAndNothingElse(List<String> args, Map<String, Object> expected) {
+        var parsed = KiteCLI.commandLine().parseArgs(args.toArray(String[]::new)).subcommand();
+
+        assertEquals(expected, matchedOptionValues(parsed));
+    }
+
+    /**
+     * Each auto-approve spelling on apply and on destroy, with the options it must set. destroy requires
+     * an environment, so its runs name one and expect it back unchanged.
+     */
+    static Stream<Arguments> autoApproveSpellings() {
+        return Stream.of("-y", "--yes", "--auto", "--approve", "--auto-approve").flatMap(spelling -> Stream.of(
+                Arguments.of(List.of("apply", spelling), Map.of("--auto-approve", true)),
+                Arguments.of(List.of("destroy", "--environment", "dev", spelling),
+                        Map.of("--environment", "dev", "--auto-approve", true))));
+    }
+
+    @ParameterizedTest(name = "kite {0} --help")
+    @ValueSource(strings = {"apply", "destroy"})
+    void helpListsEveryAutoApproveSpelling(String command) {
+        var run = execute(KiteCLI.commandLine(), command, "--help");
+
+        // The option row, not the footer examples that also mention --auto-approve
+        var autoApproveRow = withoutAnsi(run.out()).lines().filter(line -> line.strip().startsWith("-y,")).toList();
+        assertEquals(List.of("  -y, --yes, --auto, --approve, --auto-approve"), autoApproveRow);
+    }
+
+    @Test
+    void singleDashYesIsTheGroupYesThatNeedsAWordForEachValueFlag() {
+        // -yes is -y -e -s, and -e and -s take their values from the next words. It once was -y with -e
+        // taking "s": an apply to environment "s" that nobody approved.
+        var run = execute(withoutRunning(KiteCLI.commandLine()), "apply", "-yes");
+
+        assertAll(
+                () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
+                () -> assertEquals("", run.out(), "stdout"),
+                () -> assertEquals(lines(
+                        "Error: Missing required parameter for option '-e' (env) in '-yes'",
+                        "",
+                        "Hint: Use '--yes' for long options",
+                        "",
+                        "Run 'kite --help' for usage information.",
+                        "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @Test
+    void singleDashEnvironmentIsRejectedInsteadOfNamingAnEnvironment() {
+        // n is no flag of plan, so -environment is no group. It once was -e taking "nvironment".
+        var run = execute(withoutRunning(KiteCLI.commandLine()), "plan", "-environment", "prod");
+
+        assertAll(
+                () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
+                () -> assertEquals("", run.out(), "stdout"),
+                () -> assertEquals(lines(
+                        "Error: Unknown options: '-environment', 'prod'",
+                        "",
+                        "Hint: Use '--environment' for long options",
+                        "",
+                        "Run 'kite --help' for usage information.",
+                        "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @Test
+    void valueAttachedToAShortFlagIsRejectedAsTyped() {
+        // A short flag takes its value from the next word, and r is no flag of plan, so -eprod is no group
+        var run = execute(withoutRunning(KiteCLI.commandLine()), "plan", "-eprod");
+
+        assertAll(
+                () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
+                () -> assertEquals("", run.out(), "stdout"),
+                () -> assertEquals(lines(
+                        "Error: Unknown option: '-eprod'",
+                        "",
+                        "",
+                        "Run 'kite --help' for usage information.",
+                        "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @ParameterizedTest(name = "kite {0}")
+    @MethodSource("environmentSpellings")
+    void everyCommandWithAnEnvironmentTakesItInEverySpelling(List<String> args, Map<String, Object> expected) {
+        var parsed = KiteCLI.commandLine().parseArgs(args.toArray(String[]::new));
+
+        assertEquals(expected, matchedOptionValues(lastSubcommand(parsed)));
+    }
+
+    /**
+     * Each command that takes an environment, with every way to name it. {@code --env} is apply's and
+     * new's own name, and an accepted abbreviation of {@code --environment} everywhere else.
+     */
+    static Stream<Arguments> environmentSpellings() {
+        Map<List<String>, Object> commands = Map.of(
+                List.of("apply"), "prod",
+                List.of("destroy"), "prod",
+                List.of("plan"), "prod",
+                List.of("output"), "prod",
+                List.of("doctor"), "prod",
+                List.of("config", "state"), "prod",
+                List.of("new"), List.of("prod"));
+        var spellings = List.of(
+                List.of("-e", "prod"), List.of("-e=prod"),
+                List.of("--environment", "prod"), List.of("--environment=prod"),
+                List.of("--env", "prod"));
+        return commands.entrySet().stream().flatMap(command -> spellings.stream().map(spelling -> Arguments.of(
+                Stream.concat(command.getKey().stream(), spelling.stream()).toList(),
+                Map.of("--environment", command.getValue()))));
+    }
+
+    @ParameterizedTest(name = "kite {0}")
+    @MethodSource("shortFlagGroups")
+    void groupOfShortFlagsParsesLikeItsFlagsTypedSeparately(List<String> args, Map<String, Object> expected) {
+        var parsed = KiteCLI.commandLine().parseArgs(args.toArray(String[]::new));
+
+        assertEquals(expected, matchedOptionValues(lastSubcommand(parsed)));
+    }
+
+    /** Groups of short flags, where each flag that takes a value takes the next word, in order. */
+    static Stream<Arguments> shortFlagGroups() {
+        return Stream.of(
+                Arguments.of(List.of("apply", "-ye", "dev"), Map.of("--auto-approve", true, "--environment", "dev")),
+                Arguments.of(List.of("apply", "-ey", "dev"), Map.of("--auto-approve", true, "--environment", "dev")),
+                Arguments.of(List.of("apply", "-es", "dev", "Backend"), Map.of("--environment", "dev", "--stack", "Backend")),
+                Arguments.of(List.of("destroy", "-ye", "dev"), Map.of("--auto-approve", true, "--environment", "dev")),
+                Arguments.of(List.of("new", "-fy"), Map.of("--force", true, "--yes", true)));
+    }
+
+    /** The command a parse ran down to: the last subcommand matched, or the root. */
+    private static ParseResult lastSubcommand(ParseResult parsed) {
+        var last = parsed;
+        while (last.hasSubcommand()) {
+            last = last.subcommand();
+        }
+        return last;
+    }
+
+    /**
+     * The options a parse matched, by longest name, with the value each was given. An array value
+     * becomes a list, so it compares by its elements.
+     */
+    private static Map<String, Object> matchedOptionValues(ParseResult parsed) {
+        return parsed.matchedOptions().stream().collect(Collectors.toMap(OptionSpec::longestName,
+                option -> option.getValue() instanceof Object[] values ? List.of(values) : option.getValue()));
+    }
+
+    /**
+     * Stops a command whose arguments parsed from running, and returns {@link #PARSED_EXIT_CODE} instead.
+     * A parse-error test on apply must never reach the engine, even while the parser wrongly accepts the input.
+     */
+    private static CommandLine withoutRunning(CommandLine cli) {
+        return cli.setExecutionStrategy(parseResult -> PARSED_EXIT_CODE);
     }
 
     /** What one run of {@code kite} printed and returned. */

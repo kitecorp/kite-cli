@@ -80,7 +80,7 @@ public class KiteCLI implements Runnable {
     /**
      * Builds the root command with the parser settings and help styling {@code kite} runs with.
      * Tests execute arguments through this, so a flag behaves in a test exactly as it does in
-     * the shipped binary (case-insensitive, abbreviated and clustered options included).
+     * the shipped binary (case-insensitive and abbreviated options and groups of short flags included).
      *
      * @return the configured root command line
      */
@@ -111,8 +111,11 @@ public class KiteCLI implements Runnable {
                 .setAbbreviatedSubcommandsAllowed(true)
                 // Strict parsing - fail on unknown options
                 .setUnmatchedArgumentsAllowed(false)
-                // POSIX clustering: -hv instead of -h -v
-                .setPosixClusteredShortOptionsAllowed(true);
+                // No picocli clustering: it gives the rest of a word to the first flag that takes a value,
+                // which read "apply -yes" as an approved apply to environment "s" (kitecorp/kite-cli#18).
+                // ShortFlagGroups reads groups instead, each value flag taking the next word.
+                .setPosixClusteredShortOptionsAllowed(false);
+        ShortFlagGroups.install(cmd);
 
         // Bun-style help: the grouped page for the root, styled headings for every subcommand
         KiteUsageHelp.apply(cmd);

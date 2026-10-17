@@ -44,7 +44,7 @@ public class ApplyCommand implements Callable<Integer> {
 
 
     @Option(
-            names = {"-e", "--env"},
+            names = {"-e", "--env", "--environment"},
             paramLabel = "env",
             description = "Target environment (default: dev)",
             defaultValue = "dev"
@@ -74,7 +74,7 @@ public class ApplyCommand implements Callable<Integer> {
     private File overrideFile;
 
     @Option(
-            names = {"-y", "--yes", "--approve", "--auto-approve"},
+            names = {"-y", "--yes", "--auto", "--approve", "--auto-approve"},
             description = "Skip interactive approval"
     )
     private boolean autoApprove;
