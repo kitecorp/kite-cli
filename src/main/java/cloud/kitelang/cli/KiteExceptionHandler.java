@@ -8,7 +8,6 @@ import picocli.CommandLine.ParseResult;
 import picocli.CommandLine.UnmatchedArgumentException;
 
 import java.io.PrintWriter;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -25,20 +24,16 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
         CommandLine cmd = ex.getCommandLine();
         PrintWriter err = cmd.getErr();
 
-        // Print error with color
+        // Print error with color. Every block after it goes through printSection.
         err.println(cmd.getColorScheme().errorText("Error: " + ex.getMessage()));
-        err.println();
 
-        // Handle specific error types with suggestions
         if (ex instanceof UnmatchedArgumentException unmatchedEx) {
-            handleUnmatchedArgument(unmatchedEx, err, cmd);
-        } else {
+            printSuggestions(unmatchedEx, err, cmd);
+        } else if (ex instanceof ShortFlagGroups.MissingValueException missingValue) {
             // A group of short flags short of words, such as -yes, may have been meant as a long option
-            if (ex instanceof ShortFlagGroups.MissingValueException missingValue) {
-                printLongOptionHint(missingValue.group(), err, cmd);
-            }
-            printUsageHint(err, cmd);
+            printLongOptionHint(missingValue.group(), err, cmd);
         }
+        printUsageHint(err);
 
         return cmd.getCommandSpec().exitCodeOnInvalidInput();
     }
@@ -197,27 +192,24 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
     }
 
     /**
-     * Handles unmatched arguments with suggestions.
+     * Prints what the user may have meant by the first argument the command did not match.
      */
-    private void handleUnmatchedArgument(UnmatchedArgumentException ex, PrintWriter err, CommandLine cmd) {
-        List<String> unmatched = ex.getUnmatched();
-
-        if (!unmatched.isEmpty()) {
-            String arg = unmatched.getFirst();
-
-            printLongOptionHint(arg, err, cmd);
-
-            // Picocli already provides "Did you mean?" suggestions
-            // Let's also add some common alternatives
-            suggestAlternatives(arg, err, cmd);
+    private void printSuggestions(UnmatchedArgumentException ex, PrintWriter err, CommandLine cmd) {
+        var unmatched = ex.getUnmatched();
+        if (unmatched.isEmpty()) {
+            return;
         }
+        var arg = unmatched.getFirst();
 
-        printUsageHint(err, cmd);
+        printLongOptionHint(arg, err, cmd);
+
+        // picocli's own suggestions are not printed here; this covers command names that other tools use
+        suggestAlternatives(arg, err);
     }
 
     /** Prints the long option the user most likely meant by a single-dash word, if the command has it. */
     private static void printLongOptionHint(String typed, PrintWriter err, CommandLine cmd) {
-        longOptionMeant(typed, cmd).ifPresent(option -> err.println("Hint: Use '" + option + "' for long options"));
+        longOptionMeant(typed, cmd).ifPresent(option -> printSection(err, "Hint: Use '" + option + "' for long options"));
     }
 
     /**
@@ -242,7 +234,7 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
     /**
      * Suggests alternatives for common typos.
      */
-    private void suggestAlternatives(String arg, PrintWriter err, CommandLine cmd) {
+    private void suggestAlternatives(String arg, PrintWriter err) {
         // Common typos and their corrections
         var suggestions = java.util.Map.ofEntries(
             java.util.Map.entry("init", "new"),
@@ -264,17 +256,30 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
 
         String lowerArg = arg.toLowerCase().replace("-", "");
         if (suggestions.containsKey(lowerArg)) {
-            err.println();
-            err.println("Did you mean: kite " + suggestions.get(lowerArg) + "?");
+            printSection(err, "Did you mean: kite " + suggestions.get(lowerArg) + "?");
         }
     }
 
     /**
      * Prints usage hint.
      */
-    private void printUsageHint(PrintWriter err, CommandLine cmd) {
+    private void printUsageHint(PrintWriter err) {
+        printSection(err,
+                "Run 'kite --help' for usage information.",
+                "Run 'kite <command> --help' for command-specific help.");
+    }
+
+    /**
+     * Prints one block of a parameter error after the error line, with one blank line before it. Each
+     * block brings its own separator, so a path that prints no hint never leaves two blank lines in a row.
+     *
+     * @param err the stream the error goes to
+     * @param lines the block's lines
+     */
+    private static void printSection(PrintWriter err, String... lines) {
         err.println();
-        err.println("Run 'kite --help' for usage information.");
-        err.println("Run 'kite <command> --help' for command-specific help.");
+        for (var line : lines) {
+            err.println(line);
+        }
     }
 }

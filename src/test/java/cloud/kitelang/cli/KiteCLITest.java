@@ -211,6 +211,36 @@ class KiteCLITest {
                 () -> assertEquals(lines(
                         "Error: Unknown option: '-x'",
                         "",
+                        "Run 'kite --help' for usage information.",
+                        "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @Test
+    void mistypedCommandSuggestsTheCommandMeant() {
+        var run = execute(withoutRunning(KiteCLI.commandLine()), "deploy");
+
+        assertAll(
+                () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
+                () -> assertEquals("", run.out(), "stdout"),
+                () -> assertEquals(lines(
+                        "Error: Unmatched argument at index 0: 'deploy'",
+                        "",
+                        "Did you mean: kite apply?",
+                        "",
+                        "Run 'kite --help' for usage information.",
+                        "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
+    }
+
+    @Test
+    void subcommandMissingARequiredOptionPrintsTheUsageHint() {
+        // Not an unmatched argument, so the error takes the handler's other path
+        var run = execute(withoutRunning(KiteCLI.commandLine()), "destroy");
+
+        assertAll(
+                () -> assertEquals(USAGE_EXIT_CODE, run.exitCode(), "exit code"),
+                () -> assertEquals("", run.out(), "stdout"),
+                () -> assertEquals(lines(
+                        "Error: Missing required option: '--environment=env'",
                         "",
                         "Run 'kite --help' for usage information.",
                         "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
@@ -252,7 +282,6 @@ class KiteCLITest {
                 () -> assertEquals(USAGE_EXIT_CODE, underRoot.exitCode(), "root exit code"),
                 () -> assertEquals(lines(
                         "Error: Unknown option: '-json'",
-                        "",
                         "",
                         "Run 'kite --help' for usage information.",
                         "Run 'kite <command> --help' for command-specific help."), underRoot.err(), "root stderr"));
@@ -364,7 +393,6 @@ class KiteCLITest {
                 () -> assertEquals("", run.out(), "stdout"),
                 () -> assertEquals(lines(
                         "Error: Unknown option: '-eprod'",
-                        "",
                         "",
                         "Run 'kite --help' for usage information.",
                         "Run 'kite <command> --help' for command-specific help."), run.err(), "stderr"));
