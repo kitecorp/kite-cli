@@ -1,5 +1,6 @@
 package cloud.kitelang.cli.util;
 
+import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.packages.install.DownloadProgress;
 import cloud.kitelang.packages.install.InstallListener;
 
@@ -37,7 +38,7 @@ public final class MultiProgress {
 
     /**
      * @param out         receives raw terminal text; in the CLI this is {@code Console::print}
-     * @param interactive whether the terminal can move the cursor ({@code Console.isInteractive()})
+     * @param interactive whether the output can move the cursor ({@code Console.isOutputInteractive()})
      * @param width       terminal columns
      * @param height      terminal rows
      */
@@ -50,6 +51,14 @@ public final class MultiProgress {
         for (var name : names) {
             rows.put(name, prefix(name) + "[" + "░".repeat(BAR_WIDTH) + "]   0%");
         }
+    }
+
+    /**
+     * Progress printed through the Console. It redraws in place only when the output itself is an
+     * interactive terminal; piped or redirected, each line is printed once.
+     */
+    public static MultiProgress onConsole(List<String> names) {
+        return new MultiProgress(names, Console::print, Console.isOutputInteractive(), Console.width(), Console.height());
     }
 
     /** The listener for one download; it updates only that download's line. */

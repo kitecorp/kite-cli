@@ -520,11 +520,12 @@ public class NewCommand implements Callable<Integer> {
     }
 
     /**
-     * Fallback interactive mode using BufferedReader.
+     * Fallback interactive mode using BufferedReader, for a terminal that cannot draw arrow-key prompts.
+     * Its questions go to the terminal like any prompt, so they stay visible while stdout is piped.
      */
     private void runInteractiveModeWithReader() throws IOException {
-        Console.println("Kite Project Setup");
-        Console.println("==================");
+        Console.prompt("Kite Project Setup\n");
+        Console.prompt("==================\n");
 
         var reader = new BufferedReader(new InputStreamReader(System.in));
 
@@ -539,7 +540,7 @@ public class NewCommand implements Callable<Integer> {
         // Project name - only ask if not already provided
         if (projectName == null) {
             String defaultName = "infra";
-            Console.print("Project name [" + defaultName + "]: ");
+            Console.prompt("Project name [" + defaultName + "]: ");
             String inputName = reader.readLine().trim();
             projectName = inputName.isEmpty() ? defaultName : inputName;
         }
@@ -549,12 +550,12 @@ public class NewCommand implements Callable<Integer> {
 
         // Providers selection - only ask if not already provided
         if (providers == null) {
-            Console.println();
-            Console.println("Select cloud providers (comma-separated):");
-            Console.println("  1. aws (Amazon Web Services)");
-            Console.println("  2. gcp (Google Cloud Platform)");
-            Console.println("  3. azure (Microsoft Azure)");
-            Console.print("Providers [aws]: ");
+            Console.prompt("\n");
+            Console.prompt("Select cloud providers (comma-separated):\n");
+            Console.prompt("  1. aws (Amazon Web Services)\n");
+            Console.prompt("  2. gcp (Google Cloud Platform)\n");
+            Console.prompt("  3. azure (Microsoft Azure)\n");
+            Console.prompt("Providers [aws]: ");
             String inputProviders = reader.readLine().trim();
             providers = inputProviders.isEmpty() ? new String[]{"aws"} : parseProviders(inputProviders);
         }
@@ -904,27 +905,28 @@ public class NewCommand implements Callable<Integer> {
      * Prompts user to configure credentials for a provider.
      */
     private void promptForCredentials(String provider, BufferedReader reader) throws IOException {
-        Console.println();
-        Console.println("    To configure " + provider.toUpperCase() + " credentials:");
+        // The instructions belong to the "Press Enter" prompt, so they go to the terminal with it
+        Console.prompt("\n");
+        Console.prompt("    To configure " + provider.toUpperCase() + " credentials:\n");
 
         switch (provider.toLowerCase()) {
             case "aws" -> {
-                Console.println("      Option 1: aws configure");
-                Console.println("      Option 2: export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...");
-                Console.println("      Option 3: export AWS_PROFILE=your-profile");
+                Console.prompt("      Option 1: aws configure\n");
+                Console.prompt("      Option 2: export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...\n");
+                Console.prompt("      Option 3: export AWS_PROFILE=your-profile\n");
             }
             case "gcp" -> {
-                Console.println("      Option 1: gcloud auth application-default login");
-                Console.println("      Option 2: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json");
-                Console.println("      Option 3: export GOOGLE_CLOUD_PROJECT=your-project");
+                Console.prompt("      Option 1: gcloud auth application-default login\n");
+                Console.prompt("      Option 2: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json\n");
+                Console.prompt("      Option 3: export GOOGLE_CLOUD_PROJECT=your-project\n");
             }
             case "azure" -> {
-                Console.println("      Option 1: az login");
-                Console.println("      Option 2: export AZURE_SUBSCRIPTION_ID=...");
+                Console.prompt("      Option 1: az login\n");
+                Console.prompt("      Option 2: export AZURE_SUBSCRIPTION_ID=...\n");
             }
         }
 
-        Console.print("    Press Enter to continue...");
+        Console.prompt("    Press Enter to continue...");
         reader.readLine();
     }
 

@@ -10,7 +10,9 @@ import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Spec;
 
 import java.io.File;
 import java.io.IOException;
@@ -119,6 +121,9 @@ public class PlanCommand implements Callable<Integer> {
     )
     private boolean jsonOutput;
 
+    @Spec
+    private CommandSpec spec;
+
     @Override
     public Integer call() throws Exception {
         log.info("Creating execution plan...");
@@ -137,11 +142,11 @@ public class PlanCommand implements Callable<Integer> {
 
         // Determine which file(s) to plan
         var kiteFiles = determineKiteFiles(envDir);
-        Console.println("Planning: " + kiteFiles.size() + " file(s)");
-        Console.println();
+        message("Planning: " + kiteFiles.size() + " file(s)");
+        message("");
 
         if (refresh) {
-            Console.println("Refreshing state...");
+            message("Refreshing state...");
             refreshState();
         }
 
@@ -186,13 +191,26 @@ public class PlanCommand implements Callable<Integer> {
 
             if (outputFile != null) {
                 // TODO: Serialize plan to file
-                Console.println("\nPlan saved to: " + outputFile);
+                message("\nPlan saved to: " + outputFile);
             }
         }
 
-        Console.println("\nTo apply this plan, run: kite apply --env " + environment);
+        message("\nTo apply this plan, run: kite apply --env " + environment);
 
         return 0;
+    }
+
+    /**
+     * Prints a line that is not the plan itself. It goes to stdout with the plan, or to stderr with
+     * --json, so that none of plan's own lines get between the JSON document and
+     * {@code kite plan --json > plan.json}. The engine still prints provider start-up and refresh
+     * progress to stdout itself (kitecorp/kite#70).
+     */
+    private void message(String line) {
+        var commandLine = spec.commandLine();
+        var messages = jsonOutput ? commandLine.getErr() : commandLine.getOut();
+        messages.println(line);
+        messages.flush();
     }
 
     /**
@@ -282,13 +300,13 @@ public class PlanCommand implements Callable<Integer> {
             var stateConfig = config.getStateConfig(projectName, environment);
 
             if (stateConfig == null) {
-                Console.error("No state configuration found for project '" + projectName + "' environment '" + environment + "'");
-                Console.println();
-                Console.println("Configure state backend by running:");
-                Console.println("  kite config state");
-                Console.println();
-                Console.println("Or use non-interactive mode:");
-                Console.println("  kite config state -e " + environment + " --url jdbc:postgresql://localhost:5432/postgres?currentSchema=" + environment);
+                message(Console.errorLine("No state configuration found for project '" + projectName + "' environment '" + environment + "'"));
+                message("");
+                message("Configure state backend by running:");
+                message("  kite config state");
+                message("");
+                message("Or use non-interactive mode:");
+                message("  kite config state -e " + environment + " --url jdbc:postgresql://localhost:5432/postgres?currentSchema=" + environment);
                 return null;
             }
 
@@ -296,11 +314,11 @@ public class PlanCommand implements Callable<Integer> {
             if ("postgresql".equals(stateConfig.getType())) {
                 if (!stateConfig.hasPassword(projectName, environment)) {
                     var envVarName = GlobalConfig.getPasswordEnvVarName(projectName, environment);
-                    Console.warning("No password configured for environment '" + environment + "'");
-                    Console.println("Set password via:");
-                    Console.println("  - Config: kite config state -e " + environment + " --password");
-                    Console.println("  - Env var: export " + envVarName + "=<password>");
-                    Console.println();
+                    message(Console.warningLine("No password configured for environment '" + environment + "'"));
+                    message("Set password via:");
+                    message("  - Config: kite config state -e " + environment + " --password");
+                    message("  - Env var: export " + envVarName + "=<password>");
+                    message("");
                 }
 
                 log.debug("Using state backend: {} (user: {})", stateConfig.getUrl(), stateConfig.getUsername());
@@ -332,20 +350,20 @@ public class PlanCommand implements Callable<Integer> {
      * Prints the execution plan.
      */
     private void printPlan(Engine engine, Plan plan) {
-        System.out.println("Kite will perform the following actions:");
-        System.out.println();
+        Console.println("Kite will perform the following actions:");
+        Console.println();
 
         if (targets != null && targets.length > 0) {
-            System.out.println("Targeted resources: " + String.join(", ", targets));
-            System.out.println();
+            Console.println("Targeted resources: " + String.join(", ", targets));
+            Console.println();
         }
 
         // Print each resource change
         engine.printPlanDetails(plan);
 
-        System.out.println();
-        System.out.println("─────────────────────────────────────────────────────────────");
-        System.out.println();
+        Console.println();
+        Console.println("─────────────────────────────────────────────────────────────");
+        Console.println();
         engine.printPlanSummary(plan);
     }
 
@@ -369,6 +387,7 @@ public class PlanCommand implements Callable<Integer> {
             }
             """.formatted(VersionProvider.getVersionString(), environment, provider, summary.creates(), summary.updates(), summary.deletes());
 
-        System.out.println(json);
+        // The text block already ends with a line break
+        Console.print(json);
     }
 }
