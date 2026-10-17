@@ -2,6 +2,7 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
+import cloud.kitelang.cli.interactive.Approval;
 import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.engine.Engine;
 import cloud.kitelang.engine.kitefile.Dependencies;
@@ -9,7 +10,9 @@ import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Spec;
 
 import java.io.File;
 import java.io.IOException;
@@ -85,8 +88,16 @@ public class ApplyCommand implements Callable<Integer> {
     )
     private boolean dryRun;
 
+    @Spec
+    private CommandSpec spec;
+
     @Override
     public Integer call() throws Exception {
+        // A dry run changes nothing, so only a real apply needs someone to approve it
+        if (!dryRun && Approval.refusedWithoutTerminal(autoApprove, "apply", spec.commandLine().getErr())) {
+            return 1;
+        }
+
         log.info("Applying infrastructure changes...");
         log.info("Environment: {}", environment);
         log.info("Provider: {}", provider);
@@ -151,17 +162,13 @@ public class ApplyCommand implements Callable<Integer> {
             Console.println();
             engine.printPlanSummary(plan);
 
-            // Request confirmation unless auto-approve
+            // Request confirmation unless auto-approve. The check at the start made sure there is a
+            // terminal to ask on; should there be none after all, nothing is applied.
             if (!autoApprove && summary.hasChanges()) {
                 try (var prompt = InteractivePrompt.create()) {
-                    if (prompt != null) {
-                        var confirmed = prompt.confirm("Do you want to perform these actions?", false);
-                        if (!confirmed) {
-                            Console.println("Apply cancelled.");
-                            return 0;
-                        }
-                    } else {
-                        log.warn("No interactive terminal available, proceeding without confirmation");
+                    if (prompt == null || !prompt.confirm("Do you want to perform these actions?", false)) {
+                        Console.println("Apply cancelled.");
+                        return 0;
                     }
                 }
             }

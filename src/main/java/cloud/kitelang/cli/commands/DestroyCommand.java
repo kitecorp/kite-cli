@@ -2,6 +2,7 @@ package cloud.kitelang.cli.commands;
 
 import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
+import cloud.kitelang.cli.interactive.Approval;
 import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.engine.Engine;
 import cloud.kitelang.engine.diff.Plan;
@@ -11,7 +12,9 @@ import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Spec;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -116,8 +119,16 @@ public class DestroyCommand implements Callable<Integer> {
     /** Destruction plan. */
     private Plan plan;
 
+    @Spec
+    private CommandSpec spec;
+
     @Override
     public Integer call() throws Exception {
+        // A dry run changes nothing, so only a real destroy needs someone to approve it
+        if (!dryRun && Approval.refusedWithoutTerminal(autoApprove, "destroy", spec.commandLine().getErr())) {
+            return 1;
+        }
+
         try {
             log.debug("Preparing to destroy infrastructure...");
             log.debug("Environment: {}", environment);
@@ -262,14 +273,10 @@ public class DestroyCommand implements Callable<Integer> {
         Console.println("  " + Console.yellow("⚠ There is no undo."));
         Console.println();
 
+        // The check at the start of call made sure there is a terminal to ask on; should there be none
+        // after all, nothing is destroyed
         try (var prompt = InteractivePrompt.create()) {
-            if (prompt != null) {
-                return prompt.confirm("Confirm destruction?", false);
-            } else {
-                log.warn("No interactive terminal available, cannot prompt for confirmation");
-                Console.error("Cannot prompt for confirmation. Use --auto-approve to skip.");
-                return false;
-            }
+            return prompt != null && prompt.confirm("Confirm destruction?", false);
         } catch (IOException e) {
             log.error("Failed to read confirmation", e);
             return false;
