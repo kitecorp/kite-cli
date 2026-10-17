@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
 
+import static cloud.kitelang.cli.TerminalText.withoutAnsi;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -191,12 +192,5 @@ class KiteUsageHelpTest {
         var pw = new PrintWriter(sw);
         KiteUsageHelp.render(pw);
         return sw.toString();
-    }
-
-    /**
-     * Drops ANSI color codes so assertions read the text a user sees.
-     */
-    private static String withoutAnsi(String text) {
-        return text.replaceAll("\u001B\\[[0-9;]*m", "");
     }
 }

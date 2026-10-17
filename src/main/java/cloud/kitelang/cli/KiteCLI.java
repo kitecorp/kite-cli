@@ -5,9 +5,10 @@ import cloud.kitelang.engine.kitefile.KiteInjector;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Spec;
 
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.logging.Level;
@@ -48,10 +49,14 @@ public class KiteCLI implements Runnable {
     @Option(names = {"-v", "--version"}, versionHelp = true, description = "Print version information and exit")
     private boolean versionRequested;
 
+    @Spec
+    private CommandSpec spec;
+
     @Override
     public void run() {
-        // Show custom bun-style help (no subcommand or -h flag)
-        KiteUsageHelp.render(new PrintWriter(System.out, true));
+        // Show custom bun-style help (no subcommand or -h flag). It goes to the command's configured
+        // output, like picocli's own help and version text, so a caller that sets one captures it.
+        KiteUsageHelp.render(spec.commandLine().getOut());
     }
 
     public static void main(String... args) {

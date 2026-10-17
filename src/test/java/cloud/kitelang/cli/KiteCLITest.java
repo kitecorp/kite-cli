@@ -2,12 +2,16 @@ package cloud.kitelang.cli;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.List;
+import java.util.stream.Stream;
 
+import static cloud.kitelang.cli.TerminalText.withoutAnsi;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -37,6 +41,34 @@ class KiteCLITest {
                 () -> assertEquals(0, run.exitCode(), "exit code"),
                 () -> assertEquals(VERSION_LINE + System.lineSeparator(), run.out(), "stdout"),
                 () -> assertEquals("", run.err(), "stderr"));
+    }
+
+    @ParameterizedTest(name = "kite {0}")
+    @MethodSource("rootHelpArguments")
+    void rootHelpPrintsThroughTheCommandsOutput(List<String> args) {
+        var run = execute(KiteCLI.commandLine(), args.toArray(String[]::new));
+
+        var shown = withoutAnsi(run.out()).lines().toList();
+        var firstAndLast = shown.isEmpty() ? List.of() : List.of(withVersionMasked(shown.getFirst()), shown.getLast());
+        assertAll(
+                () -> assertEquals(0, run.exitCode(), "exit code"),
+                () -> assertEquals(List.of(
+                        "Kite is a multi-cloud IaC tool. Write once, provision anywhere. (<version>)",
+                        "Learn more about Kite:           https://kitelang.cloud/docs"), firstAndLast, "stdout"),
+                () -> assertEquals("", run.err(), "stderr"));
+    }
+
+    /** Every way to reach the root help: no arguments, and the root's own help flags. */
+    static Stream<List<String>> rootHelpArguments() {
+        return Stream.of(List.of(), List.of("--help"), List.of("-h"));
+    }
+
+    /**
+     * The root help header ends with the build version, which changes every release. Masking it keeps
+     * the rest of the header a literal.
+     */
+    private static String withVersionMasked(String header) {
+        return header.replaceFirst("\\([^()]+\\)$", "(<version>)");
     }
 
     @Test
