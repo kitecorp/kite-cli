@@ -279,7 +279,15 @@ kite destroy --env prod --force     # Required for production
 | `--dry-run` | Show what would be destroyed |
 | `--parallelism` | Limit concurrent operations (default: 10) |
 
-Approval works as for `kite apply`.
+Approval works as for `kite apply`, with one addition: an environment that kitefile.yml marks
+`protected: true` asks you to type its name instead of answering y/N, and any other answer cancels.
+`--yes` and `KITE_AUTO_APPROVE` still go ahead without asking.
+
+```yaml
+environments:
+  - name: prod
+    protected: true
+```
 
 ### `kite output [name]`
 

@@ -4,6 +4,7 @@ import cloud.kitelang.cli.console.Console;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -15,7 +16,8 @@ import java.util.Set;
  *       for CI (kitecorp/kite-cli#27);</li>
  *   <li>the terminal: with none (CI, a cron job, input piped into kite) there is no one to ask, so the run
  *       stops before it changes anything and says which flag approves it (kitecorp/kite-cli#23);</li>
- *   <li>the prompt: the user's answer.</li>
+ *   <li>the prompt: yes or no, or for a destroy of an environment that kitefile.yml marks
+ *       {@code protected}, the environment's typed name (kitecorp/kite-cli#28).</li>
  * </ol>
  */
 public final class Approval {
@@ -28,12 +30,27 @@ public final class Approval {
 
     /** Asks the user on the terminal. Tests answer through it without one. */
     interface Prompt {
+
+        /** @return the answer to a yes-or-no question, no when the user just presses enter */
         boolean confirm(String question) throws IOException;
+
+        /** @return the text the user types, empty when they type nothing */
+        String answer(String question) throws IOException;
     }
 
-    private static final Prompt TERMINAL = question -> {
-        try (var prompt = InteractivePrompt.create()) {
-            return prompt != null && prompt.confirm(question, false);
+    private static final Prompt TERMINAL = new Prompt() {
+        @Override
+        public boolean confirm(String question) throws IOException {
+            try (var prompt = InteractivePrompt.create()) {
+                return prompt != null && prompt.confirm(question, false);
+            }
+        }
+
+        @Override
+        public String answer(String question) throws IOException {
+            try (var prompt = InteractivePrompt.create()) {
+                return prompt == null ? "" : Objects.requireNonNullElse(prompt.input(question, null), "");
+            }
         }
     };
 
@@ -136,5 +153,22 @@ public final class Approval {
             case NO_TERMINAL -> false;
             case ASK -> prompt.confirm(question);
         };
+    }
+
+    /**
+     * Whether a destroy may go ahead: yes when a flag or {@value #AUTO_APPROVE_VARIABLE} approved it. Otherwise
+     * an environment that kitefile.yml marks {@code protected} needs its name typed, and any other answer
+     * cancels (kitecorp/kite-cli#28); any other environment needs a yes.
+     *
+     * @param environment          the environment to destroy
+     * @param protectedEnvironment whether kitefile.yml marks it {@code protected: true}
+     * @return true when the run may destroy the environment's resources
+     * @throws IOException when the answer cannot be read
+     */
+    public boolean confirmedDestroy(String environment, boolean protectedEnvironment) throws IOException {
+        if (decision != Decision.ASK || !protectedEnvironment) {
+            return confirmed("Confirm destruction?");
+        }
+        return environment.equals(prompt.answer(environment + " is a protected environment. Type its name to destroy it:"));
     }
 }

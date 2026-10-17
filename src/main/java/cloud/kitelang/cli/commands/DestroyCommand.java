@@ -213,7 +213,8 @@ public class DestroyCommand implements Callable<Integer> {
             }
 
             // Ask unless the run is approved already
-            if (approval.asks() && !confirmDestruction(approval, resourceCount)) {
+            var protectedEnvironment = kitefile.config().isProtected(environment);
+            if (approval.asks() && !confirmDestruction(approval, resourceCount, protectedEnvironment)) {
                 Console.println();
                 Console.success("Destruction cancelled. No resources were harmed.");
                 return 0;
@@ -262,7 +263,7 @@ public class DestroyCommand implements Callable<Integer> {
     /**
      * Prompts user to confirm destruction.
      */
-    private boolean confirmDestruction(Approval approval, int resourceCount) {
+    private boolean confirmDestruction(Approval approval, int resourceCount, boolean protectedEnvironment) {
         Console.println();
         Console.warning("Do you really want to destroy " + Console.red(resourceCount + " resource(s)") + "?");
         Console.println("  Kite will " + Console.red("permanently delete") + " all resources shown above.");
@@ -272,7 +273,7 @@ public class DestroyCommand implements Callable<Integer> {
         // The check at the start of call made sure there is a terminal to ask on; should there be none
         // after all, nothing is destroyed
         try {
-            return approval.confirmed("Confirm destruction?");
+            return approval.confirmedDestroy(environment, protectedEnvironment);
         } catch (IOException e) {
             log.error("Failed to read confirmation", e);
             return false;

@@ -89,7 +89,7 @@ class ApprovalTest {
 
     /** Runs the decision the way apply does: the check before the engine, then the question if it still stands. */
     private static Outcome run(Boolean flag, String variable, boolean terminal, boolean answer) throws IOException {
-        var prompt = new ScriptedPrompt(answer);
+        var prompt = new ScriptedPrompt(answer, "");
         var printed = new StringWriter();
         var approval = Approval.decide(flag, variable, terminal, "apply", prompt);
 
@@ -99,20 +99,81 @@ class ApprovalTest {
         return new Outcome(stops, printed.toString(), goesAhead, prompt.asked);
     }
 
-    /** Answers every question the same way, with no terminal, and keeps the questions asked. */
+    private static final String TYPE_THE_NAME = "prod is a protected environment. Type its name to destroy it:";
+
+    @ParameterizedTest(name = "typed \"{0}\"")
+    @MethodSource("typedNames")
+    void protectedEnvironmentIsDestroyedOnlyWhenItsNameIsTyped(String typed, boolean goesAhead) throws IOException {
+        // The prompt says yes to every yes-or-no question, so only the typed name can let the run go ahead
+        var prompt = new ScriptedPrompt(YES, typed);
+        var approval = Approval.decide(null, null, TERMINAL, "destroy", prompt);
+
+        var confirmed = approval.confirmedDestroy("prod", true);
+
+        assertEquals(new Asked(goesAhead, List.of(TYPE_THE_NAME)), new Asked(confirmed, prompt.asked));
+    }
+
+    static Stream<Arguments> typedNames() {
+        return Stream.of(
+                Arguments.of("prod", true),
+                Arguments.of("production", false),
+                Arguments.of("Prod", false),
+                Arguments.of("", false));
+    }
+
+    @ParameterizedTest(name = "answered {0}")
+    @ValueSource(booleans = {true, false})
+    void environmentThatIsNotProtectedIsDestroyedOnYes(boolean answer) throws IOException {
+        // The typed answer is the environment's name, so only the yes-or-no answer can decide
+        var prompt = new ScriptedPrompt(answer, "dev");
+        var approval = Approval.decide(null, null, TERMINAL, "destroy", prompt);
+
+        var confirmed = approval.confirmedDestroy("dev", false);
+
+        assertEquals(new Asked(answer, List.of("Confirm destruction?")), new Asked(confirmed, prompt.asked));
+    }
+
+    @ParameterizedTest(name = "flag {0}, KITE_AUTO_APPROVE={1}")
+    @MethodSource("approvalsWithoutAsking")
+    void approvalDestroysAProtectedEnvironmentWithoutAsking(Boolean flag, String variable) throws IOException {
+        var prompt = new ScriptedPrompt(NO, "");
+        var approval = Approval.decide(flag, variable, TERMINAL, "destroy", prompt);
+
+        var confirmed = approval.confirmedDestroy("prod", true);
+
+        assertEquals(new Asked(true, List.of()), new Asked(confirmed, prompt.asked));
+    }
+
+    static Stream<Arguments> approvalsWithoutAsking() {
+        return Stream.of(Arguments.of(true, null), Arguments.of(null, "1"));
+    }
+
+    /** Whether a destroy may go ahead, and what it asked to decide. */
+    record Asked(boolean goesAhead, List<String> questions) {
+    }
+
+    /** Gives the same answers to every question, with no terminal, and keeps the questions asked. */
     private static final class ScriptedPrompt implements Approval.Prompt {
 
-        private final boolean answer;
+        private final boolean yesOrNo;
+        private final String typed;
         private final List<String> asked = new ArrayList<>();
 
-        private ScriptedPrompt(boolean answer) {
-            this.answer = answer;
+        private ScriptedPrompt(boolean yesOrNo, String typed) {
+            this.yesOrNo = yesOrNo;
+            this.typed = typed;
         }
 
         @Override
         public boolean confirm(String question) {
             asked.add(question);
-            return answer;
+            return yesOrNo;
+        }
+
+        @Override
+        public String answer(String question) {
+            asked.add(question);
+            return typed;
         }
     }
 }
