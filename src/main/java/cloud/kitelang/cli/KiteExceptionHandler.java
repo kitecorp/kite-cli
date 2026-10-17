@@ -9,12 +9,17 @@ import picocli.CommandLine.UnmatchedArgumentException;
 
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Custom exception handlers for the Kite CLI.
  * Provides user-friendly error messages with helpful suggestions.
  */
 public class KiteExceptionHandler implements IParameterExceptionHandler, IExecutionExceptionHandler {
+
+    /** The note picocli appends to the part of a split single-dash token it could not match. */
+    private static final Pattern SPLIT_TOKEN_NOTE = Pattern.compile(" \\(while processing option: '(.+)'\\)$");
 
     /**
      * Handles parameter parsing exceptions (invalid arguments, missing values, etc.)
@@ -201,11 +206,7 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
         if (!unmatched.isEmpty()) {
             String arg = unmatched.getFirst();
 
-            // Check for common mistakes
-            if (arg.startsWith("-") && !arg.startsWith("--")) {
-                // Single dash with long option
-                err.println("Hint: Use '--" + arg.substring(1) + "' for long options");
-            }
+            longOptionMeant(cmd).ifPresent(option -> err.println("Hint: Use '" + option + "' for long options"));
 
             // Picocli already provides "Did you mean?" suggestions
             // Let's also add some common alternatives
@@ -213,6 +214,38 @@ public class KiteExceptionHandler implements IParameterExceptionHandler, IExecut
         }
 
         printUsageHint(err, cmd);
+    }
+
+    /**
+     * The long option the user most likely meant by a single-dash token such as {@code -json}, if the
+     * command that failed has that option. Without the check, {@code kite -x} would send the user to
+     * {@code --x}, which fails again.
+     *
+     * @param cmd the command whose arguments did not match
+     * @return the long option, or empty when the token has no long form on this command
+     */
+    private static Optional<String> longOptionMeant(CommandLine cmd) {
+        var typed = typedToken(cmd.getParseResult().unmatched().getFirst());
+        if (!typed.startsWith("-") || typed.startsWith("--")) {
+            return Optional.empty();
+        }
+        var spec = cmd.getCommandSpec();
+        // picocli's own option maps, so the lookup honours the parser's case-insensitive matching
+        return Optional.of("--" + typed.substring(1))
+                .filter(option -> spec.optionsMap().containsKey(option) || spec.negatedOptionsMap().containsKey(option));
+    }
+
+    /**
+     * The token the user typed for an unmatched argument. picocli splits an unknown single-dash token
+     * into POSIX short options and, when part of it matches none, reports only that part with the whole
+     * token appended: {@code -recursive} becomes {@code -ecursive (while processing option: '-recursive')}.
+     *
+     * @param unmatched an entry of picocli's unmatched arguments, before it strips that note
+     * @return the token as typed
+     */
+    private static String typedToken(String unmatched) {
+        var splitNote = SPLIT_TOKEN_NOTE.matcher(unmatched);
+        return splitNote.find() ? splitNote.group(1) : unmatched;
     }
 
     /**
