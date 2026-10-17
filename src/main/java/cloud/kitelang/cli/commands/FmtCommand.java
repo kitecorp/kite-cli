@@ -60,10 +60,15 @@ public class FmtCommand implements Callable<Integer> {
     )
     private File targetPath;
 
+    // picocli sets a boolean option named without a value to the opposite of its default, so a switch
+    // that is on by default needs fallbackValue = "true" to stay on when named. negatable adds the
+    // --no- form that turns it off; -r=false still works too.
     @Option(
         names = {"-r", "--recursive"},
         description = "Recursively format all .kite files in subdirectories",
-        defaultValue = "true"
+        defaultValue = "true",
+        fallbackValue = "true",
+        negatable = true
     )
     private boolean recursive;
 
@@ -79,10 +84,13 @@ public class FmtCommand implements Callable<Integer> {
     )
     private boolean showDiff;
 
+    // On by default like --recursive, with the same fallbackValue and --no- form
     @Option(
         names = {"-w", "--write"},
         description = "Write formatted output back to files (default behavior)",
-        defaultValue = "true"
+        defaultValue = "true",
+        fallbackValue = "true",
+        negatable = true
     )
     private boolean writeChanges;
 
