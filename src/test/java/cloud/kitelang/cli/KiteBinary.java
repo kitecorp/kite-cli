@@ -86,7 +86,12 @@ final class KiteBinary {
      * stderr are all pipes, and stdin is already at its end.
      */
     Output runWithoutTerminal(Path workDir, String... args) throws Exception {
-        var process = builder(workDir, Map.of(), kite(args)).start();
+        return runWithoutTerminal(workDir, Map.of(), args);
+    }
+
+    /** As {@link #runWithoutTerminal(Path, String...)}, with these environment variables set too. */
+    Output runWithoutTerminal(Path workDir, Map<String, String> environment, String... args) throws Exception {
+        var process = builder(workDir, environment, kite(args)).start();
         try {
             process.getOutputStream().close();
             var stdout = drain(process.getInputStream());

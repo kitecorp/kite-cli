@@ -240,8 +240,20 @@ kite apply --env dev --dry-run      # Preview without applying
 | `-s, --stack` | Specific stack to apply |
 | `-p, --provider` | Target provider: aws, gcp, azure, or all |
 | `-f, --file` | Override: apply a specific .kite file |
-| `-y, --yes` | Skip interactive approval |
+| `-y, --yes, --approve, --auto-approve` | Skip interactive approval |
+| `--no-auto-approve` | Ask for approval, even when `KITE_AUTO_APPROVE` is set |
 | `--dry-run` | Preview changes without applying |
+
+**Approval:** `kite apply` and `kite destroy` ask before they change anything. Kite checks, in order:
+
+1. A flag: `--yes` goes ahead without asking, and `--no-auto-approve` always asks.
+2. The `KITE_AUTO_APPROVE` environment variable: `1` or `true` goes ahead without asking, for CI, and
+   prints one line saying so. Any other value leaves it off.
+3. The terminal: with none (CI, a cron job, input piped into kite), the command stops before it changes
+   anything and says to add `--yes`.
+4. Otherwise kite asks, and only a yes goes ahead.
+
+`--dry-run` changes nothing and needs no approval.
 
 ### `kite destroy`
 
@@ -261,10 +273,13 @@ kite destroy --env prod --force     # Required for production
 | `-s, --stack` | Specific stack to destroy |
 | `-p, --provider` | Target provider |
 | `--target` | Destroy only specific resource(s) |
-| `--auto-approve` | Skip confirmation prompt |
+| `-y, --yes, --approve, --auto-approve` | Skip confirmation prompt |
+| `--no-auto-approve` | Ask for confirmation, even when `KITE_AUTO_APPROVE` is set |
 | `--force` | Required for destroying production |
 | `--dry-run` | Show what would be destroyed |
 | `--parallelism` | Limit concurrent operations (default: 10) |
+
+Approval works as for `kite apply`.
 
 ### `kite output [name]`
 

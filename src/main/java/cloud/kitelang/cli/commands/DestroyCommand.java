@@ -3,7 +3,6 @@ package cloud.kitelang.cli.commands;
 import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.interactive.Approval;
-import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.engine.Engine;
 import cloud.kitelang.engine.diff.Plan;
 import cloud.kitelang.engine.domain.Resource;
@@ -12,6 +11,7 @@ import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
@@ -84,11 +84,8 @@ public class DestroyCommand implements Callable<Integer> {
     )
     private String[] targets;
 
-    @Option(
-        names = {"-y", "--yes", "--approve", "--auto-approve"},
-        description = "Skip interactive approval prompt"
-    )
-    private boolean autoApprove;
+    @Mixin
+    private ApprovalFlags approvalFlags;
 
     @Option(
         names = {"--force"},
@@ -125,7 +122,8 @@ public class DestroyCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         // A dry run changes nothing, so only a real destroy needs someone to approve it
-        if (!dryRun && Approval.refusedWithoutTerminal(autoApprove, "destroy", spec.commandLine().getErr())) {
+        var approval = Approval.forRun(approvalFlags.flag(), "destroy");
+        if (!dryRun && approval.refused(spec.commandLine().getErr())) {
             return 1;
         }
 
@@ -214,13 +212,11 @@ public class DestroyCommand implements Callable<Integer> {
                 return 0;
             }
 
-            // Prompt for confirmation
-            if (!autoApprove) {
-                if (!confirmDestruction(resourceCount)) {
-                    Console.println();
-                    Console.success("Destruction cancelled. No resources were harmed.");
-                    return 0;
-                }
+            // Ask unless the run is approved already
+            if (approval.asks() && !confirmDestruction(approval, resourceCount)) {
+                Console.println();
+                Console.success("Destruction cancelled. No resources were harmed.");
+                return 0;
             }
 
             // Execute destruction
@@ -266,7 +262,7 @@ public class DestroyCommand implements Callable<Integer> {
     /**
      * Prompts user to confirm destruction.
      */
-    private boolean confirmDestruction(int resourceCount) {
+    private boolean confirmDestruction(Approval approval, int resourceCount) {
         Console.println();
         Console.warning("Do you really want to destroy " + Console.red(resourceCount + " resource(s)") + "?");
         Console.println("  Kite will " + Console.red("permanently delete") + " all resources shown above.");
@@ -275,8 +271,8 @@ public class DestroyCommand implements Callable<Integer> {
 
         // The check at the start of call made sure there is a terminal to ask on; should there be none
         // after all, nothing is destroyed
-        try (var prompt = InteractivePrompt.create()) {
-            return prompt != null && prompt.confirm("Confirm destruction?", false);
+        try {
+            return approval.confirmed("Confirm destruction?");
         } catch (IOException e) {
             log.error("Failed to read confirmation", e);
             return false;

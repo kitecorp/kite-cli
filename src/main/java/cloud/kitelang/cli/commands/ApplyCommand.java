@@ -3,13 +3,13 @@ package cloud.kitelang.cli.commands;
 import cloud.kitelang.cli.config.GlobalConfig;
 import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.cli.interactive.Approval;
-import cloud.kitelang.cli.interactive.InteractivePrompt;
 import cloud.kitelang.engine.Engine;
 import cloud.kitelang.engine.kitefile.Dependencies;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import cloud.kitelang.engine.kitefile.Kitefile;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
@@ -76,11 +76,8 @@ public class ApplyCommand implements Callable<Integer> {
     )
     private File overrideFile;
 
-    @Option(
-            names = {"-y", "--yes", "--approve", "--auto-approve"},
-            description = "Skip interactive approval"
-    )
-    private boolean autoApprove;
+    @Mixin
+    private ApprovalFlags approvalFlags;
 
     @Option(
             names = {"--dry-run"},
@@ -94,7 +91,8 @@ public class ApplyCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         // A dry run changes nothing, so only a real apply needs someone to approve it
-        if (!dryRun && Approval.refusedWithoutTerminal(autoApprove, "apply", spec.commandLine().getErr())) {
+        var approval = Approval.forRun(approvalFlags.flag(), "apply");
+        if (!dryRun && approval.refused(spec.commandLine().getErr())) {
             return 1;
         }
 
@@ -162,15 +160,11 @@ public class ApplyCommand implements Callable<Integer> {
             Console.println();
             engine.printPlanSummary(plan);
 
-            // Request confirmation unless auto-approve. The check at the start made sure there is a
+            // Ask unless the run is approved already. The check at the start made sure there is a
             // terminal to ask on; should there be none after all, nothing is applied.
-            if (!autoApprove && summary.hasChanges()) {
-                try (var prompt = InteractivePrompt.create()) {
-                    if (prompt == null || !prompt.confirm("Do you want to perform these actions?", false)) {
-                        Console.println("Apply cancelled.");
-                        return 0;
-                    }
-                }
+            if (summary.hasChanges() && !approval.confirmed("Do you want to perform these actions?")) {
+                Console.println("Apply cancelled.");
+                return 0;
             }
 
             // Apply the plan
