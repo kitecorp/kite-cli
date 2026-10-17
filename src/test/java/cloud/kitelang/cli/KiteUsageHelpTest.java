@@ -4,190 +4,126 @@ import org.junit.jupiter.api.Test;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
 import java.util.List;
 
 import static cloud.kitelang.cli.TerminalText.withoutAnsi;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests for the bun-style usage help renderer.
+ *
+ * <p>Each test compares one whole block of the page, as the user sees it, with literal text. A
+ * {@code contains()} check on a short string cannot fail: "env" is inside "environment", "new" inside
+ * "Create a new Kite project". Blocks are found by their place on the page, so a block that moves
+ * fails the test for the block now in its place.</p>
  */
 class KiteUsageHelpTest {
 
-    @Test
-    void renderContainsHeaderWithVersion() {
-        var output = renderHelp();
-
-        assertTrue(output.contains("Kite"), "Should contain product name");
-        assertTrue(output.contains("Write once, provision anywhere"), "Should contain tagline");
-        // Version string from VersionProvider (may be "unknown" in test without resources)
-        assertTrue(output.contains("("), "Should contain version in parentheses");
-    }
-
-    @Test
-    void renderContainsUsageLine() {
-        var output = renderHelp();
-
-        assertTrue(output.contains("Usage:"), "Should have Usage section");
-        assertTrue(output.contains("kite <command> [...flags] [...args]"), "Should show usage pattern");
-    }
+    // Where each block sits on the page, counting from 0
+    private static final int HEADER = 0;
+    private static final int USAGE = 1;
+    private static final int INFRASTRUCTURE = 2;
+    private static final int CONFIGURATION = 3;
+    private static final int UTILITY = 4;
+    private static final int HELP_HINT = 5;
+    private static final int FLAGS = 6;
+    private static final int FOOTER = 7;
 
     @Test
-    void renderContainsAllInfrastructureCommands() {
-        var output = renderHelp();
-
-        assertAll("Infrastructure commands",
-                () -> assertTrue(output.contains("new"), "Should list 'new' command"),
-                () -> assertTrue(output.contains("validate"), "Should list 'validate' command"),
-                () -> assertTrue(output.contains("plan"), "Should list 'plan' command"),
-                () -> assertTrue(output.contains("apply"), "Should list 'apply' command"),
-                () -> assertTrue(output.contains("destroy"), "Should list 'destroy' command"),
-                () -> assertTrue(output.contains("output"), "Should list 'output' command")
-        );
-    }
-
-    @Test
-    void renderContainsAllConfigurationCommands() {
-        var output = renderHelp();
-
-        assertAll("Configuration commands",
-                () -> assertTrue(output.contains("fmt"), "Should list 'fmt' command"),
-                () -> assertTrue(output.contains("env"), "Should list 'env' command"),
-                () -> assertTrue(output.contains("config"), "Should list 'config' command"),
-                () -> assertTrue(output.contains("providers"), "Should list 'providers' command")
-        );
-    }
-
-    @Test
-    void renderContainsAllUtilityCommands() {
-        var output = renderHelp();
-
-        assertAll("Utility commands",
-                () -> assertTrue(output.contains("doctor"), "Should list 'doctor' command"),
-                () -> assertTrue(output.contains("version"), "Should list 'version' command"),
-                () -> assertTrue(output.contains("upgrade"), "Should list 'upgrade' command"),
-                () -> assertTrue(output.contains("completion"), "Should list 'completion' command")
-        );
-    }
-
-    @Test
-    void renderContainsInlineExamples() {
-        var output = renderHelp();
-
-        assertAll("Inline examples next to commands",
-                () -> assertTrue(output.contains("my-project"), "Should show example arg for 'new'"),
-                () -> assertTrue(output.contains("-e dev"), "Should show example arg for 'plan'"),
-                () -> assertTrue(output.contains("-e prod"), "Should show example arg for 'apply'"),
-                () -> assertTrue(output.contains("get <key>"), "Should show example arg for 'config'")
-        );
-    }
-
-    @Test
-    void renderListsEachFlagWithItsShortForm() {
-        // Whole rows, not substrings: "--version" contains "-v" and "--help" contains "-h",
-        // so a contains() check cannot tell whether the short forms are listed at all.
-        var flagRows = withoutAnsi(renderHelp()).lines()
-                .dropWhile(line -> !line.equals("Flags:"))
-                .skip(1)
-                .takeWhile(line -> !line.isBlank())
-                .toList();
+    void headerNamesKiteWithItsTaglineAndVersion() {
+        var header = blocks().get(HEADER).stream().map(TerminalText::withVersionMasked).toList();
 
         assertEquals(List.of(
+                "Kite is a multi-cloud IaC tool. Write once, provision anywhere. (<version>)"
+        ), header);
+    }
+
+    @Test
+    void usageLineShowsWhereFlagsAndArgumentsGo() {
+        assertEquals(List.of(
+                "Usage: kite <command> [...flags] [...args]"
+        ), blocks().get(USAGE));
+    }
+
+    @Test
+    void infrastructureSectionListsEachCommandWithAnExample() {
+        assertEquals(List.of(
+                "Infrastructure:",
+                "  new         my-project   Create a new Kite project",
+                "  validate    ./src        Validate .kite files for syntax and schema errors",
+                "  plan        -e dev       Preview infrastructure changes without applying",
+                "  apply       -e prod      Apply infrastructure changes to provision resources",
+                "  destroy     -e dev       Destroy provisioned infrastructure",
+                "  output      my-stack     Display output values from deployed infrastructure"
+        ), blocks().get(INFRASTRUCTURE));
+    }
+
+    @Test
+    void configurationSectionListsEachCommandWithAnExample() {
+        assertEquals(List.of(
+                "Configuration:",
+                "  fmt         ./src        Format .kite files to canonical style",
+                "  env         dev          Show or switch the current environment",
+                "  config      get <key>    Manage Kite CLI configuration",
+                "  providers   install      Manage Kite providers"
+        ), blocks().get(CONFIGURATION));
+    }
+
+    @Test
+    void utilitySectionKeepsTheDescriptionColumnForCommandsWithoutAnExample() {
+        // doctor and upgrade have no example, so their description must still start in its column
+        assertEquals(List.of(
+                "Utility:",
+                "  doctor                   Check your Kite installation and project setup",
+                "  version     list         Manage Kite CLI versions",
+                "  upgrade                  Upgrade Kite CLI to the latest version",
+                "  completion  bash         Generate shell completion scripts"
+        ), blocks().get(UTILITY));
+    }
+
+    @Test
+    void helpHintPointsAtEachCommandsOwnHelp() {
+        assertEquals(List.of(
+                "  <command>   --help       Print help text for command."
+        ), blocks().get(HELP_HINT));
+    }
+
+    @Test
+    void flagsSectionListsEachFlagWithItsShortForm() {
+        // Whole rows, not substrings: "--version" contains "-v" and "--help" contains "-h",
+        // so a contains() check cannot tell whether the short forms are listed at all.
+        assertEquals(List.of(
+                "Flags:",
                 "  -h, --help                     Show this help message and exit",
                 "  -v, --version                  Print version information and exit"
-        ), flagRows);
+        ), blocks().get(FLAGS));
     }
 
     @Test
-    void renderContainsHelpHint() {
-        var output = renderHelp();
+    void footerLinksToTheDocsAndEndsThePage() {
+        var blocks = blocks();
 
-        assertTrue(output.contains("<command>"), "Should have per-command help hint");
-        assertTrue(output.contains("Print help text for command"), "Should describe the hint");
+        // Everything from the footer on, so a block added after it fails too
+        assertEquals(List.of(List.of(
+                "Learn more about Kite:           https://kitelang.cloud/docs"
+        )), blocks.subList(FOOTER, blocks.size()));
     }
 
-    @Test
-    void renderContainsFooterLink() {
-        var output = renderHelp();
-
-        assertTrue(output.contains("Learn more about Kite"), "Should have footer");
-        assertTrue(output.contains("https://kitelang.cloud/docs"), "Should have docs link");
-    }
-
-    @Test
-    void renderContainsGroupHeaders() {
-        var output = renderHelp();
-
-        assertAll("Group headers",
-                () -> assertTrue(output.contains("Infrastructure:"), "Should have Infrastructure header"),
-                () -> assertTrue(output.contains("Configuration:"), "Should have Configuration header"),
-                () -> assertTrue(output.contains("Utility:"), "Should have Utility header")
-        );
-    }
-
-    @Test
-    void buildCommandGroupsReturnsThreeGroups() {
-        var groups = KiteUsageHelp.buildCommandGroups();
-
-        assertEquals(3, groups.size(), "Should have 3 command groups");
-        assertEquals("Infrastructure", groups.get(0).label());
-        assertEquals("Configuration", groups.get(1).label());
-        assertEquals("Utility", groups.get(2).label());
-    }
-
-    @Test
-    void buildCommandGroupsInfrastructureHasSixEntries() {
-        var groups = KiteUsageHelp.buildCommandGroups();
-        var infra = groups.get(0);
-
-        assertEquals(6, infra.entries().size(), "Infrastructure group should have 6 commands");
-
-        var names = infra.entries().stream()
-                .map(KiteUsageHelp.CommandEntry::name)
+    /**
+     * The page as the user sees it, split at its blank lines into blocks of lines, in order. The split
+     * keeps empty pieces, so a doubled blank line shows up as a blank line at the start of a block.
+     */
+    private static List<List<String>> blocks() {
+        return Arrays.stream(withoutAnsi(renderHelp()).split("\\R\\R", -1))
+                .map(block -> block.lines().toList())
                 .toList();
-        assertEquals(List.of("new", "validate", "plan", "apply", "destroy", "output"), names);
-    }
-
-    @Test
-    void buildCommandGroupsConfigurationHasFourEntries() {
-        var groups = KiteUsageHelp.buildCommandGroups();
-        var config = groups.get(1);
-
-        assertEquals(4, config.entries().size(), "Configuration group should have 4 commands");
-
-        var names = config.entries().stream()
-                .map(KiteUsageHelp.CommandEntry::name)
-                .toList();
-        assertEquals(List.of("fmt", "env", "config", "providers"), names);
-    }
-
-    @Test
-    void buildCommandGroupsUtilityHasFourEntries() {
-        var groups = KiteUsageHelp.buildCommandGroups();
-        var utility = groups.get(2);
-
-        assertEquals(4, utility.entries().size(), "Utility group should have 4 commands");
-
-        var names = utility.entries().stream()
-                .map(KiteUsageHelp.CommandEntry::name)
-                .toList();
-        assertEquals(List.of("doctor", "version", "upgrade", "completion"), names);
-    }
-
-    @Test
-    void commandEntryWithEmptyExampleRendersCleanly() {
-        var output = renderHelp();
-
-        // "doctor" has empty example - should not leave awkward spacing artifacts
-        // Just verify it renders without throwing
-        assertTrue(output.contains("doctor"), "Should render command with empty example");
-        assertTrue(output.contains("Check your Kite installation"), "Should show doctor description");
     }
 
     /**
      * Renders help to a string for assertion.
      */
-    private String renderHelp() {
+    private static String renderHelp() {
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         KiteUsageHelp.render(pw);

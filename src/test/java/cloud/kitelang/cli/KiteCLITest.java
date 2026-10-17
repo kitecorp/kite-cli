@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static cloud.kitelang.cli.TerminalText.withVersionMasked;
 import static cloud.kitelang.cli.TerminalText.withoutAnsi;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -191,14 +192,6 @@ class KiteCLITest {
     /** Every way to reach the root help: no arguments, and the root's own help flags. */
     static Stream<List<String>> rootHelpArguments() {
         return Stream.of(List.of(), List.of("--help"), List.of("-h"));
-    }
-
-    /**
-     * The root help header ends with the build version, which changes every release. Masking it keeps
-     * the rest of the header a literal.
-     */
-    private static String withVersionMasked(String header) {
-        return header.replaceFirst("\\([^()]+\\)$", "(<version>)");
     }
 
     @Test
