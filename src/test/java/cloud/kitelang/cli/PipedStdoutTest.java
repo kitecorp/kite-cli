@@ -8,13 +8,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -34,30 +29,14 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class PipedStdoutTest {
 
-    /** Built by {@code installDist}; the build passes its location. */
-    private static final Path KITE = Path.of(System.getProperty("kite.installDir", "build/install/kite"), "bin", "kite");
-
-    /** Longest a single run may take. JVM start-up is about a second; nothing here needs the network. */
-    private static final Duration RUN_LIMIT = Duration.ofSeconds(60);
-
-    /**
-     * A new pseudo-terminal has no size, and JLine counts a terminal 0 columns wide as unable to
-     * prompt. Real terminals have one, so the child sets it on its stdin before kite starts.
-     */
-    private static final String WITH_TERMINAL_SIZE = "stty rows 24 cols 80 && exec \"$0\" \"$@\"";
-
-    /** No PostgreSQL listens on port 1, so plan prints its progress and then stops at the database. */
-    private static final String UNREACHABLE_DATABASE = "jdbc:postgresql://127.0.0.1:1/postgres";
-
     @TempDir
     private Path temp;
 
-    /** The child's {@code user.home}, so kite never reads or writes the developer's own ~/.kite. */
-    private Path home;
+    private KiteBinary binary;
 
     @BeforeEach
     void createHome() throws IOException {
-        home = Files.createDirectories(temp.resolve("home"));
+        binary = new KiteBinary(Files.createDirectories(temp.resolve("home")));
     }
 
     @Test
@@ -169,7 +148,7 @@ class PipedStdoutTest {
         // no cursor movement for the file or pipe to keep. This install fails at once, offline.
         // The second run gives stderr another encoding, as Windows does for a console beside a
         // redirected stdout: stdout must still be written in its own, or ✗ and … turn into ?.
-        var run = kite(temp, Map.of("JAVA_OPTS", javaOptions(stderrEncoding)),
+        var run = kite(temp, Map.of("JAVA_OPTS", binary.javaOptions(stderrEncoding)),
                 "providers", "install", "foo@1.0", "--git", "file:///nonexistent/kite-test-repo");
 
         assertAll(
@@ -254,40 +233,14 @@ class PipedStdoutTest {
         return List.of(lines.getFirst().replaceFirst("\\([^()]+\\)$", "(<version>)"), lines.getLast());
     }
 
-    /**
-     * A project whose dev environment has one stack and a state backend that cannot be reached, so
-     * plan gets past its own checks without a database.
-     */
+    /** A project plan gets through until the engine opens the database, which cannot be reached. */
     private Path planProject() throws IOException {
-        return planProject("""
-                username: postgres
-                password: postgres
-                """);
+        return binary.projectWithUnreachableState(temp, KiteBinary.WITH_PASSWORD);
     }
 
     /** As {@link #planProject()}, with no password for the state backend, which plan warns about. */
     private Path planProjectWithoutPassword() throws IOException {
-        return planProject("""
-                username: postgres
-                """);
-    }
-
-    /** @param credentials the state backend's YAML lines after its url, unindented */
-    private Path planProject(String credentials) throws IOException {
-        var project = Files.createDirectories(temp.resolve("piped-project"));
-        Files.writeString(Files.createDirectories(project.resolve("environments/dev")).resolve("main.kite"),
-                "var greeting = \"hello\"\n");
-        // kite names the project after its working directory
-        Files.writeString(Files.createDirectories(home.resolve(".kite")).resolve("config.yml"), """
-                projects:
-                - name: piped-project
-                  environments:
-                    dev:
-                      state:
-                        type: postgresql
-                        url: %s
-                %s""".formatted(UNREACHABLE_DATABASE, credentials.indent(8)));
-        return project;
+        return binary.projectWithUnreachableState(temp, KiteBinary.WITHOUT_PASSWORD);
     }
 
     private Run kite(Path workDir, String... args) throws Exception {
@@ -304,30 +257,8 @@ class PipedStdoutTest {
         return start(workDir, Map.of(), args);
     }
 
-    /**
-     * The child's JVM options: its own home, and fixed stream encodings. A pipe takes its encoding from
-     * the locale, so fixing stdout's keeps ✓ and … readable on any machine.
-     */
-    private String javaOptions(String stderrEncoding) {
-        return "-Duser.home=" + home + " -Dstdout.encoding=UTF-8 -Dstderr.encoding=" + stderrEncoding;
-    }
-
     private Session start(Path workDir, Map<String, String> environmentOverrides, String... args) throws IOException {
-        var command = new ArrayList<>(List.of("/bin/sh", "-c", WITH_TERMINAL_SIZE, KITE.toString()));
-        command.addAll(List.of(args));
-        var builder = new ProcessBuilder(command).directory(workDir.toFile());
-
-        // Only what the test sets, so the developer's TERM, KITE_LOGGING or database settings cannot
-        // change what kite prints
-        var environment = builder.environment();
-        environment.clear();
-        environment.put("PATH", System.getenv("PATH"));
-        environment.put("HOME", home.toString());
-        environment.put("TERM", "xterm-256color");
-        // The start script runs the JDK this test runs on, which is the project's toolchain
-        environment.put("JAVA_HOME", System.getProperty("java.home"));
-        environment.put("JAVA_OPTS", javaOptions("UTF-8"));
-        environment.putAll(environmentOverrides);
+        var builder = binary.builder(workDir, environmentOverrides, PseudoTerminal.sized(KiteBinary.kite(args)));
 
         var terminal = PseudoTerminal.open();
         try {
@@ -352,13 +283,11 @@ class PipedStdoutTest {
         Session(PseudoTerminal terminal, Process process) {
             this.terminal = terminal;
             this.process = process;
-            // Drained while kite runs, so a long output cannot fill the pipe and stall it
-            this.stdout = CompletableFuture.supplyAsync(() -> readAll(process.getInputStream()),
-                    task -> Thread.ofPlatform().daemon().start(task));
+            this.stdout = KiteBinary.drain(process.getInputStream());
         }
 
         void awaitScreen(String text) throws InterruptedException {
-            if (!terminal.awaitScreen(text, RUN_LIMIT)) {
+            if (!terminal.awaitScreen(text, KiteBinary.RUN_LIMIT)) {
                 fail("The terminal never showed '" + text + "'. It showed:\n" + terminal.screen());
             }
         }
@@ -368,32 +297,24 @@ class PipedStdoutTest {
         }
 
         Run finish() throws Exception {
-            if (!process.waitFor(RUN_LIMIT.toMillis(), TimeUnit.MILLISECONDS)) {
-                fail("kite did not exit within " + RUN_LIMIT + ". The terminal showed:\n" + terminal.screen());
+            if (!process.waitFor(KiteBinary.RUN_LIMIT.toMillis(), TimeUnit.MILLISECONDS)) {
+                fail("kite did not exit within " + KiteBinary.RUN_LIMIT + ". The terminal showed:\n" + terminal.screen());
             }
-            if (!terminal.awaitClosed(RUN_LIMIT)) {
+            if (!terminal.awaitClosed(KiteBinary.RUN_LIMIT)) {
                 fail("Something kite started still holds the terminal open. It showed:\n" + terminal.screen());
             }
-            return new Run(process.exitValue(), stdout.get(RUN_LIMIT.toMillis(), TimeUnit.MILLISECONDS), terminal.screen());
+            return new Run(process.exitValue(), stdout.get(KiteBinary.RUN_LIMIT.toMillis(), TimeUnit.MILLISECONDS), terminal.screen());
         }
 
         @Override
         public void close() throws Exception {
             if (process.isAlive()) {
-                process.destroyForcibly().waitFor(RUN_LIMIT.toMillis(), TimeUnit.MILLISECONDS);
+                process.destroyForcibly().waitFor(KiteBinary.RUN_LIMIT.toMillis(), TimeUnit.MILLISECONDS);
                 // The reader sees the terminal close a moment after the process ends; until then the
                 // terminal refuses to close and its descriptor would stay open
-                terminal.awaitClosed(RUN_LIMIT);
+                terminal.awaitClosed(KiteBinary.RUN_LIMIT);
             }
             terminal.close();
-        }
-
-        private static String readAll(InputStream stream) {
-            try (stream) {
-                return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
         }
     }
 }

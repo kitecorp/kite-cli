@@ -86,7 +86,9 @@ public class KiteCLI implements Runnable {
      * @return the configured root command line
      */
     static CommandLine commandLine() {
-        var colorScheme = new CommandLine.Help.ColorScheme.Builder()
+        // picocli colours by the same rule as the rest of kite's output, not by its own guess
+        var ansi = Console.isColorEnabled() ? CommandLine.Help.Ansi.ON : CommandLine.Help.Ansi.OFF;
+        var colorScheme = new CommandLine.Help.ColorScheme.Builder(ansi)
                 .commands(CommandLine.Help.Ansi.Style.bold, CommandLine.Help.Ansi.Style.fg_cyan)
                 .options(CommandLine.Help.Ansi.Style.fg_cyan)
                 .parameters(CommandLine.Help.Ansi.Style.fg_yellow)

@@ -47,14 +47,11 @@ public final class KiteUsageHelp {
      * A group of related commands with a label and accent color.
      *
      * @param label   section label (e.g. "Infrastructure")
-     * @param color   ANSI color code for this group's command names
+     * @param color   ANSI color code for this group's command names, empty without colour
      * @param entries commands in this group
      */
     record CommandGroup(String label, String color, List<CommandEntry> entries) {
     }
-
-    /** Dim text (ANSI faint). */
-    private static final String DIM = "\u001B[2m";
 
     /** The one section the root command's usage help consists of. */
     private static final String SECTION_KEY = "kiteUsageHelp";
@@ -136,7 +133,7 @@ public final class KiteUsageHelp {
     static List<CommandGroup> buildCommandGroups() {
         var groups = new ArrayList<CommandGroup>();
 
-        // Infrastructure commands (cyan)
+        // Infrastructure commands (magenta)
         groups.add(new CommandGroup("Infrastructure", MAGENTA, List.of(
                 new CommandEntry("new", "my-project", "Create a new Kite project"),
                 new CommandEntry("validate", "./src", "Validate .kite files for syntax and schema errors"),

@@ -14,25 +14,26 @@ import java.nio.charset.Charset;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static cloud.kitelang.cli.util.TerminalColors.BOLD;
+import static cloud.kitelang.cli.util.TerminalColors.CYAN;
+import static cloud.kitelang.cli.util.TerminalColors.GREEN;
+import static cloud.kitelang.cli.util.TerminalColors.RED;
+import static cloud.kitelang.cli.util.TerminalColors.RESET;
+import static cloud.kitelang.cli.util.TerminalColors.YELLOW;
+
 /**
  * Central console output utility for consistent terminal rendering.
  *
  * <p>Output goes to stdout, so pipes and redirects capture it. Prompts use the JLine terminal, which is
  * stdout when stdout is a terminal and stderr when only stderr is, so prompts keep working while the
- * output is piped.</p>
+ * output is piped. Output is coloured only when it reaches a terminal ({@link #isColorEnabled()}).</p>
  */
 public final class Console {
 
-    // ANSI color codes
-    private static final String RESET = "\u001B[0m";
-    private static final String BOLD = "\u001B[1m";
-    private static final String GREEN = "\u001B[32m";
-    private static final String RED = "\u001B[31m";
-    private static final String YELLOW = "\u001B[33m";
-    private static final String CYAN = "\u001B[36m";
-
     /** True when the terminal is stdout itself, so output and prompts share the screen. */
     private static final boolean outputOnTerminal;
+    /** Whether output carries colour codes; see {@link #isColorEnabled()}. */
+    private static final boolean colorEnabled;
     private static final PrintWriter writer;
 
     static {
@@ -42,6 +43,9 @@ public final class Console {
         // Only a stdout that is a terminal needs the terminal built now. Otherwise it is built when first
         // asked for, which `kite --version` or `kite completion zsh > _kite` never do.
         outputOnTerminal = mayBeTerminal(SystemStream.Output) && isOnStdout(getTerminal());
+        // NO_COLOR counts when it holds anything, whatever the value (no-color.org)
+        var noColor = System.getenv("NO_COLOR");
+        colorEnabled = outputOnTerminal && (noColor == null || noColor.isEmpty());
         writer = outputOnTerminal ? getTerminal().writer() : stdoutWriter();
     }
 
@@ -293,6 +297,14 @@ public final class Console {
      */
     public static boolean isOutputInteractive() {
         return outputOnTerminal && isInteractive();
+    }
+
+    /**
+     * Checks if output may carry colour codes: only when it is written to a terminal, and never while
+     * {@code NO_COLOR} is set to anything (no-color.org). {@code kite --help > help.txt} stays plain text.
+     */
+    public static boolean isColorEnabled() {
+        return colorEnabled;
     }
 
     /** Terminal columns, or 80 when there is no terminal to ask. */

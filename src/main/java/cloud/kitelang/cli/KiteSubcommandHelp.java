@@ -25,9 +25,6 @@ import static cloud.kitelang.cli.util.TerminalColors.*;
  */
 public final class KiteSubcommandHelp {
 
-    /** Dim text (ANSI faint). */
-    private static final String DIM = "\u001B[2m";
-
     private KiteSubcommandHelp() {
         // Utility class
     }

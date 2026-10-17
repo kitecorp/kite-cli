@@ -107,6 +107,8 @@ Console.header("Section Title");   // Bold header
 
 Output goes to stdout, so `kite plan > plan.txt`, `kite --help | less` and `$(kite --version)` capture it; picocli's help and version text print through `Console.out()`. Prompts go to the terminal: when stdout is piped, `InteractivePrompt` and `Console.prompt(...)` (plain-line prompts) use the terminal behind stderr, and `Console.isOutputInteractive()` is false, so output never redraws lines into a file. With `--json`, a command's other lines go to stderr (`spec.commandLine().getErr()`).
 
+Output is coloured only when it reaches a terminal, and never while `NO_COLOR` is set (`Console.isColorEnabled()`). Build colours from `TerminalColors` or `Console.bold(...)`/`green(...)`/..., which are empty strings otherwise; a raw `"\u001B[..."` in output would reach files and pipes.
+
 ### For User Input
 Use `InteractivePrompt` class (wraps JLine ConsoleUI):
 ```java

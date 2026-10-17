@@ -10,6 +10,8 @@ import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
@@ -99,6 +101,31 @@ final class PseudoTerminal implements AutoCloseable {
         // opened fails at once, which would end the reader before the child prints anything.
         reader = Thread.ofPlatform().daemon().name("pseudo-terminal-reader").start(this::readUntilClosed);
         return process;
+    }
+
+    /**
+     * Starts the process with this terminal on all three of its streams, as an interactive shell runs
+     * a command. Everything it prints then shows in {@link #screen()}.
+     *
+     * @param builder the command to start
+     * @return the started process
+     * @throws IOException when the process cannot start
+     */
+    Process startOnTerminal(ProcessBuilder builder) throws IOException {
+        return start(builder.redirectOutput(ProcessBuilder.Redirect.appendTo(device.toFile())));
+    }
+
+    /**
+     * Wraps a command so it first gives the terminal on its stdin a size. A new pseudo-terminal is 0
+     * columns wide, and JLine counts such a terminal as unable to prompt; a real one has a size.
+     *
+     * @param command the command to run once the size is set
+     * @return the command, run through {@code /bin/sh}
+     */
+    static List<String> sized(List<String> command) {
+        var sized = new ArrayList<>(List.of("/bin/sh", "-c", "stty rows 24 cols 80 && exec \"$0\" \"$@\""));
+        sized.addAll(command);
+        return sized;
     }
 
     /**
