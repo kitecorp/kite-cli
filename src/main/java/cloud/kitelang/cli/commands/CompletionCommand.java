@@ -102,7 +102,7 @@ public class CompletionCommand implements Callable<Integer> {
      */
     private int generateBashCompletion(CommandLine cmd) {
         var script = AutoComplete.bash(commandName, cmd);
-        System.out.println(script);
+        Console.println(script);
         return 0;
     }
 
@@ -129,7 +129,7 @@ public class CompletionCommand implements Callable<Integer> {
             # vim: ft=zsh
             """.formatted(commandName, commandName, bashScript);
 
-        System.out.println(zshScript);
+        Console.println(zshScript);
         return 0;
     }
 
@@ -167,7 +167,7 @@ public class CompletionCommand implements Callable<Integer> {
         script.append("complete -c ").append(commandName).append(" -l provider -s p -d \"Cloud provider\" -a \"aws gcp azure all\"\n");
         script.append("complete -c ").append(commandName).append(" -l stack -s s -d \"Stack name\" -a \"Backend Frontend\"\n");
 
-        System.out.println(script);
+        Console.println(script.toString());
         return 0;
     }
 

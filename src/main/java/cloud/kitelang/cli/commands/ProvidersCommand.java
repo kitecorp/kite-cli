@@ -200,8 +200,7 @@ public class ProvidersCommand implements Callable<Integer> {
             var name = spec.getName();
             Console.println("Installing provider: " + name + "@" + spec.getVersion());
 
-            var progress = new MultiProgress(List.of(name), Console::print, Console.isInteractive(),
-                    Console.width(), Console.height());
+            var progress = MultiProgress.onConsole(List.of(name));
             try {
                 var path = installer.install(spec, progress.listener(name));
                 progress.done(name);
@@ -277,8 +276,7 @@ public class ProvidersCommand implements Callable<Integer> {
                 Console.println();
                 // All downloads run at once, each redrawing its own line
                 var names = toInstall.stream().map(PackageSpec::getName).toList();
-                var progress = new MultiProgress(names, Console::print, Console.isInteractive(),
-                        Console.width(), Console.height());
+                var progress = MultiProgress.onConsole(names);
                 try {
                     installer.installAll(toInstall, spec -> progress.installListener(spec.getName()));
                 } catch (PackageInstallException e) {

@@ -98,6 +98,12 @@ shadowJar {
 
 test {
     useJUnitPlatform()
+    // PipedStdoutTest runs the installed binary with a pipe on stdout and a terminal on stderr,
+    // the way a shell runs `kite ... | cat`
+    dependsOn installDist
+    systemProperty 'kite.installDir', installDist.destinationDir.absolutePath
+    // Its PseudoTerminal opens terminals through libc with the foreign function API
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
 // Generate version.properties with the project version

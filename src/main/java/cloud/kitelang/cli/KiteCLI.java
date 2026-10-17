@@ -1,6 +1,7 @@
 package cloud.kitelang.cli;
 
 import cloud.kitelang.cli.commands.*;
+import cloud.kitelang.cli.console.Console;
 import cloud.kitelang.engine.kitefile.KiteInjector;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine;
@@ -96,6 +97,8 @@ public class KiteCLI implements Runnable {
 
         var cmd = new CommandLine(new KiteCLI())
                 .setCommandName("kite")
+                // Help and version text print through the Console like all other output
+                .setOut(Console.out())
                 .setColorScheme(colorScheme)
                 // Custom error handling with suggestions
                 .setParameterExceptionHandler(exceptionHandler)
