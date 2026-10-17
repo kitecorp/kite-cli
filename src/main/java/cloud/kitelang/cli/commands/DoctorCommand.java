@@ -32,8 +32,7 @@ import java.util.concurrent.Callable;
                 "  kite doctor -e prod                   Validate credentials for prod environment",
                 "  kite doctor --verbose                 Show detailed output for all checks",
                 "  kite doctor --fix                     Attempt to fix issues automatically"
-        },
-        mixinStandardHelpOptions = true
+        }
 )
 @Slf4j
 public class DoctorCommand implements Callable<Integer> {

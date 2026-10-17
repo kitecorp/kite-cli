@@ -26,8 +26,7 @@ import java.util.concurrent.Callable;
                 "  kite config state -p myproject -e prod --url jdbc:postgresql://db.example.com:5432/postgres",
                 "",
                 "State configuration is stored in: ~/.kite/config.yml"
-        },
-        mixinStandardHelpOptions = true
+        }
 )
 @Slf4j
 public class StateCommand implements Callable<Integer> {

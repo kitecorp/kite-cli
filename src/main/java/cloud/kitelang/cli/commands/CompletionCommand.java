@@ -40,8 +40,7 @@ import java.util.concurrent.Callable;
         "  kite completion fish > ~/.config/fish/completions/kite.fish",
         "",
         "After installation, restart your shell or run: source ~/.bashrc"
-    },
-    mixinStandardHelpOptions = true
+    }
 )
 @Slf4j
 public class CompletionCommand implements Callable<Integer> {

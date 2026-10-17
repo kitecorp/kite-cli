@@ -27,8 +27,7 @@ import java.util.concurrent.Callable;
                 "  kite env dev              Switch to dev environment",
                 "  kite env prod             Switch to prod environment",
                 "  kite env staging          Switch to staging environment"
-        },
-        mixinStandardHelpOptions = true
+        }
 )
 @Slf4j
 public class EnvCommand implements Callable<Integer> {

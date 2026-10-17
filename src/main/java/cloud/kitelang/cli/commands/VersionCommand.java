@@ -38,7 +38,6 @@ import java.util.concurrent.TimeUnit;
                 "  kite version use 1.2.0                Switch to installed version",
                 "  kite version remove 1.2.0             Remove an installed version"
         },
-        mixinStandardHelpOptions = true,
         subcommands = {
                 VersionCommand.ListCommand.class,
                 VersionCommand.InstallCommand.class,
@@ -99,8 +98,7 @@ public class VersionCommand implements Callable<Integer> {
      */
     @Command(
             name = "list",
-            description = "List installed and available versions",
-            mixinStandardHelpOptions = true
+            description = "List installed and available versions"
     )
     @Slf4j
     public static class ListCommand implements Callable<Integer> {
@@ -182,8 +180,7 @@ public class VersionCommand implements Callable<Integer> {
                     "  kite version install 1.2.0            Install version 1.2.0",
                     "  kite version install latest           Install latest version",
                     "  kite version install 1.2.0 --use      Install and switch to it"
-            },
-            mixinStandardHelpOptions = true
+            }
     )
     @Slf4j
     public static class InstallCommand implements Callable<Integer> {
@@ -266,8 +263,7 @@ public class VersionCommand implements Callable<Integer> {
                     "",
                     "Examples:",
                     "  kite version use 1.2.0                Switch to version 1.2.0"
-            },
-            mixinStandardHelpOptions = true
+            }
     )
     @Slf4j
     public static class UseCommand implements Callable<Integer> {
@@ -303,8 +299,7 @@ public class VersionCommand implements Callable<Integer> {
                     "",
                     "Examples:",
                     "  kite version remove 1.2.0             Remove version 1.2.0"
-            },
-            mixinStandardHelpOptions = true
+            }
     )
     @Slf4j
     public static class RemoveCommand implements Callable<Integer> {

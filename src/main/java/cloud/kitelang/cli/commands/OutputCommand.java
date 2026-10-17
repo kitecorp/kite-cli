@@ -35,8 +35,7 @@ import java.util.concurrent.Callable;
         "  kite output db_url -e dev --raw       Raw value only (for scripting)",
         "  kite output -e dev -s Backend         Show outputs from Backend stack",
         "  kite output -e dev --sensitive        Include sensitive values"
-    },
-    mixinStandardHelpOptions = true
+    }
 )
 @Slf4j
 public class OutputCommand implements Callable<Integer> {

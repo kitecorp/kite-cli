@@ -1,8 +1,12 @@
 package cloud.kitelang.cli;
 
+import picocli.CommandLine;
+
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static cloud.kitelang.cli.util.TerminalColors.*;
 
@@ -51,6 +55,30 @@ public final class KiteUsageHelp {
 
     /** Dim text (ANSI faint). */
     private static final String DIM = "\u001B[2m";
+
+    /** The one section the root command's usage help consists of. */
+    private static final String SECTION_KEY = "kiteUsageHelp";
+
+    /**
+     * Makes this page the root command's usage help, so picocli prints it for {@code kite -h} and
+     * {@code kite --help}. Those flags are picocli help options because every subcommand inherits
+     * them, so picocli, not {@code KiteCLI.run()}, answers them. Only the root changes: subcommands
+     * keep picocli's own help.
+     *
+     * @param root the root command line
+     */
+    public static void apply(CommandLine root) {
+        root.getCommandSpec().usageMessage()
+                .sectionMap(Map.of(SECTION_KEY, help -> text()))
+                .sectionKeys(List.of(SECTION_KEY));
+    }
+
+    /** The page {@link #render} writes, as text. */
+    private static String text() {
+        var text = new StringWriter();
+        render(new PrintWriter(text));
+        return text.toString();
+    }
 
     /**
      * Builds the full bun-style help text and writes it to the given writer.

@@ -21,8 +21,7 @@ import java.util.concurrent.Callable;
                 "Examples:",
                 "  kite upgrade                          Upgrade to latest version",
                 "  kite upgrade 1.2.0                    Upgrade to specific version"
-        },
-        mixinStandardHelpOptions = true
+        }
 )
 @Slf4j
 public class UpgradeCommand implements Callable<Integer> {

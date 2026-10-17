@@ -44,8 +44,7 @@ import java.util.stream.Stream;
         "  kite validate --strict                Treat warnings as errors",
         "  kite validate -q                      Quiet mode (errors only)",
         "  kite validate --format json           Output as JSON (for CI integration)"
-    },
-    mixinStandardHelpOptions = true
+    }
 )
 @Slf4j
 public class ValidateCommand implements Callable<Integer> {

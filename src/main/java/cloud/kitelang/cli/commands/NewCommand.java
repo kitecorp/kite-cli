@@ -43,8 +43,7 @@ import java.util.concurrent.Callable;
                 "  kite new my-app -e dev,prod           Create with only dev and prod environments",
                 "  kite new my-app -d ~/projects         Create in specific directory",
                 "  kite new my-app -f                    Overwrite existing files"
-        },
-        mixinStandardHelpOptions = true
+        }
 )
 @Slf4j
 public class NewCommand implements Callable<Integer> {

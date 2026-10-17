@@ -37,8 +37,7 @@ import java.util.stream.Stream;
                 "  kite apply -e dev -y                  Skip confirmation prompt",
                 "  kite apply -e dev --dry-run           Preview without applying",
                 "  kite apply -e prod --parallelism 5    Limit concurrent operations"
-        },
-        mixinStandardHelpOptions = true
+        }
 )
 @Slf4j
 public class ApplyCommand implements Callable<Integer> {

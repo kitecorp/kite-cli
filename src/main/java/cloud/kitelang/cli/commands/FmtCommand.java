@@ -44,8 +44,7 @@ import java.util.stream.Stream;
         "  kite fmt --diff                      Preview changes without writing",
         "  kite fmt --indent 2                  Use 2-space indentation",
         "  kite fmt -r=false modules/           Format single directory only"
-    },
-    mixinStandardHelpOptions = true
+    }
 )
 @Slf4j
 public class FmtCommand implements Callable<Integer> {

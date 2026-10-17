@@ -44,7 +44,6 @@ import java.util.function.Predicate;
                 "  kite providers list                   List global providers",
                 "  kite providers list --local           List project providers"
         },
-        mixinStandardHelpOptions = true,
         subcommands = {
                 ProvidersCommand.InstallCommand.class,
                 ProvidersCommand.ListCommand.class,
@@ -99,8 +98,7 @@ public class ProvidersCommand implements Callable<Integer> {
                     "  kite providers install aws --local     Install to .kite/providers",
                     "",
                     "Without --git, only the official providers (aws, azure, files, gcp) install by name."
-            },
-            mixinStandardHelpOptions = true
+            }
     )
     @Slf4j
     public static class InstallCommand implements Callable<Integer> {
@@ -317,8 +315,7 @@ public class ProvidersCommand implements Callable<Integer> {
                     "Examples:",
                     "  kite providers list                   List global providers",
                     "  kite providers list --local           List project providers"
-            },
-            mixinStandardHelpOptions = true
+            }
     )
     @Slf4j
     public static class ListCommand implements Callable<Integer> {
@@ -518,8 +515,7 @@ public class ProvidersCommand implements Callable<Integer> {
                     "Examples:",
                     "  kite providers start name              Start AWS provider (latest version)",
                     "  kite providers start name@0.1.5        Start specific version"
-            },
-            mixinStandardHelpOptions = true
+            }
     )
     @Slf4j
     public static class StartCommand implements Callable<Integer> {
@@ -713,8 +709,7 @@ public class ProvidersCommand implements Callable<Integer> {
                     "  kite providers stop name               Stop AWS provider",
                     "  kite providers stop name@0.1.5         Stop specific version",
                     "  kite providers stop --all             Stop all running providers"
-            },
-            mixinStandardHelpOptions = true
+            }
     )
     @Slf4j
     public static class StopCommand implements Callable<Integer> {
@@ -885,8 +880,7 @@ public class ProvidersCommand implements Callable<Integer> {
      */
     @Command(
             name = "status",
-            description = "Show running provider processes",
-            mixinStandardHelpOptions = true
+            description = "Show running provider processes"
     )
     @Slf4j
     public static class StatusCommand implements Callable<Integer> {

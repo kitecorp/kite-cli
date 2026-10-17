@@ -7,6 +7,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.ScopeType;
 import picocli.CommandLine.Spec;
 
 import java.nio.file.Files;
@@ -19,8 +20,12 @@ import java.util.logging.Logger;
  * Main entry point for the Kite CLI.
  * Provides multi-cloud Infrastructure as Code provisioning.
  */
+// scope = INHERIT copies these attributes to every subcommand that does not set its own. That is how
+// `kite <command> --version` gets the root's version provider. It copies the description too, so a
+// subcommand without one would show the root's.
 @Command(
         name = "kite",
+        scope = ScopeType.INHERIT,
         versionProvider = VersionProvider.class,
         description = "Kite - Write once, provision anywhere. Multi-cloud IaC tool.",
         subcommands = {
@@ -43,10 +48,15 @@ import java.util.logging.Logger;
 @Slf4j
 public class KiteCLI implements Runnable {
 
-    @Option(names = {"-h", "--help"}, description = "Show this help message and exit")
+    // The help and version flags of every command, declared once: scope = INHERIT gives each subcommand
+    // a copy. They must be picocli help options, which print and return before the command runs, or
+    // `kite apply --help` would start an apply.
+    @Option(names = {"-h", "--help"}, usageHelp = true, scope = ScopeType.INHERIT,
+            description = "Show this help message and exit")
     private boolean helpRequested;
 
-    @Option(names = {"-v", "--version"}, versionHelp = true, description = "Print version information and exit")
+    @Option(names = {"-v", "--version"}, versionHelp = true, scope = ScopeType.INHERIT,
+            description = "Print version information and exit")
     private boolean versionRequested;
 
     @Spec
@@ -54,9 +64,9 @@ public class KiteCLI implements Runnable {
 
     @Override
     public void run() {
-        // Show custom bun-style help (no subcommand or -h flag). It goes to the command's configured
+        // `kite` alone shows the same help as `kite --help`. It goes to the command's configured
         // output, like picocli's own help and version text, so a caller that sets one captures it.
-        KiteUsageHelp.render(spec.commandLine().getOut());
+        spec.commandLine().usage(spec.commandLine().getOut());
     }
 
     public static void main(String... args) {
@@ -104,7 +114,8 @@ public class KiteCLI implements Runnable {
                 // POSIX clustering: -hv instead of -h -v
                 .setPosixClusteredShortOptionsAllowed(true);
 
-        // Apply bun-style headings to all subcommands
+        // Bun-style help: the grouped page for the root, styled headings for every subcommand
+        KiteUsageHelp.apply(cmd);
         KiteSubcommandHelp.apply(cmd);
 
         return cmd;

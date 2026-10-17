@@ -26,7 +26,6 @@ import java.util.concurrent.Callable;
                 "  kite config list                      Show all settings",
                 "  kite config path                      Show config file location"
         },
-        mixinStandardHelpOptions = true,
         subcommands = {
                 ConfigCommand.GetCommand.class,
                 ConfigCommand.SetCommand.class,
@@ -71,8 +70,7 @@ public class ConfigCommand implements Callable<Integer> {
      */
     @Command(
             name = "get",
-            description = "Get a configuration value",
-            mixinStandardHelpOptions = true
+            description = "Get a configuration value"
     )
     public static class GetCommand implements Callable<Integer> {
 
@@ -100,8 +98,7 @@ public class ConfigCommand implements Callable<Integer> {
      */
     @Command(
             name = "set",
-            description = "Set a configuration value",
-            mixinStandardHelpOptions = true
+            description = "Set a configuration value"
     )
     public static class SetCommand implements Callable<Integer> {
 
@@ -137,8 +134,7 @@ public class ConfigCommand implements Callable<Integer> {
      */
     @Command(
             name = "list",
-            description = "List all configuration values",
-            mixinStandardHelpOptions = true
+            description = "List all configuration values"
     )
     public static class ListCommand implements Callable<Integer> {
 
@@ -171,8 +167,7 @@ public class ConfigCommand implements Callable<Integer> {
      */
     @Command(
             name = "path",
-            description = "Show configuration file path",
-            mixinStandardHelpOptions = true
+            description = "Show configuration file path"
     )
     public static class PathCommand implements Callable<Integer> {
 

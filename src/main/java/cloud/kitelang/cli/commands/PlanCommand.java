@@ -49,8 +49,7 @@ import java.util.stream.Stream;
         "  kite plan -e dev --json               Output plan as JSON",
         "  kite plan -e dev -o plan.json         Save plan to file for later apply",
         "  kite plan -e dev --compact            Show compact diff output"
-    },
-    mixinStandardHelpOptions = true
+    }
 )
 @Slf4j
 public class PlanCommand implements Callable<Integer> {

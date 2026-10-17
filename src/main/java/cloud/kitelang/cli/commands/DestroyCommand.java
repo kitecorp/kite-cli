@@ -45,8 +45,7 @@ import java.util.concurrent.Callable;
         "  kite destroy -e prod --force          Required for production (safety check)",
         "  kite destroy -e dev --auto-approve    Skip confirmation prompt",
         "  kite destroy -e dev --target db       Destroy only specific resource"
-    },
-    mixinStandardHelpOptions = true
+    }
 )
 @Slf4j
 public class DestroyCommand implements Callable<Integer> {
